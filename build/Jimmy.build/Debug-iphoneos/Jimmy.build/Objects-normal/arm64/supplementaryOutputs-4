@@ -1,0 +1,18 @@
+"/Users/chenk/Jimmy/Jimmy/ContentView.swift":
+  object: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/ContentView.o"
+  dependencies: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/ContentView.d"
+  swift-dependencies: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/ContentView.swiftdeps"
+  const-values: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/ContentView.swiftconstvalues"
+  diagnostics: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/ContentView.dia"
+"/Users/chenk/Jimmy/Jimmy/Utilities/OPMLParser.swift":
+  swift-dependencies: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/OPMLParser.swiftdeps"
+  diagnostics: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/OPMLParser.dia"
+  dependencies: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/OPMLParser.d"
+  object: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/OPMLParser.o"
+  const-values: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/OPMLParser.swiftconstvalues"
+"/Users/chenk/Jimmy/Jimmy/Services/BackupService.swift":
+  diagnostics: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/BackupService.dia"
+  const-values: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/BackupService.swiftconstvalues"
+  swift-dependencies: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/BackupService.swiftdeps"
+  dependencies: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/BackupService.d"
+  object: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/BackupService.o"

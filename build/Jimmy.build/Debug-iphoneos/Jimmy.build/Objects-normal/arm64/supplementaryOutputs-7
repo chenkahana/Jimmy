@@ -1,0 +1,18 @@
+"/Users/chenk/Jimmy/Jimmy/Services/AudioPlayerService.swift":
+  dependencies: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AudioPlayerService.d"
+  swift-dependencies: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AudioPlayerService.swiftdeps"
+  object: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AudioPlayerService.o"
+  diagnostics: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AudioPlayerService.dia"
+  const-values: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AudioPlayerService.swiftconstvalues"
+"/Users/chenk/Jimmy/Jimmy/Views/QueueView.swift":
+  const-values: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/QueueView.swiftconstvalues"
+  swift-dependencies: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/QueueView.swiftdeps"
+  diagnostics: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/QueueView.dia"
+  dependencies: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/QueueView.d"
+  object: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/QueueView.o"
+"/Users/chenk/Jimmy/Jimmy/Services/iTunesSearchService.swift":
+  diagnostics: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/iTunesSearchService.dia"
+  const-values: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/iTunesSearchService.swiftconstvalues"
+  swift-dependencies: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/iTunesSearchService.swiftdeps"
+  dependencies: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/iTunesSearchService.d"
+  object: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/iTunesSearchService.o"

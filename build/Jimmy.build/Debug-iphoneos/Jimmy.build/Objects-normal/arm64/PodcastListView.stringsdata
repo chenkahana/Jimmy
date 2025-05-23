@@ -1,0 +1,40 @@
+{
+  "source": "/Users/chenk/Jimmy/Jimmy/Views/PodcastListView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Library",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 87
+        }
+      },
+      {
+        "comment": "",
+        "key": "Search podcasts...",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 36
+        }
+      },
+      {
+        "comment": "",
+        "key": "No Subscriptions",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 63
+        }
+      },
+      {
+        "comment": "",
+        "key": "Your subscribed podcasts will appear here",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 67
+        }
+      }
+    ]
+  },
+  "version": 1
+}

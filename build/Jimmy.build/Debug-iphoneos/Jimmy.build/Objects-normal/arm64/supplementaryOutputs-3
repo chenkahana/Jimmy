@@ -1,0 +1,18 @@
+"/Users/chenk/Jimmy/Jimmy/Utilities/AccessibilityHelper.swift":
+  object: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AccessibilityHelper.o"
+  dependencies: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AccessibilityHelper.d"
+  swift-dependencies: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AccessibilityHelper.swiftdeps"
+  const-values: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AccessibilityHelper.swiftconstvalues"
+  diagnostics: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AccessibilityHelper.dia"
+"/Users/chenk/Jimmy/Jimmy/Utilities/DebugHelper.swift":
+  diagnostics: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/DebugHelper.dia"
+  object: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/DebugHelper.o"
+  dependencies: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/DebugHelper.d"
+  swift-dependencies: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/DebugHelper.swiftdeps"
+  const-values: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/DebugHelper.swiftconstvalues"
+"/Users/chenk/Jimmy/Jimmy/Utilities/RSSParser.swift":
+  const-values: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/RSSParser.swiftconstvalues"
+  object: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/RSSParser.o"
+  dependencies: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/RSSParser.d"
+  swift-dependencies: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/RSSParser.swiftdeps"
+  diagnostics: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/RSSParser.dia"

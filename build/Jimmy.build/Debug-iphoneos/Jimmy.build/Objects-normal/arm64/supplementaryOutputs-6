@@ -1,0 +1,18 @@
+"/Users/chenk/Jimmy/Jimmy/Views/EpisodeListView.swift":
+  object: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/EpisodeListView.o"
+  dependencies: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/EpisodeListView.d"
+  const-values: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/EpisodeListView.swiftconstvalues"
+  swift-dependencies: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/EpisodeListView.swiftdeps"
+  diagnostics: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/EpisodeListView.dia"
+"/Users/chenk/Jimmy/Jimmy/Models/Podcast.swift":
+  swift-dependencies: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/Podcast.swiftdeps"
+  diagnostics: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/Podcast.dia"
+  dependencies: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/Podcast.d"
+  const-values: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/Podcast.swiftconstvalues"
+  object: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/Podcast.o"
+"/Users/chenk/Jimmy/Jimmy/ViewModels/QueueViewModel.swift":
+  const-values: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/QueueViewModel.swiftconstvalues"
+  dependencies: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/QueueViewModel.d"
+  swift-dependencies: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/QueueViewModel.swiftdeps"
+  diagnostics: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/QueueViewModel.dia"
+  object: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/QueueViewModel.o"

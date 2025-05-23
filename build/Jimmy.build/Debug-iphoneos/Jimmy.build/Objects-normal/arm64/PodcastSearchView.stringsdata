@@ -1,0 +1,144 @@
+{
+  "source": "/Users/chenk/Jimmy/Jimmy/Views/PodcastSearchView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Search",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 158
+        }
+      },
+      {
+        "comment": "",
+        "key": "Subscription",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 190
+        }
+      },
+      {
+        "comment": "",
+        "key": "Search Scope",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 82
+        }
+      },
+      {
+        "comment": "",
+        "key": "Search podcasts...",
+        "location": {
+          "startingColumn": 35,
+          "startingLine": 57
+        }
+      },
+      {
+        "comment": "",
+        "key": "Finding podcasts on Apple Podcasts...",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 97
+        }
+      },
+      {
+        "comment": "",
+        "key": "Searching...",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 96
+        }
+      },
+      {
+        "comment": "",
+        "key": "Your Subscriptions",
+        "location": {
+          "startingColumn": 41,
+          "startingLine": 106
+        }
+      },
+      {
+        "comment": "",
+        "key": "Discover New Podcasts",
+        "location": {
+          "startingColumn": 37,
+          "startingLine": 118
+        }
+      },
+      {
+        "comment": "",
+        "key": "Search for Podcasts",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 139
+        }
+      },
+      {
+        "comment": "",
+        "key": "Find your favorite shows from Apple Podcasts or search through your subscriptions",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 143
+        }
+      },
+      {
+        "comment": "",
+        "key": "OK",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 191
+        }
+      },
+      {
+        "comment": "",
+        "key": "Subscribed",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 314
+        }
+      },
+      {
+        "comment": "",
+        "key": "Podcast Details",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 492
+        }
+      },
+      {
+        "comment": "",
+        "key": "Subscribed",
+        "location": {
+          "startingColumn": 48,
+          "startingLine": 435
+        }
+      },
+      {
+        "comment": "",
+        "key": "Subscribe",
+        "location": {
+          "startingColumn": 63,
+          "startingLine": 435
+        }
+      },
+      {
+        "comment": "",
+        "key": "Fetching latest episodes...",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 461
+        }
+      },
+      {
+        "comment": "",
+        "key": "Loading episodes...",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 460
+        }
+      }
+    ]
+  },
+  "version": 1
+}
