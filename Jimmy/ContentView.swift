@@ -16,26 +16,34 @@ struct ContentView: View {
         ZStack(alignment: .bottom) {
             // Main content area with tab bar
             VStack(spacing: 0) {
-                // Main content area - TabView for switching between screens
-                TabView(selection: $selectedTab) {
-                    NavigationView {
-                        PodcastSearchView()
+                // Main content area - Custom tab switching without intermediate glimpses
+                ZStack {
+                    // Show only the selected tab content
+                    if selectedTab == 0 {
+                        NavigationView {
+                            PodcastSearchView()
+                        }
+                        .transition(.opacity.combined(with: .scale(scale: 0.95)))
+                    } else if selectedTab == 1 {
+                        NavigationView {
+                            QueueView()
+                        }
+                        .transition(.opacity.combined(with: .scale(scale: 0.95)))
+                    } else if selectedTab == 2 {
+                        CurrentPlayView()
+                            .transition(.opacity.combined(with: .scale(scale: 0.95)))
+                    } else if selectedTab == 3 {
+                        LibraryView()
+                            .transition(.opacity.combined(with: .scale(scale: 0.95)))
+                    } else if selectedTab == 4 {
+                        NavigationView {
+                            SettingsView()
+                        }
+                        .transition(.opacity.combined(with: .scale(scale: 0.95)))
                     }
-                    .tag(0)
-                    NavigationView {
-                        QueueView()
-                    }
-                    .tag(1)
-                    CurrentPlayView()
-                        .tag(2)
-                    LibraryView()
-                        .tag(3)
-                    NavigationView {
-                        SettingsView()
-                    }
-                    .tag(4)
                 }
-                .tabViewStyle(.page(indexDisplayMode: .never))
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .clipped() // Ensure no content leaks outside bounds
                 
                 // Custom Tab Bar
                 CustomTabBar(selectedTab: $selectedTab)

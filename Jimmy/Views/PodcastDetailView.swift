@@ -155,25 +155,28 @@ struct PodcastEpisodesListView: View {
             if episodes.isEmpty && !isLoading {
                 EmptyEpisodesStateView(loadingError: loadingError, onRetry: onRetry)
             } else {
-                LazyVStack(spacing: 0) {
+                LazyVStack(spacing: 8) {
                     ForEach(episodes) { episode in
-                        EpisodeRowItemView(
+                        EpisodeRowView(
                             episode: episode,
                             podcast: podcast,
                             isCurrentlyPlaying: currentPlayingEpisode?.id == episode.id,
                             onTap: {
                                 AudioPlayerService.shared.loadEpisode(episode)
                                 AudioPlayerService.shared.play()
+                            },
+                            onPlayNext: { episode in
+                                QueueViewModel.shared.queue.insert(episode, at: 0)
+                                QueueViewModel.shared.saveQueue()
+                                FeedbackManager.shared.playNext()
+                            },
+                            onMarkAsPlayed: { episode, played in
+                                EpisodeViewModel.shared.markEpisodeAsPlayed(episode, played: played)
                             }
                         )
-                        
-                        // Divider between episodes
-                        if episode.id != episodes.last?.id {
-                            Divider()
-                                .padding(.leading, 72)
-                        }
                     }
                 }
+                .padding(.horizontal, 16)
             }
             
             // Loading indicator
@@ -187,73 +190,6 @@ struct PodcastEpisodesListView: View {
                 .padding(.vertical, 20)
             }
         }
-    }
-}
-
-// MARK: - Episode Row Item
-struct EpisodeRowItemView: View {
-    let episode: Episode
-    let podcast: Podcast
-    let isCurrentlyPlaying: Bool
-    let onTap: () -> Void
-    
-    var body: some View {
-        Button(action: onTap) {
-            HStack(alignment: .top, spacing: 12) {
-                // Episode Picture
-                AsyncImage(url: episode.artworkURL ?? podcast.artworkURL) { image in
-                    image
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                } placeholder: {
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(Color.orange.opacity(0.3))
-                        .overlay(
-                            Image(systemName: "waveform")
-                                .font(.system(size: 16))
-                                .foregroundColor(.white)
-                        )
-                }
-                .frame(width: 48, height: 48)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
-                
-                // Episode Name and Details
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(episode.title)
-                        .font(.system(size: 15, weight: .medium))
-                        .foregroundColor(.primary)
-                        .lineLimit(2)
-                        .multilineTextAlignment(.leading)
-                    
-                    if let description = episode.description {
-                        Text(description)
-                            .font(.system(size: 13))
-                            .foregroundColor(.secondary)
-                            .lineLimit(2)
-                            .multilineTextAlignment(.leading)
-                    }
-                    
-                    if let publishedDate = episode.publishedDate {
-                        Text(publishedDate, style: .date)
-                            .font(.system(size: 12))
-                            .foregroundColor(.secondary)
-                    }
-                }
-                
-                Spacer()
-                
-                // Play indicator
-                if isCurrentlyPlaying {
-                    Image(systemName: "speaker.wave.2.fill")
-                        .font(.system(size: 14))
-                        .foregroundColor(.blue)
-                }
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-        }
-        .buttonStyle(.plain)
-        .background(isCurrentlyPlaying ? Color.blue.opacity(0.05) : Color.clear)
     }
 }
 
@@ -543,6 +479,14 @@ struct SearchResultEpisodesSection: View {
                             onTap: {
                                 AudioPlayerService.shared.loadEpisode(episode)
                                 AudioPlayerService.shared.play()
+                            },
+                            onPlayNext: { episode in
+                                QueueViewModel.shared.queue.insert(episode, at: 0)
+                                QueueViewModel.shared.saveQueue()
+                                FeedbackManager.shared.playNext()
+                            },
+                            onMarkAsPlayed: { episode, played in
+                                EpisodeViewModel.shared.markEpisodeAsPlayed(episode, played: played)
                             }
                         )
                     }
