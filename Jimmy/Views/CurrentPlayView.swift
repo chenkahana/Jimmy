@@ -4,11 +4,16 @@ import AVKit
 struct CurrentPlayView: View {
     @ObservedObject private var queueViewModel = QueueViewModel.shared
     @ObservedObject private var audioPlayer = AudioPlayerService.shared
-    @State private var showingOutputPicker = false
     @State private var isDownloading = false
+    @State private var currentAudioRoute = ""
+    @State private var showingEpisodeDetails = false
     
     var currentPlayingEpisode: Episode? {
         return audioPlayer.currentEpisode ?? queueViewModel.queue.first { $0.playbackPosition > 0 && !$0.played }
+    }
+    
+    var currentOutputDevice: AudioOutputDevice {
+        getCurrentAudioOutputDevice()
     }
     
     var body: some View {
@@ -22,7 +27,8 @@ struct CurrentPlayView: View {
                         currentTime: audioPlayer.playbackPosition,
                         duration: audioPlayer.duration,
                         isDownloading: $isDownloading,
-                        showingOutputPicker: $showingOutputPicker,
+                        showingEpisodeDetails: $showingEpisodeDetails,
+                        currentOutputDevice: currentOutputDevice,
                         onPlayPause: {
                             if audioPlayer.currentEpisode?.id == currentEpisode.id {
                                 audioPlayer.togglePlayPause()
@@ -40,9 +46,6 @@ struct CurrentPlayView: View {
                         onDownload: {
                             downloadEpisode(currentEpisode)
                         },
-                        onOutputTap: {
-                            showingOutputPicker = true
-                        },
                         onSeek: { time in
                             audioPlayer.seek(to: time)
                         }
@@ -53,19 +56,24 @@ struct CurrentPlayView: View {
             }
             .navigationTitle("")
             .navigationBarHidden(true)
-            .actionSheet(isPresented: $showingOutputPicker) {
-                ActionSheet(
-                    title: Text("Audio Output"),
-                    buttons: [
-                        .default(Text("iPhone Speaker")) { },
-                        .default(Text("AirPods")) { },
-                        .default(Text("Bluetooth Device")) { },
-                        .cancel()
-                    ]
-                )
+            .fullScreenCover(isPresented: $showingEpisodeDetails) {
+                if let episode = currentPlayingEpisode,
+                   let podcast = getPodcast(for: episode) {
+                    EpisodeDetailsFullView(
+                        episode: episode,
+                        podcast: podcast,
+                        isPresented: $showingEpisodeDetails
+                    )
+                }
             }
         }
         .navigationViewStyle(StackNavigationViewStyle())
+        .onAppear {
+            updateCurrentAudioRoute()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: AVAudioSession.routeChangeNotification)) { _ in
+            updateCurrentAudioRoute()
+        }
     }
     
     private func getPodcast(for episode: Episode) -> Podcast? {
@@ -80,6 +88,35 @@ struct CurrentPlayView: View {
             }
         }
     }
+    
+    private func updateCurrentAudioRoute() {
+        let session = AVAudioSession.sharedInstance()
+        currentAudioRoute = session.currentRoute.outputs.first?.portName ?? "Unknown"
+    }
+    
+    private func getCurrentAudioOutputDevice() -> AudioOutputDevice {
+        let session = AVAudioSession.sharedInstance()
+        guard let output = session.currentRoute.outputs.first else {
+            return .speaker
+        }
+        
+        switch output.portType {
+        case .builtInSpeaker:
+            return .speaker
+        case .headphones:
+            return .headphones
+        case .bluetoothA2DP, .bluetoothHFP, .bluetoothLE:
+            return .bluetooth(name: output.portName)
+        case .airPlay:
+            return .airplay(name: output.portName)
+        case .HDMI:
+            return .hdmi(name: output.portName)
+        case .lineOut:
+            return .wired(name: output.portName)
+        default:
+            return .speaker
+        }
+    }
 }
 
 struct ModernNowPlayingView: View {
@@ -89,12 +126,12 @@ struct ModernNowPlayingView: View {
     let currentTime: TimeInterval
     let duration: TimeInterval
     @Binding var isDownloading: Bool
-    @Binding var showingOutputPicker: Bool
+    @Binding var showingEpisodeDetails: Bool
+    let currentOutputDevice: AudioOutputDevice
     let onPlayPause: () -> Void
     let onBackward: () -> Void
     let onForward: () -> Void
     let onDownload: () -> Void
-    let onOutputTap: () -> Void
     let onSeek: (TimeInterval) -> Void
     
     @State private var isDragging = false
@@ -102,6 +139,23 @@ struct ModernNowPlayingView: View {
     
     var progressValue: Double {
         isDragging ? dragValue : (duration > 0 ? currentTime / duration : 0)
+    }
+    
+    var outputIcon: String {
+        switch currentOutputDevice {
+        case .speaker:
+            return "speaker.wave.3"
+        case .headphones:
+            return "headphones"
+        case .bluetooth:
+            return "airpods"
+        case .airplay:
+            return "airplayvideo"
+        case .hdmi:
+            return "tv"
+        case .wired:
+            return "headphones"
+        }
     }
     
     var body: some View {
@@ -167,12 +221,12 @@ struct ModernNowPlayingView: View {
                         
                         Spacer()
                         
-                        // Play/Pause Button (Large center button)
+                        // Play/Pause Button (Large center button) - Now uses accent color
                         ControlButton(
                             systemImage: isPlaying ? "pause.fill" : "play.fill",
                             size: .large,
                             color: .white,
-                            backgroundColor: .primary,
+                            backgroundColor: .accentColor,
                             action: onPlayPause
                         )
                         
@@ -187,12 +241,9 @@ struct ModernNowPlayingView: View {
                         
                         Spacer()
                         
-                        // Choose output (airpods/speaker) button (right)
-                        ControlButton(
-                            systemImage: "airpods",
-                            size: .small,
-                            action: onOutputTap
-                        )
+                        // Choose output (airpods/speaker) button (right) - Native route picker
+                        AVRoutePickerViewWrapper()
+                            .frame(width: 48, height: 48)
                         
                         Spacer()
                     }
@@ -217,8 +268,18 @@ struct ModernNowPlayingView: View {
                                 }
                             }
                         )
-                        .accentColor(.primary)
+                        .accentColor(.accentColor)
+                        .tint(.accentColor)
                         .frame(height: 6)
+                        .onAppear {
+                            // Make the slider thumb much smaller so it doesn't cover time text
+                            UISlider.appearance().setThumbImage(createCircleImage(radius: 5, color: UIColor(Color.accentColor)), for: .normal)
+                            UISlider.appearance().setThumbImage(createCircleImage(radius: 6, color: UIColor(Color.accentColor)), for: .highlighted)
+                            
+                            // Ensure the track uses accent color
+                            UISlider.appearance().minimumTrackTintColor = UIColor(Color.accentColor)
+                            UISlider.appearance().maximumTrackTintColor = UIColor(Color.accentColor.opacity(0.3))
+                        }
                         
                         HStack {
                             Text(formatTime(isDragging ? dragValue * duration : currentTime))
@@ -243,8 +304,12 @@ struct ModernNowPlayingView: View {
                 Spacer()
                     .frame(height: 30)
                 
-                // Episode Details Section - As shown in your mockup
-                EpisodeDetailsSection(episode: episode, podcast: podcast)
+                // Episode Details Section - Updated to show more details and allow expansion
+                EpisodeDetailsSection(
+                    episode: episode, 
+                    podcast: podcast,
+                    showingEpisodeDetails: $showingEpisodeDetails
+                )
                 
                 Spacer()
                     .frame(height: 20)
@@ -264,15 +329,28 @@ struct ModernNowPlayingView: View {
             return String(format: "%d:%02d", minutes, seconds)
         }
     }
+    
+    private func createCircleImage(radius: CGFloat, color: UIColor) -> UIImage? {
+        UIGraphicsBeginImageContextWithOptions(CGSize(width: radius * 2, height: radius * 2), false, 0)
+        guard let context = UIGraphicsGetCurrentContext() else { return nil }
+        
+        context.setFillColor(color.cgColor)
+        context.fillEllipse(in: CGRect(x: 0, y: 0, width: radius * 2, height: radius * 2))
+        
+        let image = UIGraphicsGetImageFromCurrentImageContext()
+        UIGraphicsEndImageContext()
+        return image
+    }
 }
 
 struct EpisodeDetailsSection: View {
     let episode: Episode
     let podcast: Podcast?
+    @Binding var showingEpisodeDetails: Bool
     
     var body: some View {
         VStack(spacing: 0) {
-            // Header
+            // Header without expand button
             HStack {
                 Text("Episode Details")
                     .font(.headline)
@@ -283,51 +361,276 @@ struct EpisodeDetailsSection: View {
             .padding(.horizontal, 24)
             .padding(.bottom, 12)
             
-            // Details container
+            // Scrollable details container - Show full description
             RoundedRectangle(cornerRadius: 16)
                 .fill(Color(.systemGray6))
-                .frame(height: 120)
+                .frame(minHeight: 200, maxHeight: 300)
                 .overlay(
-                    VStack(spacing: 12) {
-                        // Episode title
-                        HStack {
-                            Text(episode.title)
-                                .font(.body)
-                                .fontWeight(.medium)
-                                .foregroundColor(.primary)
-                                .lineLimit(2)
-                                .multilineTextAlignment(.leading)
-                            Spacer()
-                        }
-                        
-                        // Podcast name
-                        if let podcast = podcast {
+                    ScrollView(.vertical, showsIndicators: true) {
+                        VStack(spacing: 12) {
+                            // Episode title - Allow more lines
                             HStack {
-                                Text("From: \(podcast.title)")
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
-                                    .lineLimit(1)
-                                Spacer()
-                            }
-                        }
-                        
-                        // Episode description preview
-                        if let description = episode.description {
-                            HStack {
-                                Text(description)
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                                    .lineLimit(2)
+                                Text(episode.title)
+                                    .font(.body)
+                                    .fontWeight(.medium)
+                                    .foregroundColor(.primary)
+                                    .fixedSize(horizontal: false, vertical: true)
                                     .multilineTextAlignment(.leading)
                                 Spacer()
                             }
+                            
+                            // Podcast name
+                            if let podcast = podcast {
+                                HStack {
+                                    Text("From: \(podcast.title)")
+                                        .font(.subheadline)
+                                        .foregroundColor(.secondary)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                    Spacer()
+                                }
+                            }
+                            
+                            // Episode description - Show full text
+                            if let description = episode.description {
+                                HStack {
+                                    Text(description)
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                        .multilineTextAlignment(.leading)
+                                    Spacer()
+                                }
+                            }
                         }
-                        
-                        Spacer()
+                        .padding(16)
                     }
-                    .padding(16)
                 )
                 .padding(.horizontal, 24)
+        }
+    }
+}
+
+// MARK: - Audio Output Selection
+
+enum AudioOutputDevice: Hashable {
+    case speaker
+    case headphones
+    case bluetooth(name: String)
+    case airplay(name: String)
+    case hdmi(name: String)
+    case wired(name: String)
+    
+    var displayName: String {
+        switch self {
+        case .speaker:
+            return "iPhone Speaker"
+        case .headphones:
+            return "Headphones"
+        case .bluetooth(let name):
+            return name
+        case .airplay(let name):
+            return name
+        case .hdmi(let name):
+            return name
+        case .wired(let name):
+            return name
+        }
+    }
+    
+    var icon: String {
+        switch self {
+        case .speaker:
+            return "speaker.wave.3"
+        case .headphones:
+            return "headphones"
+        case .bluetooth:
+            return "airpods"
+        case .airplay:
+            return "airplayvideo"
+        case .hdmi:
+            return "tv"
+        case .wired:
+            return "headphones"
+        }
+    }
+}
+
+struct AudioOutputSelectionView: View {
+    let currentDevice: AudioOutputDevice
+    let onDeviceSelected: (AudioOutputDevice) -> Void
+    @Environment(\.dismiss) private var dismiss
+    
+    // Mock available devices - In real implementation, you'd get these from AVAudioSession
+    private let availableDevices: [AudioOutputDevice] = [
+        .speaker,
+        .headphones,
+        .bluetooth(name: "Chen's AirPods Pro"),
+        .airplay(name: "Living Room TV"),
+        .airplay(name: "Bedroom"),
+        .hdmi(name: "IL-DXRXMXRY44")
+    ]
+    
+    var body: some View {
+        NavigationView {
+            devicesList
+                .navigationTitle("Audio Output")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button("Done") {
+                            dismiss()
+                        }
+                    }
+                }
+        }
+    }
+    
+    private var devicesList: some View {
+        List {
+            ForEach(availableDevices, id: \.self) { device in
+                AudioOutputRow(
+                    device: device,
+                    isSelected: device == currentDevice,
+                    onTap: {
+                        onDeviceSelected(device)
+                    }
+                )
+            }
+        }
+    }
+}
+
+struct AudioOutputRow: View {
+    let device: AudioOutputDevice
+    let isSelected: Bool
+    let onTap: () -> Void
+    
+    var body: some View {
+        Button(action: onTap) {
+            HStack {
+                Image(systemName: device.icon)
+                    .font(.title3)
+                    .foregroundColor(.primary)
+                    .frame(width: 30)
+                
+                Text(device.displayName)
+                    .font(.body)
+                    .foregroundColor(.primary)
+                
+                Spacer()
+                
+                if isSelected {
+                    Image(systemName: "checkmark")
+                        .foregroundColor(.accentColor)
+                        .font(.headline)
+                }
+            }
+            .padding(.vertical, 8)
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+}
+
+// MARK: - Full Episode Details View
+
+struct EpisodeDetailsFullView: View {
+    let episode: Episode
+    let podcast: Podcast
+    @Binding var isPresented: Bool
+    
+    var body: some View {
+        NavigationView {
+            scrollContent
+                .navigationTitle("Episode Details")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button("Done") {
+                            isPresented = false
+                        }
+                    }
+                }
+        }
+    }
+    
+    private var scrollContent: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                episodeHeader
+                episodeDescription
+                Spacer(minLength: 100)
+            }
+            .padding(.vertical)
+        }
+    }
+    
+    private var episodeHeader: some View {
+        HStack(alignment: .top, spacing: 16) {
+            episodeArtwork
+            episodeInfo
+            Spacer()
+        }
+        .padding(.horizontal)
+    }
+    
+    private var episodeArtwork: some View {
+        AsyncImage(url: episode.artworkURL ?? podcast.artworkURL) { image in
+            image
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+        } placeholder: {
+            artworkPlaceholder
+        }
+        .frame(width: 120, height: 120)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+    
+    private var artworkPlaceholder: some View {
+        RoundedRectangle(cornerRadius: 12)
+            .fill(Color(.systemGray5))
+            .overlay(
+                Image(systemName: "waveform.circle.fill")
+                    .font(.system(size: 40, weight: .thin))
+                    .foregroundColor(.secondary)
+            )
+    }
+    
+    private var episodeInfo: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(episode.title)
+                .font(.title2)
+                .fontWeight(.bold)
+                .fixedSize(horizontal: false, vertical: true)
+            
+            Text(podcast.title)
+                .font(.headline)
+                .foregroundColor(.secondary)
+            
+            if let publishedDate = episode.publishedDate {
+                Text(publishedDate, style: .date)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+        }
+    }
+    
+    private var episodeDescription: some View {
+        Group {
+            if let description = episode.description {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Description")
+                        .font(.headline)
+                        .fontWeight(.semibold)
+                        .padding(.horizontal)
+                    
+                    Text(description)
+                        .font(.body)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.horizontal)
+                }
+            } else {
+                EmptyView()
+            }
         }
     }
 }
@@ -418,6 +721,30 @@ struct EmptyPlayStateView: View {
             Spacer()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+// MARK: - Native Audio Route Picker
+
+struct AVRoutePickerViewWrapper: UIViewRepresentable {
+    func makeUIView(context: Context) -> AVRoutePickerView {
+        let routePickerView = AVRoutePickerView()
+        
+        // Customize the appearance to match app design
+        routePickerView.backgroundColor = UIColor.clear
+        routePickerView.tintColor = UIColor(Color.primary)
+        routePickerView.activeTintColor = UIColor(Color.accentColor)
+        
+        // Set the button style to match the control buttons
+        routePickerView.prioritizesVideoDevices = false
+        
+        return routePickerView
+    }
+    
+    func updateUIView(_ uiView: AVRoutePickerView, context: Context) {
+        // Update tint colors to match current theme
+        uiView.tintColor = UIColor(Color.primary)
+        uiView.activeTintColor = UIColor(Color.accentColor)
     }
 }
 

@@ -48,7 +48,7 @@ struct PodcastDetailView: View {
                         Text("Library")
                             .font(.system(size: 16, weight: .medium))
                     }
-                    .foregroundColor(.blue)
+                    .foregroundColor(.accentColor)
                 }
             }
         }
