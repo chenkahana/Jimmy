@@ -5,6 +5,11 @@ struct EpisodeListView: View {
     let episodes: [Episode]
     let isLoading: Bool
     let onEpisodeTap: (Episode) -> Void
+    @ObservedObject private var audioPlayer = AudioPlayerService.shared
+    
+    var currentPlayingEpisode: Episode? {
+        return audioPlayer.currentEpisode
+    }
 
     var body: some View {
         NavigationView {
@@ -40,6 +45,7 @@ struct EpisodeListView: View {
                             EpisodeRowView(
                                 episode: episode,
                                 podcast: podcast,
+                                isCurrentlyPlaying: currentPlayingEpisode?.id == episode.id,
                                 onTap: {
                                     onEpisodeTap(episode)
                                 }
@@ -60,6 +66,7 @@ struct EpisodeListView: View {
 struct EpisodeRowView: View {
     let episode: Episode
     let podcast: Podcast
+    let isCurrentlyPlaying: Bool
     let onTap: () -> Void
     
     var body: some View {
@@ -83,9 +90,9 @@ struct EpisodeRowView: View {
                 
                 // Episode Info
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(episode.title)
+                    Text(episode.title.cleanedEpisodeTitle)
                         .font(.headline)
-                        .foregroundColor(.primary)
+                        .foregroundColor(isCurrentlyPlaying ? .orange : .primary)
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
                     
@@ -108,14 +115,20 @@ struct EpisodeRowView: View {
                 Spacer()
                 
                 // Play indicator
-                Image(systemName: "play.circle")
+                Image(systemName: isCurrentlyPlaying ? "speaker.wave.2.fill" : "play.circle")
                     .font(.title2)
-                    .foregroundColor(.gray)
+                    .foregroundColor(isCurrentlyPlaying ? .orange : .gray)
                     .frame(width: 30, height: 50)
             }
             .padding(.vertical, 4)
-            .background(Color(.systemBackground))
-            .cornerRadius(12)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(isCurrentlyPlaying ? Color.orange.opacity(0.1) : Color(.systemBackground))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(isCurrentlyPlaying ? Color.orange.opacity(0.3) : Color.clear, lineWidth: 1)
+            )
         }
         .buttonStyle(.plain)
     }
@@ -126,6 +139,7 @@ struct EpisodeRowView: View {
         id: UUID(),
         title: "Sample Podcast",
         author: "Author",
+        description: "This is a sample podcast description.",
         feedURL: URL(string: "https://example.com/feed.xml")!,
         artworkURL: nil
     )

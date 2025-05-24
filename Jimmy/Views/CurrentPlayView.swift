@@ -4,7 +4,6 @@ import AVKit
 struct CurrentPlayView: View {
     @ObservedObject private var queueViewModel = QueueViewModel.shared
     @ObservedObject private var audioPlayer = AudioPlayerService.shared
-    @State private var selectedEpisode: Episode?
     @State private var showingOutputPicker = false
     @State private var isDownloading = false
     
@@ -54,9 +53,6 @@ struct CurrentPlayView: View {
             }
             .navigationTitle("")
             .navigationBarHidden(true)
-            .sheet(item: $selectedEpisode) { episode in
-                EpisodePlayerView(episode: episode)
-            }
             .actionSheet(isPresented: $showingOutputPicker) {
                 ActionSheet(
                     title: Text("Audio Output"),
@@ -113,62 +109,96 @@ struct ModernNowPlayingView: View {
             VStack(spacing: 0) {
                 // Top spacing
                 Spacer()
-                    .frame(height: 60)
+                    .frame(height: 40)
                 
-                // Episode Artwork
-                VStack(spacing: 32) {
-                    AsyncImage(url: episode.artworkURL ?? podcast?.artworkURL) { image in
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                    } placeholder: {
-                        RoundedRectangle(cornerRadius: 28)
-                            .fill(
-                                LinearGradient(
-                                    colors: [
-                                        Color(.systemGray5),
-                                        Color(.systemGray4)
-                                    ],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
+                // Episode Artwork - Made larger and more prominent
+                AsyncImage(url: episode.artworkURL ?? podcast?.artworkURL) { image in
+                    image
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                } placeholder: {
+                    RoundedRectangle(cornerRadius: 24)
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color(.systemGray5),
+                                    Color(.systemGray4)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
                             )
-                            .overlay(
-                                Image(systemName: "waveform.circle.fill")
-                                    .font(.system(size: 64, weight: .thin))
-                                    .foregroundStyle(Color(.systemGray2))
-                            )
-                    }
-                    .frame(width: min(geometry.size.width - 80, 340), height: min(geometry.size.width - 80, 340))
-                    .clipShape(RoundedRectangle(cornerRadius: 28))
-                    .shadow(color: .black.opacity(0.15), radius: 20, x: 0, y: 10)
-                    
-                    // Episode Information
-                    VStack(spacing: 12) {
-                        Text(episode.title)
-                            .font(.title2)
-                            .fontWeight(.semibold)
-                            .multilineTextAlignment(.center)
-                            .lineLimit(3)
-                            .foregroundColor(.primary)
-                        
-                        if let podcast = podcast {
-                            Text(podcast.title)
-                                .font(.subheadline)
-                                .fontWeight(.medium)
-                                .foregroundColor(.secondary)
-                                .lineLimit(1)
-                        }
-                    }
-                    .padding(.horizontal, 40)
+                        )
+                        .overlay(
+                            Image(systemName: "waveform.circle.fill")
+                                .font(.system(size: 72, weight: .thin))
+                                .foregroundStyle(Color(.systemGray2))
+                        )
                 }
+                .frame(width: min(geometry.size.width - 60, 280), height: min(geometry.size.width - 60, 280))
+                .clipShape(RoundedRectangle(cornerRadius: 24))
+                .shadow(color: .black.opacity(0.2), radius: 25, x: 0, y: 12)
                 
                 Spacer()
+                    .frame(height: 40)
                 
-                // Progress and Controls Section
-                VStack(spacing: 40) {
-                    // Progress Slider with Time Labels
-                    VStack(spacing: 12) {
+                // Control Buttons Section - Matches your mockup layout
+                VStack(spacing: 32) {
+                    // Main control row with 5 buttons as shown in mockup
+                    HStack(spacing: 0) {
+                        // Download episode button (left)
+                        Spacer()
+                        ControlButton(
+                            systemImage: isDownloading ? "arrow.down.circle.fill" : 
+                                        PodcastService.shared.isEpisodeDownloaded(episode) ? "checkmark.circle.fill" : "arrow.down.circle",
+                            size: .small,
+                            color: PodcastService.shared.isEpisodeDownloaded(episode) ? .green : .primary,
+                            action: onDownload,
+                            isDisabled: isDownloading || PodcastService.shared.isEpisodeDownloaded(episode)
+                        )
+                        
+                        Spacer()
+                        
+                        // Move backward button
+                        ControlButton(
+                            systemImage: "gobackward.15",
+                            size: .small,
+                            action: onBackward
+                        )
+                        
+                        Spacer()
+                        
+                        // Play/Pause Button (Large center button)
+                        ControlButton(
+                            systemImage: isPlaying ? "pause.fill" : "play.fill",
+                            size: .large,
+                            color: .white,
+                            backgroundColor: .primary,
+                            action: onPlayPause
+                        )
+                        
+                        Spacer()
+                        
+                        // Move forward button
+                        ControlButton(
+                            systemImage: "goforward.15",
+                            size: .small,
+                            action: onForward
+                        )
+                        
+                        Spacer()
+                        
+                        // Choose output (airpods/speaker) button (right)
+                        ControlButton(
+                            systemImage: "airpods",
+                            size: .small,
+                            action: onOutputTap
+                        )
+                        
+                        Spacer()
+                    }
+                    
+                    // Progress Slider (below controls as in your design)
+                    VStack(spacing: 8) {
                         Slider(
                             value: Binding(
                                 get: { progressValue },
@@ -206,53 +236,18 @@ struct ModernNowPlayingView: View {
                                 .monospacedDigit()
                         }
                     }
-                    .padding(.horizontal, 32)
-                    
-                    // Control Buttons
-                    HStack(spacing: 44) {
-                        // Download Button
-                        ControlButton(
-                            systemImage: isDownloading ? "arrow.down.circle.fill" : 
-                                        PodcastService.shared.isEpisodeDownloaded(episode) ? "checkmark.circle.fill" : "arrow.down.circle",
-                            size: .medium,
-                            color: PodcastService.shared.isEpisodeDownloaded(episode) ? .green : .primary,
-                            action: onDownload,
-                            isDisabled: isDownloading || PodcastService.shared.isEpisodeDownloaded(episode)
-                        )
-                        
-                        // Backward Button
-                        ControlButton(
-                            systemImage: "gobackward.15",
-                            size: .medium,
-                            action: onBackward
-                        )
-                        
-                        // Play/Pause Button (Large)
-                        ControlButton(
-                            systemImage: isPlaying ? "pause.fill" : "play.fill",
-                            size: .large,
-                            color: .white,
-                            backgroundColor: .primary,
-                            action: onPlayPause
-                        )
-                        
-                        // Forward Button
-                        ControlButton(
-                            systemImage: "goforward.15",
-                            size: .medium,
-                            action: onForward
-                        )
-                        
-                        // Output Button
-                        ControlButton(
-                            systemImage: "airpods",
-                            size: .medium,
-                            action: onOutputTap
-                        )
-                    }
+                    .padding(.horizontal, 40)
                 }
-                .padding(.horizontal, 24)
-                .padding(.bottom, 120) // Account for tab bar and mini player
+                .padding(.horizontal, 20)
+                
+                Spacer()
+                    .frame(height: 30)
+                
+                // Episode Details Section - As shown in your mockup
+                EpisodeDetailsSection(episode: episode, podcast: podcast)
+                
+                Spacer()
+                    .frame(height: 20)
             }
         }
     }
@@ -271,6 +266,72 @@ struct ModernNowPlayingView: View {
     }
 }
 
+struct EpisodeDetailsSection: View {
+    let episode: Episode
+    let podcast: Podcast?
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            // Header
+            HStack {
+                Text("Episode Details")
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.primary)
+                Spacer()
+            }
+            .padding(.horizontal, 24)
+            .padding(.bottom, 12)
+            
+            // Details container
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color(.systemGray6))
+                .frame(height: 120)
+                .overlay(
+                    VStack(spacing: 12) {
+                        // Episode title
+                        HStack {
+                            Text(episode.title.cleanedEpisodeTitle)
+                                .font(.body)
+                                .fontWeight(.medium)
+                                .foregroundColor(.primary)
+                                .lineLimit(2)
+                                .multilineTextAlignment(.leading)
+                            Spacer()
+                        }
+                        
+                        // Podcast name
+                        if let podcast = podcast {
+                            HStack {
+                                Text("From: \(podcast.title)")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                                    .lineLimit(1)
+                                Spacer()
+                            }
+                        }
+                        
+                        // Episode description preview
+                        if let description = episode.description {
+                            HStack {
+                                Text(description)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                    .lineLimit(2)
+                                    .multilineTextAlignment(.leading)
+                                Spacer()
+                            }
+                        }
+                        
+                        Spacer()
+                    }
+                    .padding(16)
+                )
+                .padding(.horizontal, 24)
+        }
+    }
+}
+
 struct ControlButton: View {
     let systemImage: String
     let size: ButtonSize
@@ -280,18 +341,18 @@ struct ControlButton: View {
     var isDisabled: Bool = false
     
     enum ButtonSize {
-        case medium, large
+        case small, large
         
         var dimension: CGFloat {
             switch self {
-            case .medium: return 56
+            case .small: return 48
             case .large: return 72
             }
         }
         
         var iconSize: Font {
             switch self {
-            case .medium: return .title2
+            case .small: return .title3
             case .large: return .title
             }
         }

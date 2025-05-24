@@ -12,11 +12,17 @@ class RSSParser: NSObject, XMLParserDelegate {
     private var podcastArtworkURL: String = ""
     private var parsingChannel = false
     private var currentElementName: String = ""
+    private var podcastTitle: String = ""
+    private var podcastAuthor: String = ""
+    private var podcastDescription: String = ""
     
     func parseRSS(data: Data, podcastID: UUID) -> [Episode] {
         self.podcastID = podcastID
         episodes = []
         podcastArtworkURL = ""
+        podcastTitle = ""
+        podcastAuthor = ""
+        podcastDescription = ""
         let parser = XMLParser(data: data)
         parser.delegate = self
         parser.parse()
@@ -54,7 +60,15 @@ class RSSParser: NSObject, XMLParserDelegate {
     }
     
     func parser(_ parser: XMLParser, foundCharacters string: String) {
-        if parsingItem {
+        if parsingChannel && !parsingItem {
+            if currentElementName == "title" {
+                podcastTitle += string
+            } else if currentElementName == "itunes:author" || currentElementName == "author" {
+                podcastAuthor += string
+            } else if currentElementName == "description" || currentElementName == "itunes:summary" {
+                podcastDescription += string
+            }
+        } else if parsingItem {
             if currentElementName == "title" {
                 currentTitle += string
             } else if currentElementName == "description" {
@@ -73,12 +87,17 @@ class RSSParser: NSObject, XMLParserDelegate {
             if let audioURL = URL(string: currentAudioURL), let podcastID = podcastID {
                 let date = RSSParser.dateFrom(pubDate: currentPubDate)
                 let episodeArtwork = !currentEpisodeArtworkURL.isEmpty ? URL(string: currentEpisodeArtworkURL) : nil
+                
+                // Clean the title and description using the new string extensions
+                let cleanedTitle = currentTitle.trimmingCharacters(in: .whitespacesAndNewlines).cleanedEpisodeTitle
+                let cleanedDescription = currentDescription.trimmingCharacters(in: .whitespacesAndNewlines).cleanedEpisodeDescription
+                
                 let episode = Episode(
                     id: UUID(),
-                    title: currentTitle.trimmingCharacters(in: .whitespacesAndNewlines),
+                    title: cleanedTitle,
                     artworkURL: episodeArtwork,
                     audioURL: audioURL,
-                    description: currentDescription.trimmingCharacters(in: .whitespacesAndNewlines),
+                    description: cleanedDescription.isEmpty ? nil : cleanedDescription,
                     played: false,
                     podcastID: podcastID,
                     publishedDate: date,
@@ -103,5 +122,21 @@ class RSSParser: NSObject, XMLParserDelegate {
     // Add a public accessor for the artwork URL
     func getPodcastArtworkURL() -> String? {
         return podcastArtworkURL.isEmpty ? nil : podcastArtworkURL
+    }
+    
+    // Public accessor for podcast title
+    func getPodcastTitle() -> String? {
+        return podcastTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : podcastTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+    
+    // Public accessor for podcast author
+    func getPodcastAuthor() -> String? {
+        return podcastAuthor.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : podcastAuthor.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+    
+    // Public accessor for podcast description
+    func getPodcastDescription() -> String? {
+        let cleaned = podcastDescription.trimmingCharacters(in: .whitespacesAndNewlines).cleanedEpisodeDescription
+        return cleaned.isEmpty ? nil : cleaned
     }
 } 

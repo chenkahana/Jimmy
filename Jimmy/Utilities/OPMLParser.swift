@@ -22,7 +22,7 @@ class OPMLParser: NSObject, XMLParserDelegate {
             let author = attributeDict["author"] ?? ""
             let artworkURL = attributeDict["image"] ?? attributeDict["artworkURL"] ?? ""
             if let url = URL(string: feedURL) {
-                let podcast = Podcast(title: title, author: author, feedURL: url, artworkURL: URL(string: artworkURL))
+                let podcast = Podcast(title: title, author: author, description: "", feedURL: url, artworkURL: URL(string: artworkURL))
                 podcasts.append(podcast)
             }
         }

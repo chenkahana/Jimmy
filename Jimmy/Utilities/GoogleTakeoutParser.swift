@@ -13,7 +13,7 @@ struct GoogleTakeoutParser {
         let subs = try decoder.decode(GoogleSubscriptions.self, from: data)
         return subs.subscriptions.compactMap { feed in
             guard let url = URL(string: feed.feedUrl) else { return nil }
-            return Podcast(title: feed.title, author: "", feedURL: url, artworkURL: nil)
+            return Podcast(title: feed.title, author: "", description: "", feedURL: url, artworkURL: nil)
         }
     }
 } 

@@ -61,7 +61,7 @@ class QueueViewModel: ObservableObject {
     private func scheduleNotification(for episode: Episode, podcast: Podcast) {
         let content = UNMutableNotificationContent()
         content.title = "New Episode: \(podcast.title)"
-        content.body = episode.title
+        content.body = episode.title.cleanedEpisodeTitle
         content.sound = .default
         let request = UNNotificationRequest(identifier: episode.id.uuidString, content: content, trigger: nil)
         UNUserNotificationCenter.current().add(request, withCompletionHandler: nil)

@@ -3,16 +3,11 @@ import Foundation
 import Combine
 
 struct PodcastSearchView: View {
-    @State private var searchText: String = ""
-    @State private var isSearching: Bool = false
-    @State private var searchResults: [PodcastSearchResult] = []
-    @State private var localPodcasts: [Podcast] = []
-    @State private var selectedSearchResult: PodcastSearchResult?
-    @State private var selectedLocalPodcast: Podcast?
-    @State private var episodes: [Episode] = []
-    @State private var isLoadingEpisodes = false
-    @State private var selectedEpisode: Episode?
+    @State private var searchText = ""
     @State private var searchScope: SearchScope = .all
+    @State private var searchResults: [PodcastSearchResult] = []
+    @State private var isSearching = false
+    @State private var localPodcasts: [Podcast] = []
     @State private var showingSubscriptionAlert = false
     @State private var subscriptionMessage = ""
     
@@ -45,153 +40,128 @@ struct PodcastSearchView: View {
     }
     
     var body: some View {
-        NavigationView {
-            VStack(spacing: 0) {
-                // Search Header
-                VStack(spacing: 12) {
-                    // Search Bar
-                    HStack {
-                        Image(systemName: "magnifyingglass")
-                            .foregroundColor(.gray)
-                        
-                        TextField("Search podcasts...", text: $searchText)
-                            .textFieldStyle(.plain)
-                            .onReceive(debounceTimer) { _ in
-                                if searchText != lastSearchText {
-                                    lastSearchText = searchText
-                                    performSearch()
-                                }
-                            }
-                        
-                        if !searchText.isEmpty {
-                            Button(action: {
-                                searchText = ""
-                                searchResults = []
-                            }) {
-                                Image(systemName: "xmark.circle.fill")
-                                    .foregroundColor(.gray)
-                            }
-                        }
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(Color(.systemGray6))
-                    .cornerRadius(10)
+        VStack(spacing: 0) {
+            // Search Header
+            VStack(spacing: 12) {
+                // Search Bar
+                HStack {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundColor(.gray)
                     
-                    // Search Scope Picker
-                    Picker("Search Scope", selection: $searchScope) {
-                        ForEach(SearchScope.allCases, id: \.self) { scope in
-                            Label(scope.rawValue, systemImage: scope.icon)
-                                .tag(scope)
+                    TextField("Search podcasts...", text: $searchText)
+                        .textFieldStyle(.plain)
+                        .onReceive(debounceTimer) { _ in
+                            if searchText != lastSearchText {
+                                lastSearchText = searchText
+                                performSearch()
+                            }
+                        }
+                    
+                    if !searchText.isEmpty {
+                        Button(action: {
+                            searchText = ""
+                            searchResults = []
+                        }) {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundColor(.gray)
                         }
                     }
-                    .pickerStyle(.segmented)
                 }
-                .padding()
-                .background(Color(.systemBackground))
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(Color(.systemGray6))
+                .cornerRadius(10)
                 
-                // Search Results
-                if isSearching {
-                    VStack {
-                        ProgressView("Searching...")
-                        Text("Finding podcasts on Apple Podcasts...")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                // Search Scope Picker
+                Picker("Search Scope", selection: $searchScope) {
+                    ForEach(SearchScope.allCases, id: \.self) { scope in
+                        Label(scope.rawValue, systemImage: scope.icon)
+                            .tag(scope)
                     }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else {
-                    List {
-                        if searchScope == .all || searchScope == .subscribed {
-                            if !filteredLocalPodcasts.isEmpty {
-                                Section("Your Subscriptions") {
-                                    ForEach(filteredLocalPodcasts) { podcast in
+                }
+                .pickerStyle(.segmented)
+            }
+            .padding()
+            .background(Color(.systemBackground))
+            
+            // Search Results
+            if isSearching {
+                VStack {
+                    ProgressView("Searching...")
+                    Text("Finding podcasts on Apple Podcasts...")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                List {
+                    if searchScope == .all || searchScope == .subscribed {
+                        if !filteredLocalPodcasts.isEmpty {
+                            Section("Your Subscriptions") {
+                                ForEach(filteredLocalPodcasts) { podcast in
+                                    NavigationLink(destination: PodcastDetailView(podcast: podcast)) {
                                         LocalPodcastRow(podcast: podcast) {
-                                            selectedLocalPodcast = podcast
-                                            loadEpisodes(for: podcast)
+                                            // Navigation handled by NavigationLink
                                         }
                                     }
+                                    .buttonStyle(.plain)
                                 }
                             }
                         }
-                        
-                        if (searchScope == .all || searchScope == .web) && !searchResults.isEmpty {
-                            Section("Discover New Podcasts") {
-                                ForEach(searchResults) { result in
+                    }
+                    
+                    if (searchScope == .all || searchScope == .web) && !searchResults.isEmpty {
+                        Section("Discover New Podcasts") {
+                            ForEach(searchResults) { result in
+                                NavigationLink(destination: SearchResultDetailView(result: result)) {
                                     SearchResultRow(
                                         result: result,
                                         isSubscribed: isSubscribed(result)
                                     ) {
-                                        selectedSearchResult = result
-                                        loadEpisodes(for: result)
+                                        // Navigation handled by NavigationLink
                                     } onSubscribe: {
                                         subscribe(to: result)
                                     }
                                 }
+                                .buttonStyle(.plain)
                             }
-                        }
-                        
-                        if searchText.isEmpty && searchResults.isEmpty && localPodcasts.isEmpty {
-                            VStack(spacing: 16) {
-                                Image(systemName: "magnifyingglass.circle")
-                                    .font(.system(size: 48))
-                                    .foregroundColor(.gray)
-                                
-                                Text("Search for Podcasts")
-                                    .font(.title2)
-                                    .fontWeight(.medium)
-                                
-                                Text("Find your favorite shows from Apple Podcasts or search through your subscriptions")
-                                    .font(.body)
-                                    .foregroundColor(.secondary)
-                                    .multilineTextAlignment(.center)
-                                    .padding(.horizontal)
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 40)
                         }
                     }
-                    .refreshable {
-                        await refreshData()
+                    
+                    if searchText.isEmpty && searchResults.isEmpty && localPodcasts.isEmpty {
+                        VStack(spacing: 16) {
+                            Image(systemName: "magnifyingglass.circle")
+                                .font(.system(size: 48))
+                                .foregroundColor(.gray)
+                            
+                            Text("Search for Podcasts")
+                                .font(.title2)
+                                .fontWeight(.medium)
+                            
+                            Text("Find your favorite shows from Apple Podcasts or search through your subscriptions")
+                                .font(.body)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 40)
                     }
                 }
+                .refreshable {
+                    await refreshData()
+                }
             }
-            .navigationTitle("Search")
-            .navigationBarTitleDisplayMode(.large)
-            .onAppear {
-                loadLocalPodcasts()
-            }
-            .sheet(item: $selectedLocalPodcast) { podcast in
-                EpisodeListView(
-                    podcast: podcast,
-                    episodes: episodes,
-                    isLoading: isLoadingEpisodes,
-                    onEpisodeTap: { episode in
-                        selectedEpisode = episode
-                    }
-                )
-            }
-            .sheet(item: $selectedSearchResult) { result in
-                SearchResultDetailView(
-                    result: result,
-                    episodes: episodes,
-                    isLoading: isLoadingEpisodes,
-                    isSubscribed: isSubscribed(result),
-                    onEpisodeTap: { episode in
-                        selectedEpisode = episode
-                    },
-                    onSubscribe: {
-                        subscribe(to: result)
-                    }
-                )
-            }
-            .sheet(item: $selectedEpisode) { episode in
-                EpisodePlayerView(episode: episode)
-            }
-            .alert("Subscription", isPresented: $showingSubscriptionAlert) {
-                Button("OK") { }
-            } message: {
-                Text(subscriptionMessage)
-            }
+        }
+        .navigationTitle("Search")
+        .navigationBarTitleDisplayMode(.large)
+        .onAppear {
+            loadLocalPodcasts()
+        }
+        .alert("Subscription", isPresented: $showingSubscriptionAlert) {
+            Button("OK") { }
+        } message: {
+            Text(subscriptionMessage)
         }
     }
     
@@ -218,27 +188,6 @@ struct PodcastSearchView: View {
     
     private func loadLocalPodcasts() {
         localPodcasts = PodcastService.shared.loadPodcasts()
-    }
-    
-    private func loadEpisodes(for podcast: Podcast) {
-        isLoadingEpisodes = true
-        PodcastService.shared.fetchEpisodes(for: podcast) { eps in
-            DispatchQueue.main.async {
-                episodes = eps
-                isLoadingEpisodes = false
-            }
-        }
-    }
-    
-    private func loadEpisodes(for result: PodcastSearchResult) {
-        isLoadingEpisodes = true
-        let podcast = result.toPodcast()
-        PodcastService.shared.fetchEpisodes(for: podcast) { eps in
-            DispatchQueue.main.async {
-                episodes = eps
-                isLoadingEpisodes = false
-            }
-        }
     }
     
     private func isSubscribed(_ result: PodcastSearchResult) -> Bool {
@@ -382,115 +331,5 @@ struct SearchResultRow: View {
             }
         }
         .buttonStyle(.plain)
-    }
-}
-
-struct SearchResultDetailView: View {
-    let result: PodcastSearchResult
-    let episodes: [Episode]
-    let isLoading: Bool
-    let isSubscribed: Bool
-    let onEpisodeTap: (Episode) -> Void
-    let onSubscribe: () -> Void
-    
-    var body: some View {
-        NavigationView {
-            VStack(alignment: .leading, spacing: 16) {
-                // Podcast Header
-                HStack(alignment: .top, spacing: 16) {
-                    AsyncImage(url: result.artworkURL) { image in
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                    } placeholder: {
-                        Rectangle()
-                            .fill(Color.gray.opacity(0.2))
-                            .overlay(
-                                Image(systemName: "waveform.circle")
-                                    .foregroundColor(.gray)
-                            )
-                    }
-                    .frame(width: 120, height: 120)
-                    .cornerRadius(12)
-                    
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(result.title)
-                            .font(.title2)
-                            .fontWeight(.bold)
-                        
-                        Text(result.author)
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                        
-                        Text(result.genre)
-                            .font(.caption)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(Color.blue.opacity(0.1))
-                            .foregroundColor(.blue)
-                            .cornerRadius(6)
-                        
-                        Button(action: onSubscribe) {
-                            Label(
-                                isSubscribed ? "Subscribed" : "Subscribe",
-                                systemImage: isSubscribed ? "checkmark.circle.fill" : "plus.circle"
-                            )
-                            .foregroundColor(isSubscribed ? .green : .white)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
-                            .background(isSubscribed ? Color.green.opacity(0.1) : Color.blue)
-                            .cornerRadius(8)
-                        }
-                        .disabled(isSubscribed)
-                    }
-                    
-                    Spacer()
-                }
-                .padding()
-                
-                if let description = result.description {
-                    Text(description)
-                        .font(.body)
-                        .padding(.horizontal)
-                }
-                
-                // Episodes List
-                if isLoading {
-                    VStack {
-                        ProgressView("Loading episodes...")
-                        Text("Fetching latest episodes...")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else {
-                    List(episodes.prefix(10)) { episode in
-                        Button(action: { onEpisodeTap(episode) }) {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(episode.title)
-                                    .font(.headline)
-                                    .foregroundColor(.primary)
-                                
-                                if let date = episode.publishedDate {
-                                    Text(date, style: .date)
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                }
-                                
-                                if let desc = episode.description {
-                                    Text(desc)
-                                        .font(.subheadline)
-                                        .foregroundColor(.secondary)
-                                        .lineLimit(2)
-                                }
-                            }
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-            }
-            .navigationTitle("Podcast Details")
-            .navigationBarTitleDisplayMode(.inline)
-        }
     }
 } 

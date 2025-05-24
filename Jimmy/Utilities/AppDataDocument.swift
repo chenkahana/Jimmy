@@ -73,21 +73,74 @@ struct AppDataDocument: FileDocument {
 
 extension AppDataDocument {
     static let iCloudKey = "AppDataDocument.iCloudBackup"
+    
     static func saveToICloudIfEnabled() {
-        if UserDefaults.standard.bool(forKey: "iCloudSyncEnabled") {
-            let doc = AppDataDocument()
-            let encoder = JSONEncoder()
-            if let data = try? encoder.encode(doc.appData) {
-                NSUbiquitousKeyValueStore.default.set(data, forKey: iCloudKey)
-                NSUbiquitousKeyValueStore.default.synchronize()
-            }
+        // Check if iCloud sync is enabled in settings
+        guard UserDefaults.standard.bool(forKey: "iCloudSyncEnabled") else {
+            return
         }
+        
+        // TEMPORARILY DISABLED: iCloud Key-Value Store requires proper entitlements
+        // To enable iCloud sync, you need to:
+        // 1. Add iCloud capability in Xcode project settings
+        // 2. Configure 'com.apple.developer.ubiquity-kvstore-identifier' entitlement
+        // 3. Set up iCloud container in Apple Developer Console
+        
+        #if DEBUG
+        print("⚠️ iCloud Key-Value Store functionality is disabled - requires proper entitlements")
+        print("💡 To enable: Add iCloud capability and configure entitlements in Xcode")
+        #endif
+        
+        // Fallback: Could implement local file-based backup instead
+        // saveToLocalBackupIfNeeded()
     }
+    
     static func loadFromICloudIfEnabled() {
-        if UserDefaults.standard.bool(forKey: "iCloudSyncEnabled") {
-            if let data = NSUbiquitousKeyValueStore.default.data(forKey: iCloudKey) {
-                try? importData(data)
+        // Check if iCloud sync is enabled in settings
+        guard UserDefaults.standard.bool(forKey: "iCloudSyncEnabled") else {
+            return
+        }
+        
+        // TEMPORARILY DISABLED: iCloud Key-Value Store requires proper entitlements
+        #if DEBUG
+        print("⚠️ iCloud Key-Value Store functionality is disabled - requires proper entitlements")
+        #endif
+        
+        // Fallback: Could implement local file-based backup instead
+        // loadFromLocalBackupIfNeeded()
+    }
+    
+    // MARK: - Future iCloud Implementation (when entitlements are configured)
+    /*
+    private static func saveToiCloudKeyValueStore() {
+        // Only implement this when you have proper iCloud entitlements
+        let doc = AppDataDocument()
+        let encoder = JSONEncoder()
+        if let data = try? encoder.encode(doc.appData) {
+            let kvStore = NSUbiquitousKeyValueStore.default
+            kvStore.set(data, forKey: iCloudKey)
+            kvStore.synchronize()
+            
+            #if DEBUG
+            print("✅ Successfully saved data to iCloud Key-Value Store")
+            #endif
+        }
+    }
+    
+    private static func loadFromiCloudKeyValueStore() {
+        let kvStore = NSUbiquitousKeyValueStore.default
+        if let data = kvStore.data(forKey: iCloudKey) {
+            do {
+                try importData(data)
+                #if DEBUG
+                print("✅ Successfully loaded data from iCloud Key-Value Store")
+                #endif
+            } catch {
+                #if DEBUG
+                print("⚠️ Failed to import iCloud data: \(error.localizedDescription)")
+                #endif
             }
         }
     }
+    */
 } 

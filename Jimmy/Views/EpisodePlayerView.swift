@@ -11,7 +11,7 @@ struct EpisodePlayerView: View {
 
     var body: some View {
         VStack {
-            Text(episode.title)
+            Text(episode.title.cleanedEpisodeTitle)
                 .font(.title)
                 .padding()
             

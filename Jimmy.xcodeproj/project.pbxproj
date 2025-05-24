@@ -10,9 +10,22 @@
 		D411ADBD2DE078AE00E1779D /* Jimmy.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Jimmy.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		D4741FE52DE108DE00E4FC5D /* Exceptions for "Jimmy" folder in "Jimmy" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = D411ADBC2DE078AE00E1779D /* Jimmy */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		D411ADBF2DE078AE00E1779D /* Jimmy */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				D4741FE52DE108DE00E4FC5D /* Exceptions for "Jimmy" folder in "Jimmy" target */,
+			);
 			path = Jimmy;
 			sourceTree = "<group>";
 		};
@@ -254,6 +267,8 @@
 				DEVELOPMENT_TEAM = DPF8459C2J;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Jimmy/Info.plist;
+				INFOPLIST_KEY_NSAppleMusicUsageDescription = "To import your Apple Podcasts subscriptions";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -282,6 +297,8 @@
 				DEVELOPMENT_TEAM = DPF8459C2J;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Jimmy/Info.plist;
+				INFOPLIST_KEY_NSAppleMusicUsageDescription = "To import your Apple Podcasts subscriptions";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

@@ -17,17 +17,24 @@ class AudioPlayerService: ObservableObject {
     private init() {
         setupAudioSession()
         setupRemoteTransportControls()
+        setupNotificationObservers()
     }
     
     deinit {
         if let observer = timeObserver {
             player?.removeTimeObserver(observer)
         }
+        NotificationCenter.default.removeObserver(self)
     }
     
     private func setupAudioSession() {
         do {
-            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
+            // Configure audio session for background playback
+            try AVAudioSession.sharedInstance().setCategory(
+                .playback,
+                mode: .default,
+                options: [.allowAirPlay, .allowBluetooth, .allowBluetoothA2DP]
+            )
             try AVAudioSession.sharedInstance().setActive(true)
         } catch {
             print("Failed to set up audio session: \(error)")
@@ -36,6 +43,13 @@ class AudioPlayerService: ObservableObject {
     
     private func setupRemoteTransportControls() {
         let commandCenter = MPRemoteCommandCenter.shared()
+        
+        // Enable commands
+        commandCenter.playCommand.isEnabled = true
+        commandCenter.pauseCommand.isEnabled = true
+        commandCenter.skipForwardCommand.isEnabled = true
+        commandCenter.skipBackwardCommand.isEnabled = true
+        commandCenter.changePlaybackPositionCommand.isEnabled = true
         
         commandCenter.playCommand.addTarget { [weak self] event in
             self?.play()
@@ -58,6 +72,115 @@ class AudioPlayerService: ObservableObject {
             self?.seekBackward()
             return .success
         }
+        
+        // Handle seek command from control center/lock screen
+        commandCenter.changePlaybackPositionCommand.addTarget { [weak self] event in
+            if let seekEvent = event as? MPChangePlaybackPositionCommandEvent {
+                self?.seek(to: seekEvent.positionTime)
+                return .success
+            }
+            return .commandFailed
+        }
+    }
+    
+    private func setupNotificationObservers() {
+        // Handle audio session interruptions (calls, alarms, etc.)
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleAudioSessionInterruption),
+            name: AVAudioSession.interruptionNotification,
+            object: nil
+        )
+        
+        // Handle audio route changes (headphones plugged/unplugged)
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleAudioRouteChange),
+            name: AVAudioSession.routeChangeNotification,
+            object: nil
+        )
+        
+        // Handle app going to background
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(appDidEnterBackground),
+            name: UIApplication.didEnterBackgroundNotification,
+            object: nil
+        )
+        
+        // Handle app becoming active
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(appDidBecomeActive),
+            name: UIApplication.didBecomeActiveNotification,
+            object: nil
+        )
+    }
+    
+    @objc private func handleAudioSessionInterruption(_ notification: Notification) {
+        guard let userInfo = notification.userInfo,
+              let typeValue = userInfo[AVAudioSessionInterruptionTypeKey] as? UInt,
+              let type = AVAudioSession.InterruptionType(rawValue: typeValue) else {
+            return
+        }
+        
+        switch type {
+        case .began:
+            // Audio session interrupted (call, alarm, etc.)
+            if isPlaying {
+                pause()
+            }
+        case .ended:
+            // Interruption ended, can resume if was playing
+            if let optionsValue = userInfo[AVAudioSessionInterruptionOptionKey] as? UInt {
+                let options = AVAudioSession.InterruptionOptions(rawValue: optionsValue)
+                if options.contains(.shouldResume) && currentEpisode != nil {
+                    play()
+                }
+            }
+        @unknown default:
+            break
+        }
+    }
+    
+    @objc private func handleAudioRouteChange(_ notification: Notification) {
+        guard let userInfo = notification.userInfo,
+              let reasonValue = userInfo[AVAudioSessionRouteChangeReasonKey] as? UInt,
+              let reason = AVAudioSession.RouteChangeReason(rawValue: reasonValue) else {
+            return
+        }
+        
+        switch reason {
+        case .oldDeviceUnavailable:
+            // Headphones unplugged, pause playback
+            if isPlaying {
+                pause()
+            }
+        default:
+            break
+        }
+    }
+    
+    @objc private func appDidEnterBackground() {
+        // Ensure audio session remains active in background
+        do {
+            try AVAudioSession.sharedInstance().setActive(true)
+        } catch {
+            print("Failed to keep audio session active in background: \(error)")
+        }
+    }
+    
+    @objc private func appDidBecomeActive() {
+        // Refresh audio session when app becomes active
+        do {
+            try AVAudioSession.sharedInstance().setActive(true)
+        } catch {
+            print("Failed to reactivate audio session: \(error)")
+        }
+        
+        // Update UI with current playback state
+        updateNowPlayingInfo()
+        updateWidgetData()
     }
     
     func loadEpisode(_ episode: Episode) {
@@ -114,7 +237,13 @@ class AudioPlayerService: ObservableObject {
         guard let episode = currentEpisode else { return }
         
         var nowPlayingInfo = [String: Any]()
-        nowPlayingInfo[MPMediaItemPropertyTitle] = episode.title
+        nowPlayingInfo[MPMediaItemPropertyTitle] = episode.title.cleanedEpisodeTitle
+        
+        // Add podcast title as artist if available
+        if let podcast = getPodcast(for: episode) {
+            nowPlayingInfo[MPMediaItemPropertyArtist] = podcast.title
+        }
+        
         nowPlayingInfo[MPMediaItemPropertyPlaybackDuration] = duration
         nowPlayingInfo[MPNowPlayingInfoPropertyElapsedPlaybackTime] = playbackPosition
         nowPlayingInfo[MPNowPlayingInfoPropertyPlaybackRate] = isPlaying ? 1.0 : 0.0
@@ -128,6 +257,10 @@ class AudioPlayerService: ObservableObject {
         } else {
             MPNowPlayingInfoCenter.default().nowPlayingInfo = nowPlayingInfo
         }
+    }
+    
+    private func getPodcast(for episode: Episode) -> Podcast? {
+        return PodcastService.shared.loadPodcasts().first { $0.id == episode.podcastID }
     }
     
     private func loadArtwork(from url: URL, completion: @escaping (MPMediaItemArtwork?) -> Void) {
