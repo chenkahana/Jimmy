@@ -60,7 +60,7 @@ struct LibraryView: View {
                         }
                     }
                     .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(.blue)
+                    .foregroundColor(.accentColor)
                 }
             }
         }

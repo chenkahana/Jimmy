@@ -3,10 +3,14 @@ import SwiftUI
 // Enhanced floating mini player with 3D design that floats above tab bar
 struct FloatingMiniPlayerView: View {
     @ObservedObject private var audioPlayer = AudioPlayerService.shared
+    @State private var isMiniPlayerHidden = false
     let onTap: () -> Void
+    let currentTab: Int // Add parameter to know current tab
     
     var body: some View {
-        if let currentEpisode = audioPlayer.currentEpisode {
+        if let currentEpisode = audioPlayer.currentEpisode, 
+           !isMiniPlayerHidden,
+           currentTab != 2 { // Don't show mini player on "Now Playing" tab (tab 2)
             VStack(spacing: 0) {
                 // Floating card with enhanced 3D styling
                 HStack(spacing: 16) {
@@ -130,6 +134,35 @@ struct FloatingMiniPlayerView: View {
                         )
                         .shadow(color: .black.opacity(0.15), radius: 12, x: 0, y: 6)
                 )
+                .overlay(
+                    // Small X button in top-right corner
+                    VStack {
+                        HStack {
+                            Spacer()
+                            Button(action: {
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    isMiniPlayerHidden = true
+                                }
+                            }) {
+                                Image(systemName: "xmark")
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundColor(.secondary)
+                                    .padding(6)
+                                    .background(
+                                        Circle()
+                                            .fill(.ultraThinMaterial)
+                                            .overlay(
+                                                Circle()
+                                                    .stroke(Color.white.opacity(0.3), lineWidth: 0.5)
+                                            )
+                                    )
+                            }
+                            .buttonStyle(SimpleButtonStyle())
+                            .offset(x: 8, y: -8)
+                        }
+                        Spacer()
+                    }
+                )
                 .onTapGesture {
                     onTap()
                 }
@@ -140,6 +173,13 @@ struct FloatingMiniPlayerView: View {
             ))
             .animation(.spring(response: 0.5, dampingFraction: 0.8), value: audioPlayer.currentEpisode?.id)
             .animation(.easeInOut(duration: 0.2), value: audioPlayer.isPlaying)
+            .onChange(of: currentTab) { _, newTab in
+                // Reset mini player hidden state when visiting "Now Playing" tab
+                // This allows it to reappear when navigating back to other tabs
+                if newTab == 2 {
+                    isMiniPlayerHidden = false
+                }
+            }
         }
     }
     

@@ -44,12 +44,15 @@ struct ContentView: View {
             // Floating Mini Player - Above tab bar with enhanced 3D effect
             VStack {
                 Spacer()
-                FloatingMiniPlayerView(onTap: {
-                    // Switch to "Now Playing" tab when mini player is tapped
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                        selectedTab = 2
-                    }
-                })
+                FloatingMiniPlayerView(
+                    onTap: {
+                        // Switch to "Now Playing" tab when mini player is tapped
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                            selectedTab = 2
+                        }
+                    },
+                    currentTab: selectedTab
+                )
                 .padding(.horizontal, 16)
                 .padding(.bottom, 88) // Position above tab bar (tab bar height ~76px + spacing)
             }
