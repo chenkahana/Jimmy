@@ -29,15 +29,26 @@ class AudioPlayerService: ObservableObject {
     
     private func setupAudioSession() {
         do {
+            let audioSession = AVAudioSession.sharedInstance()
+            
             // Configure audio session for background playback
-            try AVAudioSession.sharedInstance().setCategory(
+            try audioSession.setCategory(
                 .playback,
                 mode: .default,
                 options: [.allowAirPlay, .allowBluetooth, .allowBluetoothA2DP]
             )
-            try AVAudioSession.sharedInstance().setActive(true)
+            
+            // Only activate when we actually need to play audio
+            // Don't activate immediately on app launch
         } catch {
-            print("Failed to set up audio session: \(error)")
+            print("⚠️ Failed to configure audio session: \(error)")
+            
+            // Fallback to basic playback category without options
+            do {
+                try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
+            } catch {
+                print("❌ Failed to set even basic audio session category: \(error)")
+            }
         }
     }
     
@@ -161,21 +172,50 @@ class AudioPlayerService: ObservableObject {
         }
     }
     
+    @objc private func handleEpisodeDidEnd(_ notification: Notification) {
+        // Check if the notification is for our current player item
+        if let playerItem = notification.object as? AVPlayerItem,
+           playerItem == player?.currentItem {
+            
+            // Mark current episode as played
+            if let currentEpisode = currentEpisode {
+                var updatedEpisode = currentEpisode
+                updatedEpisode.played = true
+                
+                // Update episode in queue
+                if let queueViewModel = QueueViewModel.shared as QueueViewModel?,
+                   let index = queueViewModel.queue.firstIndex(where: { $0.id == updatedEpisode.id }) {
+                    queueViewModel.queue[index] = updatedEpisode
+                }
+            }
+            
+            // Reset playback position to 0 for the finished episode
+            playbackPosition = 0
+            
+            // Play next episode in queue
+            QueueViewModel.shared.playNextEpisode()
+        }
+    }
+    
     @objc private func appDidEnterBackground() {
-        // Ensure audio session remains active in background
-        do {
-            try AVAudioSession.sharedInstance().setActive(true)
-        } catch {
-            print("Failed to keep audio session active in background: \(error)")
+        // Only keep audio session active if we're actually playing
+        if isPlaying {
+            do {
+                try AVAudioSession.sharedInstance().setActive(true)
+            } catch {
+                print("⚠️ Failed to keep audio session active in background: \(error)")
+            }
         }
     }
     
     @objc private func appDidBecomeActive() {
-        // Refresh audio session when app becomes active
-        do {
-            try AVAudioSession.sharedInstance().setActive(true)
-        } catch {
-            print("Failed to reactivate audio session: \(error)")
+        // Only reactivate audio session if we have a current episode and are playing
+        if isPlaying && currentEpisode != nil {
+            do {
+                try AVAudioSession.sharedInstance().setActive(true)
+            } catch {
+                print("⚠️ Failed to reactivate audio session: \(error)")
+            }
         }
         
         // Update UI with current playback state
@@ -188,6 +228,9 @@ class AudioPlayerService: ObservableObject {
         
         // Stop current playback
         pause()
+        
+        // Clean up existing time observer and player
+        cleanupPlayer()
         
         // Update current episode
         currentEpisode = episode
@@ -202,29 +245,61 @@ class AudioPlayerService: ObservableObject {
             player?.seek(to: seekTime)
         }
         
-        // Set up time observer
+        // Set up time observer for the new player
         setupTimeObserver()
         
-        // Update now playing info
-        updateNowPlayingInfo()
+        // Set up end-of-playback notification for this specific player item
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleEpisodeDidEnd),
+            name: .AVPlayerItemDidPlayToEndTime,
+            object: playerItem
+        )
         
-        // Get duration
+        // Get duration first
         if let duration = player?.currentItem?.asset.duration {
             self.duration = CMTimeGetSeconds(duration)
         }
+        
+        // Update now playing info (this will load artwork)
+        updateNowPlayingInfo()
         
         // Update widget data
         updateWidgetData()
     }
     
-    private func setupTimeObserver() {
-        // Remove existing observer
-        if let observer = timeObserver {
-            player?.removeTimeObserver(observer)
+    private func cleanupPlayer() {
+        // Remove time observer from current player if it exists
+        if let observer = timeObserver, let currentPlayer = player {
+            currentPlayer.removeTimeObserver(observer)
+            timeObserver = nil
         }
         
-        // Add new observer
-        timeObserver = player?.addPeriodicTimeObserver(
+        // Remove end-of-playback notification observer for current player item
+        if let currentPlayerItem = player?.currentItem {
+            NotificationCenter.default.removeObserver(
+                self,
+                name: .AVPlayerItemDidPlayToEndTime,
+                object: currentPlayerItem
+            )
+        }
+        
+        // Clear the player reference
+        player = nil
+    }
+    
+    private func setupTimeObserver() {
+        // Ensure we have a player and no existing observer
+        guard let player = player else { return }
+        
+        // Clean up any existing observer first
+        if let observer = timeObserver {
+            player.removeTimeObserver(observer)
+            timeObserver = nil
+        }
+        
+        // Add new observer to the current player
+        timeObserver = player.addPeriodicTimeObserver(
             forInterval: CMTime(seconds: 1, preferredTimescale: CMTimeScale(NSEC_PER_SEC)),
             queue: .main
         ) { [weak self] time in
@@ -248,13 +323,18 @@ class AudioPlayerService: ObservableObject {
         nowPlayingInfo[MPNowPlayingInfoPropertyElapsedPlaybackTime] = playbackPosition
         nowPlayingInfo[MPNowPlayingInfoPropertyPlaybackRate] = isPlaying ? 1.0 : 0.0
         
-        // Load artwork if available
-        if let artworkURL = episode.artworkURL {
+        // Try episode artwork first, then podcast artwork, then placeholder
+        let artworkURL = episode.artworkURL ?? getPodcast(for: episode)?.artworkURL
+        
+        if let artworkURL = artworkURL {
             loadArtwork(from: artworkURL) { artwork in
-                nowPlayingInfo[MPMediaItemPropertyArtwork] = artwork
-                MPNowPlayingInfoCenter.default().nowPlayingInfo = nowPlayingInfo
+                DispatchQueue.main.async {
+                    nowPlayingInfo[MPMediaItemPropertyArtwork] = artwork
+                    MPNowPlayingInfoCenter.default().nowPlayingInfo = nowPlayingInfo
+                }
             }
         } else {
+            // Set info without artwork for immediate display
             MPNowPlayingInfoCenter.default().nowPlayingInfo = nowPlayingInfo
         }
     }
@@ -264,16 +344,53 @@ class AudioPlayerService: ObservableObject {
     }
     
     private func loadArtwork(from url: URL, completion: @escaping (MPMediaItemArtwork?) -> Void) {
-        URLSession.shared.dataTask(with: url) { data, _, _ in
-            guard let data = data, let image = UIImage(data: data) else {
+        // Create a URL session with timeout
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 10.0 // 10 second timeout
+        let session = URLSession(configuration: config)
+        
+        session.dataTask(with: url) { data, response, error in
+            // Check for errors
+            if let error = error {
+                print("⚠️ Failed to load artwork from \(url): \(error.localizedDescription)")
                 completion(nil)
                 return
             }
             
-            let artwork = MPMediaItemArtwork(boundsSize: image.size) { _ in image }
-            DispatchQueue.main.async {
-                completion(artwork)
+            // Check for valid data and create image
+            guard let data = data, 
+                  let image = UIImage(data: data) else {
+                print("⚠️ Invalid artwork data from \(url)")
+                completion(nil)
+                return
             }
+            
+            // Ensure image has reasonable size (not too large for memory)
+            let maxSize: CGFloat = 600
+            let finalImage: UIImage
+            
+            if max(image.size.width, image.size.height) > maxSize {
+                // Resize image to prevent memory issues
+                let aspectRatio = image.size.width / image.size.height
+                let newSize: CGSize
+                
+                if image.size.width > image.size.height {
+                    newSize = CGSize(width: maxSize, height: maxSize / aspectRatio)
+                } else {
+                    newSize = CGSize(width: maxSize * aspectRatio, height: maxSize)
+                }
+                
+                UIGraphicsBeginImageContextWithOptions(newSize, false, 0.0)
+                image.draw(in: CGRect(origin: .zero, size: newSize))
+                finalImage = UIGraphicsGetImageFromCurrentImageContext() ?? image
+                UIGraphicsEndImageContext()
+            } else {
+                finalImage = image
+            }
+            
+            // Create artwork with proper bounds
+            let artwork = MPMediaItemArtwork(boundsSize: finalImage.size) { _ in finalImage }
+            completion(artwork)
         }.resume()
     }
     
@@ -295,6 +412,13 @@ class AudioPlayerService: ObservableObject {
     }
     
     func play() {
+        // Activate audio session before playing
+        do {
+            try AVAudioSession.sharedInstance().setActive(true)
+        } catch {
+            print("⚠️ Failed to activate audio session: \(error)")
+        }
+        
         player?.play()
         isPlaying = true
         updateNowPlayingInfo()
@@ -344,11 +468,21 @@ class AudioPlayerService: ObservableObject {
     
     func stop() {
         player?.pause()
-        player = nil
+        
+        // Clean up player and time observer
+        cleanupPlayer()
+        
         currentEpisode = nil
         isPlaying = false
         playbackPosition = 0
         duration = 0
+        
+        // Deactivate audio session when completely stopping
+        do {
+            try AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        } catch {
+            print("⚠️ Failed to deactivate audio session: \(error)")
+        }
         
         // Clear now playing info
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
