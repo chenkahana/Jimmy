@@ -13,38 +13,46 @@ struct ContentView: View {
     @State private var selectedTab: Int = 0
     
     var body: some View {
-        VStack(spacing: 0) {
-            // Main content area - TabView for switching between screens
-            TabView(selection: $selectedTab) {
-                NavigationView {
-                    PodcastSearchView()
+        ZStack(alignment: .bottom) {
+            // Main content area with tab bar
+            VStack(spacing: 0) {
+                // Main content area - TabView for switching between screens
+                TabView(selection: $selectedTab) {
+                    NavigationView {
+                        PodcastSearchView()
+                    }
+                    .tag(0)
+                    NavigationView {
+                        QueueView()
+                    }
+                    .tag(1)
+                    CurrentPlayView()
+                        .tag(2)
+                    LibraryView()
+                        .tag(3)
+                    NavigationView {
+                        SettingsView()
+                    }
+                    .tag(4)
                 }
-                .tag(0)
-                NavigationView {
-                    QueueView()
-                }
-                .tag(1)
-                CurrentPlayView()
-                    .tag(2)
-                LibraryView()
-                    .tag(3)
-                NavigationView {
-                    SettingsView()
-                }
-                .tag(4)
+                .tabViewStyle(.page(indexDisplayMode: .never))
+                
+                // Custom Tab Bar
+                CustomTabBar(selectedTab: $selectedTab)
             }
-            .tabViewStyle(.page(indexDisplayMode: .never))
             
-            // Custom Tab Bar
-            CustomTabBar(selectedTab: $selectedTab)
-            
-            // Mini Player - Stays visible on ALL tabs for persistent playback
-            MiniPlayerView(onTap: {
-                // Switch to "Now Playing" tab when mini player is tapped
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                    selectedTab = 2
-                }
-            })
+            // Floating Mini Player - Above tab bar with enhanced 3D effect
+            VStack {
+                Spacer()
+                FloatingMiniPlayerView(onTap: {
+                    // Switch to "Now Playing" tab when mini player is tapped
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                        selectedTab = 2
+                    }
+                })
+                .padding(.horizontal, 16)
+                .padding(.bottom, 88) // Position above tab bar (tab bar height ~76px + spacing)
+            }
         }
         .preferredColorScheme(darkMode ? .dark : .light)
     }

@@ -90,7 +90,7 @@ struct EpisodeRowView: View {
                 
                 // Episode Info
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(episode.title.cleanedEpisodeTitle)
+                    Text(episode.title)
                         .font(.headline)
                         .foregroundColor(isCurrentlyPlaying ? .orange : .primary)
                         .lineLimit(2)

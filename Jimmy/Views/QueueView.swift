@@ -94,7 +94,7 @@ struct QueueRowView: View {
                 
                 // Episode Name Section - Better typography
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(episode.title.cleanedEpisodeTitle)
+                    Text(episode.title)
                         .font(.system(.body, design: .rounded, weight: isCurrentlyPlaying ? .semibold : .medium))
                         .foregroundColor(isCurrentlyPlaying ? .orange : .primary)
                         .lineLimit(2)

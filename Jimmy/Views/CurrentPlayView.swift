@@ -291,7 +291,7 @@ struct EpisodeDetailsSection: View {
                     VStack(spacing: 12) {
                         // Episode title
                         HStack {
-                            Text(episode.title.cleanedEpisodeTitle)
+                            Text(episode.title)
                                 .font(.body)
                                 .fontWeight(.medium)
                                 .foregroundColor(.primary)

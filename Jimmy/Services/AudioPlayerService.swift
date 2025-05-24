@@ -237,7 +237,7 @@ class AudioPlayerService: ObservableObject {
         guard let episode = currentEpisode else { return }
         
         var nowPlayingInfo = [String: Any]()
-        nowPlayingInfo[MPMediaItemPropertyTitle] = episode.title.cleanedEpisodeTitle
+        nowPlayingInfo[MPMediaItemPropertyTitle] = episode.title
         
         // Add podcast title as artist if available
         if let podcast = getPodcast(for: episode) {

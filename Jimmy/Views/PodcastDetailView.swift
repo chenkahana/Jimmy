@@ -219,7 +219,7 @@ struct EpisodeRowItemView: View {
                 
                 // Episode Name and Details
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(episode.title.cleanedEpisodeTitle)
+                    Text(episode.title)
                         .font(.system(size: 15, weight: .medium))
                         .foregroundColor(.primary)
                         .lineLimit(2)

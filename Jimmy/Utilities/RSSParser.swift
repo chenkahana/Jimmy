@@ -88,13 +88,13 @@ class RSSParser: NSObject, XMLParserDelegate {
                 let date = RSSParser.dateFrom(pubDate: currentPubDate)
                 let episodeArtwork = !currentEpisodeArtworkURL.isEmpty ? URL(string: currentEpisodeArtworkURL) : nil
                 
-                // Clean the title and description using the new string extensions
-                let cleanedTitle = currentTitle.trimmingCharacters(in: .whitespacesAndNewlines).cleanedEpisodeTitle
+                // Use raw title with basic trimming, no parsing
+                let title = currentTitle.trimmingCharacters(in: .whitespacesAndNewlines)
                 let cleanedDescription = currentDescription.trimmingCharacters(in: .whitespacesAndNewlines).cleanedEpisodeDescription
                 
                 let episode = Episode(
                     id: UUID(),
-                    title: cleanedTitle,
+                    title: title,
                     artworkURL: episodeArtwork,
                     audioURL: audioURL,
                     description: cleanedDescription.isEmpty ? nil : cleanedDescription,

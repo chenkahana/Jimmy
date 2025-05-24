@@ -157,8 +157,8 @@ class ApplePodcastService {
             } else if let album = item.albumTitle, !album.isEmpty {
                 podcastTitle = album
             } else if let title = item.title, !title.isEmpty {
-                // For single episodes, try to extract show name
-                podcastTitle = extractShowNameFromEpisodeTitle(title)
+                // Use the raw title without parsing
+                podcastTitle = title
             }
             
             if let itemArtist = item.artist, !itemArtist.isEmpty {
@@ -237,32 +237,6 @@ class ApplePodcastService {
         group.notify(queue: .main) {
             completion(podcasts, nil)
         }
-    }
-    
-    /// Extract show name from episode title using common patterns
-    private func extractShowNameFromEpisodeTitle(_ title: String) -> String? {
-        // Common patterns in episode titles
-        let patterns = [
-            #"^([^:]+):"#,           // "Show Name: Episode Title"
-            #"^([^|]+)\|"#,          // "Show Name | Episode Title"
-            #"^([^-]+) -"#,          // "Show Name - Episode Title"
-            #"^([^#]+)#"#,           // "Show Name #123"
-            #"^([^E]+)E\d+"#,        // "Show Name E123"
-            #"^([^0-9]+)\d+"#        // "Show Name 123"
-        ]
-        
-        for pattern in patterns {
-            if let regex = try? NSRegularExpression(pattern: pattern, options: []),
-               let match = regex.firstMatch(in: title, options: [], range: NSRange(title.startIndex..., in: title)),
-               let range = Range(match.range(at: 1), in: title) {
-                let showName = String(title[range]).trimmingCharacters(in: .whitespacesAndNewlines)
-                if showName.count > 3 { // Avoid too short names
-                    return showName
-                }
-            }
-        }
-        
-        return nil
     }
     
     // MARK: - Original Method (for backward compatibility)
