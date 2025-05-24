@@ -61,12 +61,12 @@ struct SettingsView: View {
                     Text("Remove").tag("remove")
                 }
             }
-            Section(header: Text("Backup & Restore")) {
+            Section(header: Text("Data & Sync")) {
                 Toggle(isOn: $iCloudSyncEnabled) {
                     Text("Enable iCloud Sync")
-                        .foregroundColor(.white)
                 }
-                
+            }
+            Section(header: Text("Backup & Restore")) {
                 Button("Export App Data") {
                     isExporting = true
                 }

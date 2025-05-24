@@ -337,8 +337,7 @@ struct EpisodeRowView: View {
     
     private func playNext() {
         // Insert at the beginning of the queue for "play next" functionality
-        queueViewModel.queue.insert(episode, at: 0)
-        queueViewModel.saveQueue()
+        queueViewModel.addToTopOfQueue(episode)
         
         onPlayNext?(episode)
         

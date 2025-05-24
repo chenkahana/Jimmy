@@ -86,9 +86,8 @@ struct EpisodeDetailView: View {
                                 if audioPlayer.currentEpisode?.id == episode.id {
                                     audioPlayer.togglePlayPause()
                                 } else {
-                                    // Load and play this episode
-                                    audioPlayer.loadEpisode(episode)
-                                    audioPlayer.play()
+                                    // Load and play this episode using new queue logic
+                                    QueueViewModel.shared.playEpisodeFromLibrary(episode)
                                 }
                             }) {
                                 HStack {
@@ -211,8 +210,7 @@ struct EpisodeDetailView: View {
                     Menu {
                         Button(action: {
                             // Play Next
-                            QueueViewModel.shared.queue.insert(episode, at: 0)
-                            QueueViewModel.shared.saveQueue()
+                            QueueViewModel.shared.addToTopOfQueue(episode)
                             FeedbackManager.shared.playNext()
                         }) {
                             Label("Play Next", systemImage: "text.line.first.and.arrowtriangle.forward")

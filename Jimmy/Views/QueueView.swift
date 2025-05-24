@@ -4,264 +4,135 @@ struct QueueView: View {
     @ObservedObject private var viewModel = QueueViewModel.shared
     @ObservedObject private var audioPlayer = AudioPlayerService.shared
     private let podcastService = PodcastService.shared
+    @State private var editMode: EditMode = .inactive
+    @State private var currentlyOpenEpisodeID: UUID? = nil // Track which episode has swipe actions open
     
     var currentPlayingEpisode: Episode? {
         return audioPlayer.currentEpisode
     }
     
     var body: some View {
-        // Episode Queue List
-        List {
-            ForEach(viewModel.queue) { episode in
-                QueueRowView(
-                    episode: episode,
-                    podcast: getPodcast(for: episode),
-                    isCurrentlyPlaying: currentPlayingEpisode?.id == episode.id,
-                    onTap: {
-                        // Load and play the episode
-                        audioPlayer.loadEpisode(episode)
-                        audioPlayer.play()
+        NavigationView {
+            Group {
+                if viewModel.queue.isEmpty {
+                    VStack(spacing: 20) {
+                        Image(systemName: "list.bullet")
+                            .font(.system(size: 60))
+                            .foregroundColor(.gray.opacity(0.5))
+                        
+                        Text("Your queue is empty")
+                            .font(.title2)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.primary)
+                        
+                        Text("Add episodes from your podcasts to build your listening queue")
+                            .font(.body)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 40)
                     }
-                )
-                .listRowSeparator(.hidden)
-                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    List {
+                        ForEach(viewModel.queue, id: \.id) { episode in
+                            let index = viewModel.queue.firstIndex(where: { $0.id == episode.id }) ?? 0
+                            
+                            QueueEpisodeCardView(
+                                episode: episode,
+                                podcast: getPodcast(for: episode),
+                                isCurrentlyPlaying: currentPlayingEpisode?.id == episode.id,
+                                isEditMode: editMode == .active,
+                                isSwipeOpen: currentlyOpenEpisodeID == episode.id,
+                                onTap: {
+                                    if editMode == .inactive {
+                                        // Close any open swipe actions first
+                                        currentlyOpenEpisodeID = nil
+                                        viewModel.playEpisodeFromQueue(at: index)
+                                    }
+                                },
+                                onRemove: {
+                                    currentlyOpenEpisodeID = nil
+                                    viewModel.removeFromQueue(at: IndexSet(integer: index))
+                                },
+                                onMoveToEnd: {
+                                    currentlyOpenEpisodeID = nil
+                                    viewModel.moveToEndOfQueue(at: index)
+                                },
+                                onSwipeOpen: {
+                                    currentlyOpenEpisodeID = episode.id
+                                },
+                                onSwipeClose: {
+                                    if currentlyOpenEpisodeID == episode.id {
+                                        currentlyOpenEpisodeID = nil
+                                    }
+                                }
+                            )
+                            .overlay(
+                                // Show queue position indicator for non-playing episodes
+                                VStack {
+                                    if currentPlayingEpisode?.id != episode.id && editMode == .inactive {
+                                        HStack {
+                                            VStack {
+                                                Text("\(index + 1)")
+                                                    .font(.caption2)
+                                                    .fontWeight(.semibold)
+                                                    .foregroundColor(.white)
+                                                    .frame(width: 20, height: 20)
+                                                    .background(Color.gray.opacity(0.7))
+                                                    .clipShape(Circle())
+                                                Spacer()
+                                            }
+                                            Spacer()
+                                        }
+                                        .padding(.leading, 8)
+                                        .padding(.top, 8)
+                                    }
+                                }
+                            )
+                            .listRowSeparator(.hidden)
+                            .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
+                            .listRowBackground(Color.clear)
+                        }
+                        .onMove(perform: moveEpisodes)
+                        .onDelete(perform: editMode == .active ? deleteEpisodes : nil)
+                    }
+                    .listStyle(.plain)
+                    .environment(\.editMode, $editMode)
+                    .scrollContentBackground(.hidden)
+                    .background(Color(.systemGroupedBackground))
+                }
             }
-            .onDelete(perform: viewModel.removeFromQueue)
-            .onMove(perform: viewModel.moveQueue)
+            .navigationTitle("Queue")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    if !viewModel.queue.isEmpty {
+                        EditButton()
+                            .font(.system(size: 16, weight: .medium))
+                    }
+                }
+            }
+            .onAppear {
+                viewModel.syncCurrentEpisodeWithQueue()
+            }
         }
-        .listStyle(.plain)
-        .environment(\.editMode, .constant(.active)) // Always allow dragging
-        .navigationTitle("Queue")
-        .navigationBarTitleDisplayMode(.large)
+        .navigationViewStyle(.stack)
     }
     
     private func getPodcast(for episode: Episode) -> Podcast? {
         return podcastService.loadPodcasts().first { $0.id == episode.podcastID }
     }
-}
-
-// MARK: - Supporting Views
-
-struct QueueRowView: View {
-    let episode: Episode
-    let podcast: Podcast?
-    let isCurrentlyPlaying: Bool
-    let onTap: () -> Void
     
-    var body: some View {
-        Button(action: onTap) {
-            HStack(spacing: 16) {
-                // Episode Picture - Enhanced design with played status
-                ZStack(alignment: .bottomTrailing) {
-                    AsyncImage(url: episode.artworkURL ?? podcast?.artworkURL) { image in
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                    } placeholder: {
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(
-                                LinearGradient(
-                                    colors: isCurrentlyPlaying ? 
-                                        [Color.orange.opacity(0.3), Color.orange.opacity(0.1)] :
-                                        [Color(.systemGray5), Color(.systemGray4)],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                            .overlay(
-                                Image(systemName: isCurrentlyPlaying ? "speaker.wave.2.fill" : "waveform.circle")
-                                    .foregroundColor(isCurrentlyPlaying ? .orange : .gray)
-                                    .font(.title2)
-                            )
-                    }
-                    .frame(width: 60, height: 60)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                    .opacity(episode.played ? 0.6 : 1.0) // Dim played episodes
-                    .overlay(
-                        // Enhanced playing indicator
-                        isCurrentlyPlaying ? 
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(
-                                LinearGradient(
-                                    colors: [Color.orange, Color.orange.opacity(0.7)],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                ), 
-                                lineWidth: 3
-                            )
-                            .shadow(color: .orange.opacity(0.3), radius: 4, x: 0, y: 2)
-                        : nil
-                    )
-                    .shadow(color: .black.opacity(0.1), radius: isCurrentlyPlaying ? 6 : 2, x: 0, y: 2)
-                    
-                    // Enhanced played indicator in queue
-                    if episode.played {
-                        ZStack {
-                            // White background circle for contrast
-                            Circle()
-                                .fill(Color.white)
-                                .frame(width: 18, height: 18)
-                            
-                            // Green checkmark
-                            Image(systemName: "checkmark.circle.fill")
-                                .font(.system(size: 14, weight: .semibold))
-                                .foregroundColor(.green)
-                        }
-                        .offset(x: 4, y: 4)
-                        .shadow(color: .black.opacity(0.2), radius: 2, x: 0, y: 1)
-                    }
-                }
-                
-                // Episode Name Section - Better typography with played status
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(episode.title)
-                        .font(.system(.body, design: .rounded, weight: isCurrentlyPlaying ? .semibold : .medium))
-                        .foregroundColor(
-                            isCurrentlyPlaying ? .orange : 
-                            episode.played ? .secondary : .primary
-                        )
-                        .lineLimit(2)
-                        .multilineTextAlignment(.leading)
-                        .opacity(episode.played ? 0.7 : 1.0) // Dim played episode titles
-                    
-                    if let podcast = podcast {
-                        Text(podcast.title)
-                            .font(.system(.subheadline, design: .rounded))
-                            .foregroundColor(.secondary)
-                            .lineLimit(1)
-                            .opacity(episode.played ? 0.6 : 1.0) // Dim played podcast titles
-                    }
-                    
-                    // Status indicators
-                    HStack(spacing: 8) {
-                        // Current episode progress indicator
-                        if isCurrentlyPlaying {
-                            HStack(spacing: 4) {
-                                Image(systemName: "speaker.wave.2.fill")
-                                    .font(.caption2)
-                                    .foregroundColor(.orange)
-                                Text("Now Playing")
-                                    .font(.system(.caption2, design: .rounded, weight: .medium))
-                                    .foregroundColor(.orange)
-                            }
-                        }
-                        // Played status badge for queue
-                        else if episode.played {
-                            HStack(spacing: 4) {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .font(.caption2)
-                                    .foregroundColor(.green)
-                                Text("Played")
-                                    .font(.caption2)
-                                    .foregroundColor(.green)
-                                    .fontWeight(.medium)
-                            }
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(Color.green.opacity(0.1))
-                            .cornerRadius(4)
-                        }
-                        // Progress indicator for partially played episodes
-                        else if episode.playbackPosition > 0 {
-                            HStack(spacing: 4) {
-                                Image(systemName: "clock.fill")
-                                    .font(.caption2)
-                                    .foregroundColor(.orange)
-                                Text("In Progress")
-                                    .font(.caption2)
-                                    .foregroundColor(.orange)
-                                    .fontWeight(.medium)
-                            }
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(Color.orange.opacity(0.1))
-                            .cornerRadius(4)
-                        }
-                    }
-                }
-                
-                Spacer()
-                
-                // Right side controls
-                VStack(spacing: 8) {
-                    // Play/pause or drag handle
-                    if isCurrentlyPlaying {
-                        // Play/pause button for current episode
-                        Button(action: {
-                            AudioPlayerService.shared.togglePlayPause()
-                        }) {
-                            Circle()
-                                .fill(Color.orange)
-                                .frame(width: 36, height: 36)
-                                .overlay(
-                                    Image(systemName: AudioPlayerService.shared.isPlaying ? "pause.fill" : "play.fill")
-                                        .font(.system(.callout, weight: .semibold))
-                                        .foregroundColor(.white)
-                                        .offset(x: AudioPlayerService.shared.isPlaying ? 0 : 1)
-                                )
-                                .shadow(color: .orange.opacity(0.3), radius: 4, x: 0, y: 2)
-                        }
-                        .buttonStyle(ScaleButtonStyle())
-                    } else {
-                        // Drag handle for non-playing episodes
-                        Image(systemName: "line.3.horizontal")
-                            .font(.title2)
-                            .foregroundColor(.gray)
-                            .frame(width: 36, height: 36)
-                            .opacity(episode.played ? 0.5 : 1.0) // Dim drag handle for played episodes
-                    }
-                }
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .background(
-                // Enhanced background for current episode
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(
-                        isCurrentlyPlaying ? 
-                        LinearGradient(
-                            colors: [
-                                Color.orange.opacity(0.15),
-                                Color.orange.opacity(0.08),
-                                Color.orange.opacity(0.05)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ) :
-                        episode.played ?
-                        LinearGradient(
-                            colors: [Color.gray.opacity(0.03)],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        ) :
-                        LinearGradient(
-                            colors: [Color(.systemBackground)],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    )
-                    .overlay(
-                        // Subtle border for current episode
-                        isCurrentlyPlaying ?
-                        RoundedRectangle(cornerRadius: 16)
-                            .stroke(Color.orange.opacity(0.2), lineWidth: 1)
-                        : episode.played ?
-                        RoundedRectangle(cornerRadius: 16)
-                            .stroke(Color.gray.opacity(0.1), lineWidth: 1)
-                        : nil
-                    )
-            )
-            .scaleEffect(isCurrentlyPlaying ? 1.02 : 1.0)
-            .shadow(
-                color: isCurrentlyPlaying ? .orange.opacity(0.2) : .black.opacity(0.05),
-                radius: isCurrentlyPlaying ? 8 : 2,
-                x: 0,
-                y: isCurrentlyPlaying ? 4 : 1
-            )
+    private func moveEpisodes(from source: IndexSet, to destination: Int) {
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+            viewModel.moveQueue(from: source, to: destination)
         }
-        .buttonStyle(.plain)
-        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: isCurrentlyPlaying)
-        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: episode.played)
+    }
+    
+    private func deleteEpisodes(at offsets: IndexSet) {
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+            viewModel.removeFromQueue(at: offsets)
+        }
     }
 }
 

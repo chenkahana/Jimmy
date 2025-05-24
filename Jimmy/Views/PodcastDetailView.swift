@@ -162,12 +162,10 @@ struct PodcastEpisodesListView: View {
                             podcast: podcast,
                             isCurrentlyPlaying: currentPlayingEpisode?.id == episode.id,
                             onTap: {
-                                AudioPlayerService.shared.loadEpisode(episode)
-                                AudioPlayerService.shared.play()
+                                QueueViewModel.shared.playEpisodeFromLibrary(episode)
                             },
                             onPlayNext: { episode in
-                                QueueViewModel.shared.queue.insert(episode, at: 0)
-                                QueueViewModel.shared.saveQueue()
+                                QueueViewModel.shared.addToTopOfQueue(episode)
                                 FeedbackManager.shared.playNext()
                             },
                             onMarkAsPlayed: { episode, played in
@@ -477,12 +475,10 @@ struct SearchResultEpisodesSection: View {
                             podcast: result.toPodcast(),
                             isCurrentlyPlaying: currentPlayingEpisode?.id == episode.id,
                             onTap: {
-                                AudioPlayerService.shared.loadEpisode(episode)
-                                AudioPlayerService.shared.play()
+                                QueueViewModel.shared.playEpisodeFromLibrary(episode)
                             },
                             onPlayNext: { episode in
-                                QueueViewModel.shared.queue.insert(episode, at: 0)
-                                QueueViewModel.shared.saveQueue()
+                                QueueViewModel.shared.addToTopOfQueue(episode)
                                 FeedbackManager.shared.playNext()
                             },
                             onMarkAsPlayed: { episode, played in
