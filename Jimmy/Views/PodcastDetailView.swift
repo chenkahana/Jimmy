@@ -3,13 +3,20 @@ import SwiftUI
 struct PodcastDetailView: View {
     let podcast: Podcast
     @State private var episodes: [Episode] = []
-    @State private var isLoadingEpisodes = false
-    @State private var loadingError: String?
     @ObservedObject private var audioPlayer = AudioPlayerService.shared
+    @ObservedObject private var episodeCacheService = EpisodeCacheService.shared
     @Environment(\.dismiss) private var dismiss
     
     var currentPlayingEpisode: Episode? {
         return audioPlayer.currentEpisode
+    }
+    
+    var isLoading: Bool {
+        episodeCacheService.isLoadingEpisodes[podcast.id] ?? false
+    }
+    
+    var loadingError: String? {
+        episodeCacheService.loadingErrors[podcast.id]
     }
     
     var body: some View {
@@ -23,12 +30,15 @@ struct PodcastDetailView: View {
                     // Episodes List
                     PodcastEpisodesListView(
                         episodes: episodes,
-                        isLoading: isLoadingEpisodes,
+                        isLoading: isLoading,
                         loadingError: loadingError,
                         podcast: podcast,
                         currentPlayingEpisode: currentPlayingEpisode,
                         onRetry: {
-                            loadEpisodes()
+                            loadEpisodes(forceRefresh: true)
+                        },
+                        onRefresh: {
+                            loadEpisodes(forceRefresh: true)
                         }
                     )
                 }
@@ -51,26 +61,133 @@ struct PodcastDetailView: View {
                     .foregroundColor(.accentColor)
                 }
             }
+            
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button(action: {
+                    loadEpisodes(forceRefresh: true)
+                }) {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.accentColor)
+                }
+                .disabled(isLoading)
+            }
         }
         .onAppear {
             loadEpisodes()
         }
-    }
-    
-    private func loadEpisodes() {
-        isLoadingEpisodes = true
-        loadingError = nil
-        
-        PodcastService.shared.fetchEpisodes(for: podcast) { eps in
-            DispatchQueue.main.async {
-                episodes = eps
-                isLoadingEpisodes = false
-                
-                // If no episodes were returned, it might be due to network issues
-                if eps.isEmpty {
-                    loadingError = "Unable to load episodes. Please check your internet connection and try again."
+        .refreshable {
+            await withCheckedContinuation { continuation in
+                loadEpisodes(forceRefresh: true) {
+                    continuation.resume()
                 }
             }
+        }
+    }
+    
+    private func loadEpisodes(forceRefresh: Bool = false, completion: (() -> Void)? = nil) {
+        // Always clear episodes first to prevent any potential duplication
+        episodes = []
+        
+        // Try to load from cache immediately if available and not force refreshing
+        if !forceRefresh, let cachedEpisodes = episodeCacheService.getCachedEpisodes(for: podcast.id) {
+            episodes = cachedEpisodes
+            
+            // Debug logging for cached episodes
+            print("📱 Loaded \(cachedEpisodes.count) cached episodes for \(podcast.title)")
+            print("📱 First 3 cached episode titles:")
+            for (index, episode) in cachedEpisodes.prefix(3).enumerated() {
+                print("   \(index + 1). \(episode.title) (ID: \(episode.id))")
+            }
+            
+            completion?()
+            return
+        }
+        
+        // Fetch episodes using cache service
+        episodeCacheService.getEpisodes(for: podcast, forceRefresh: forceRefresh) { fetchedEpisodes in
+            // Debug logging for fetched episodes
+            print("📱 Fetched \(fetchedEpisodes.count) episodes from network for \(podcast.title)")
+            print("📱 First 3 fetched episode titles:")
+            for (index, episode) in fetchedEpisodes.prefix(3).enumerated() {
+                print("   \(index + 1). \(episode.title) (ID: \(episode.id))")
+            }
+            
+            // Check for potential title-based duplicates
+            let titleCounts = Dictionary(grouping: fetchedEpisodes, by: { $0.title }).mapValues { $0.count }
+            let duplicateTitles = titleCounts.filter { $0.value > 1 }
+            if !duplicateTitles.isEmpty {
+                print("⚠️ Found episodes with duplicate titles:")
+                for (title, count) in duplicateTitles {
+                    print("   '\(title)' appears \(count) times")
+                }
+            }
+            
+            // Deduplicate episodes by ID AND by podcast name + episode title
+            var episodeDict: [UUID: Episode] = [:]
+            var titlePodcastDict: [String: Episode] = [:]
+            
+            for episode in fetchedEpisodes {
+                guard let podcastID = episode.podcastID else { continue }
+                let titleKey = "\(podcastID.uuidString)_\(episode.title)"
+                
+                // Skip if we already have this episode by ID
+                if episodeDict[episode.id] != nil {
+                    continue
+                }
+                
+                // Skip if we already have an episode with the same title for this podcast
+                if let existingEpisode = titlePodcastDict[titleKey] {
+                    // Keep the one with the more recent published date, or first one if dates are equal
+                    switch (episode.publishedDate, existingEpisode.publishedDate) {
+                    case (let newDate?, let existingDate?):
+                        if newDate > existingDate {
+                            // Replace with newer episode
+                            episodeDict.removeValue(forKey: existingEpisode.id)
+                            episodeDict[episode.id] = episode
+                            titlePodcastDict[titleKey] = episode
+                        }
+                        // Otherwise keep existing
+                    case (_, nil):
+                        // New episode has date, existing doesn't - prefer new
+                        episodeDict.removeValue(forKey: existingEpisode.id)
+                        episodeDict[episode.id] = episode
+                        titlePodcastDict[titleKey] = episode
+                    default:
+                        // Keep existing episode
+                        break
+                    }
+                } else {
+                    // New episode - add it
+                    episodeDict[episode.id] = episode
+                    titlePodcastDict[titleKey] = episode
+                }
+            }
+            
+            episodes = Array(episodeDict.values).sorted { episode1, episode2 in
+                switch (episode1.publishedDate, episode2.publishedDate) {
+                case (let date1?, let date2?):
+                    return date1 > date2 // Most recent first
+                case (nil, _?):
+                    return false
+                case (_?, nil):
+                    return true
+                case (nil, nil):
+                    return episode1.title.localizedCaseInsensitiveCompare(episode2.title) == .orderedAscending
+                }
+            }
+            
+            // Only sync with global episode view model when we fetch fresh data
+            // This prevents duplication while ensuring new episodes are added to the library
+            episodeCacheService.syncWithEpisodeViewModel(episodes: episodes)
+            
+            print("📱 Final result: \(episodes.count) unique episodes for \(podcast.title) (deduped from \(fetchedEpisodes.count))")
+            print("📱 Final first 3 episode titles:")
+            for (index, episode) in episodes.prefix(3).enumerated() {
+                print("   \(index + 1). \(episode.title) (ID: \(episode.id))")
+            }
+            
+            completion?()
         }
     }
 }
@@ -81,29 +198,29 @@ struct PodcastDetailHeaderView: View {
     
     var body: some View {
         HStack(alignment: .top, spacing: 16) {
-            // Show Picture (Left side)
-            AsyncImage(url: podcast.artworkURL) { image in
-                image
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-            } placeholder: {
+            // Show Picture (Left side) - Artwork removed
+            // AsyncImage(url: podcast.artworkURL) { image in
+            //     image
+            //         .resizable()
+            //         .aspectRatio(contentMode: .fill)
+            // } placeholder: {
                 RoundedRectangle(cornerRadius: 12)
                     .fill(
                         LinearGradient(
-                            colors: [Color.orange.opacity(0.3), Color.red.opacity(0.3)],
+                            colors: [Color.gray.opacity(0.1), Color.gray.opacity(0.2)], // Placeholder color
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
                     )
                     .overlay(
-                        Image(systemName: "waveform.circle.fill")
+                        Image(systemName: "방송") // Using a generic podcast icon (Korean for broadcast)
                             .font(.system(size: 40))
-                            .foregroundColor(.white.opacity(0.8))
+                            .foregroundColor(.secondary.opacity(0.8))
                     )
-            }
+            // }
             .frame(width: 120, height: 120)
             .clipShape(RoundedRectangle(cornerRadius: 12))
-            .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+            // .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2) // Shadow removed
             
             // Show Details (Right side)
             VStack(alignment: .leading, spacing: 8) {
@@ -148,6 +265,7 @@ struct PodcastEpisodesListView: View {
     let podcast: Podcast
     let currentPlayingEpisode: Episode?
     let onRetry: () -> Void
+    let onRefresh: () -> Void
     
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -244,16 +362,27 @@ struct EmptyEpisodesStateView: View {
 struct SearchResultDetailView: View {
     let result: PodcastSearchResult
     @State private var episodes: [Episode] = []
-    @State private var isLoadingEpisodes = false
-    @State private var loadingError: String?
     @State private var isSubscribed = false
     @State private var showingSubscriptionAlert = false
     @State private var subscriptionMessage = ""
     @ObservedObject private var audioPlayer = AudioPlayerService.shared
+    @ObservedObject private var episodeCacheService = EpisodeCacheService.shared
     @Environment(\.dismiss) private var dismiss
     
     var currentPlayingEpisode: Episode? {
         return audioPlayer.currentEpisode
+    }
+    
+    private var podcast: Podcast {
+        result.toPodcast()
+    }
+    
+    var isLoading: Bool {
+        episodeCacheService.isLoadingEpisodes[podcast.id] ?? false
+    }
+    
+    var loadingError: String? {
+        episodeCacheService.loadingErrors[podcast.id]
     }
     
     var body: some View {
@@ -266,12 +395,12 @@ struct SearchResultDetailView: View {
                 )
                 SearchResultEpisodesSection(
                     episodes: episodes,
-                    isLoading: isLoadingEpisodes,
+                    isLoading: isLoading,
                     loadingError: loadingError,
                     result: result,
                     currentPlayingEpisode: currentPlayingEpisode,
                     onRetry: {
-                        loadEpisodes()
+                        loadEpisodes(forceRefresh: true)
                     }
                 )
             }
@@ -297,20 +426,105 @@ struct SearchResultDetailView: View {
         }
     }
     
-    private func loadEpisodes() {
-        isLoadingEpisodes = true
-        loadingError = nil
-        let podcast = result.toPodcast()
+    private func loadEpisodes(forceRefresh: Bool = false) {
+        // Always clear episodes first to prevent any potential duplication
+        episodes = []
         
-        PodcastService.shared.fetchEpisodes(for: podcast) { eps in
-            DispatchQueue.main.async {
-                episodes = eps
-                isLoadingEpisodes = false
-                
-                // If no episodes were returned, it might be due to network issues
-                if eps.isEmpty {
-                    loadingError = "Unable to load episodes. Please check your internet connection and try again."
+        // Try to load from cache immediately if available and not force refreshing
+        if !forceRefresh, let cachedEpisodes = episodeCacheService.getCachedEpisodes(for: podcast.id) {
+            episodes = cachedEpisodes
+            
+            // Debug logging for cached episodes
+            print("📱 Search: Loaded \(cachedEpisodes.count) cached episodes for \(podcast.title)")
+            print("📱 Search: First 3 cached episode titles:")
+            for (index, episode) in cachedEpisodes.prefix(3).enumerated() {
+                print("   \(index + 1). \(episode.title) (ID: \(episode.id))")
+            }
+            
+            return
+        }
+        
+        // Fetch episodes using cache service
+        episodeCacheService.getEpisodes(for: podcast, forceRefresh: forceRefresh) { fetchedEpisodes in
+            // Debug logging for fetched episodes
+            print("📱 Search: Fetched \(fetchedEpisodes.count) episodes from network for \(podcast.title)")
+            print("📱 Search: First 3 fetched episode titles:")
+            for (index, episode) in fetchedEpisodes.prefix(3).enumerated() {
+                print("   \(index + 1). \(episode.title) (ID: \(episode.id))")
+            }
+            
+            // Check for potential title-based duplicates
+            let titleCounts = Dictionary(grouping: fetchedEpisodes, by: { $0.title }).mapValues { $0.count }
+            let duplicateTitles = titleCounts.filter { $0.value > 1 }
+            if !duplicateTitles.isEmpty {
+                print("⚠️ Search: Found episodes with duplicate titles:")
+                for (title, count) in duplicateTitles {
+                    print("   '\(title)' appears \(count) times")
                 }
+            }
+            
+            // Deduplicate episodes by ID AND by podcast name + episode title
+            var episodeDict: [UUID: Episode] = [:]
+            var titlePodcastDict: [String: Episode] = [:]
+            
+            for episode in fetchedEpisodes {
+                guard let podcastID = episode.podcastID else { continue }
+                let titleKey = "\(podcastID.uuidString)_\(episode.title)"
+                
+                // Skip if we already have this episode by ID
+                if episodeDict[episode.id] != nil {
+                    continue
+                }
+                
+                // Skip if we already have an episode with the same title for this podcast
+                if let existingEpisode = titlePodcastDict[titleKey] {
+                    // Keep the one with the more recent published date, or first one if dates are equal
+                    switch (episode.publishedDate, existingEpisode.publishedDate) {
+                    case (let newDate?, let existingDate?):
+                        if newDate > existingDate {
+                            // Replace with newer episode
+                            episodeDict.removeValue(forKey: existingEpisode.id)
+                            episodeDict[episode.id] = episode
+                            titlePodcastDict[titleKey] = episode
+                        }
+                        // Otherwise keep existing
+                    case (_, nil):
+                        // New episode has date, existing doesn't - prefer new
+                        episodeDict.removeValue(forKey: existingEpisode.id)
+                        episodeDict[episode.id] = episode
+                        titlePodcastDict[titleKey] = episode
+                    default:
+                        // Keep existing episode
+                        break
+                    }
+                } else {
+                    // New episode - add it
+                    episodeDict[episode.id] = episode
+                    titlePodcastDict[titleKey] = episode
+                }
+            }
+            
+            episodes = Array(episodeDict.values).sorted { episode1, episode2 in
+                switch (episode1.publishedDate, episode2.publishedDate) {
+                case (let date1?, let date2?):
+                    return date1 > date2 // Most recent first
+                case (nil, _?):
+                    return false
+                case (_?, nil):
+                    return true
+                case (nil, nil):
+                    return episode1.title.localizedCaseInsensitiveCompare(episode2.title) == .orderedAscending
+                }
+            }
+            
+            // Only sync with global episode view model when we fetch fresh data
+            // This prevents duplication while ensuring new episodes are added to the library
+            episodeCacheService.syncWithEpisodeViewModel(episodes: episodes)
+            
+            print("📱 Search: Final result: \(episodes.count) unique episodes for \(podcast.title) (deduped from \(fetchedEpisodes.count))")
+            print("📱 Search: Final first 3 episode titles:")
+            for (index, episode) in episodes.prefix(3).enumerated() {
+                print("   \(index + 1). \(episode.title) (ID: \(episode.id))")
             }
         }
     }
@@ -321,8 +535,6 @@ struct SearchResultDetailView: View {
     }
     
     private func subscribe() {
-        let podcast = result.toPodcast()
-        
         if isSubscribed {
             subscriptionMessage = "You're already subscribed to \(result.title)"
             showingSubscriptionAlert = true
@@ -346,28 +558,28 @@ struct SearchResultHeaderView: View {
     
     var body: some View {
         VStack(spacing: 20) {
-            AsyncImage(url: result.artworkURL) { image in
-                image
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-            } placeholder: {
+            // AsyncImage(url: result.artworkURL) { image in // Artwork removed
+            //     image
+            //         .resizable()
+            //         .aspectRatio(contentMode: .fill)
+            // } placeholder: {
                 RoundedRectangle(cornerRadius: 20)
                     .fill(
                         LinearGradient(
-                            colors: [Color.blue.opacity(0.3), Color.purple.opacity(0.3)],
+                            colors: [Color.gray.opacity(0.1), Color.gray.opacity(0.2)], // Placeholder color
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
                     )
                     .overlay(
-                        Image(systemName: "globe")
+                        Image(systemName: "magnifyingglass") // Using a generic search/discover icon
                             .font(.system(size: 60))
-                            .foregroundColor(.white.opacity(0.8))
+                            .foregroundColor(.secondary.opacity(0.8))
                     )
-            }
+            // }
             .frame(width: 200, height: 200)
             .clipShape(RoundedRectangle(cornerRadius: 20))
-            .shadow(color: .black.opacity(0.2), radius: 15, x: 0, y: 8)
+            // .shadow(color: .black.opacity(0.2), radius: 15, x: 0, y: 8) // Shadow removed
             
             VStack(spacing: 12) {
                 Text(result.title)

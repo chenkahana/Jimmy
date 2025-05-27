@@ -8,6 +8,11 @@ struct EpisodePlayerView: View {
     @State private var playbackPosition: Double = 0
     @State private var totalDuration: Double = 0
     @Environment(\.dismiss) var dismiss
+    
+    // Get podcast for fallback artwork
+    private var podcast: Podcast? {
+        PodcastService.shared.loadPodcasts().first { $0.id == episode.podcastID }
+    }
 
     var body: some View {
         VStack {
@@ -15,17 +20,16 @@ struct EpisodePlayerView: View {
                 .font(.title)
                 .padding()
             
-            if let artworkURL = episode.artworkURL {
-                AsyncImage(url: artworkURL) {
-                    $0.resizable()
-                } placeholder: {
-                    ProgressView()
-                }
-                .aspectRatio(contentMode: .fit)
-                .frame(height: 200)
-                .cornerRadius(8)
-                .padding()
+            // Use episode artwork first, then podcast artwork as fallback
+            AsyncImage(url: episode.artworkURL ?? podcast?.artworkURL) {
+                $0.resizable()
+            } placeholder: {
+                ProgressView()
             }
+            .aspectRatio(contentMode: .fit)
+            .frame(height: 200)
+            .cornerRadius(8)
+            .padding()
 
             if player != nil {
                 VStack {

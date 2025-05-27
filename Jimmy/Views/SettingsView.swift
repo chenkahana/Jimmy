@@ -18,11 +18,14 @@ struct SettingsView: View {
     @State private var opmlImportMessage: String?
     @State private var showingAppleImportGuide = false
     @State private var activeAlert: SettingsAlert?
+    @State private var isSubscriptionImporting = false
+    @State private var subscriptionImportMessage: String?
 
     enum SettingsAlert {
         case resetData
         case appleImport(String)
         case opmlImport(String)
+        case subscriptionImport(String)
     }
 
     var body: some View {
@@ -128,11 +131,38 @@ struct SettingsView: View {
                 Button("Import OPML File") {
                     isOPMLImporting = true
                 }
+                
+                Button("Import from Subscription File") {
+                    importFromSubscriptionFile()
+                }
+                .disabled(isSubscriptionImporting)
+                
+                if isSubscriptionImporting {
+                    HStack {
+                        ProgressView()
+                            .scaleEffect(0.8)
+                        Text("Importing subscriptions...")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
             }
             
             Section(header: Text("Debug/Developer Mode")) {
                 Button("View Analytics") {
                     showingAnalytics = true
+                }
+                Button("Clear Episode Cache", role: .destructive) {
+                    clearEpisodeCache()
+                }
+                Button("Force Fetch Episodes") {
+                    forceFetchAllEpisodes()
+                }
+                Button("Diagnose Podcast Artwork") {
+                    diagnosePodcastArtwork()
+                }
+                Button("Fix Podcast Artwork") {
+                    refreshAllPodcastMetadata()
                 }
                 Button("Reset All Data", role: .destructive) {
                     activeAlert = .resetData
@@ -273,6 +303,158 @@ struct SettingsView: View {
         }
     }
     
+    private func importFromSubscriptionFile() {
+        isSubscriptionImporting = true
+        
+        // Read the subscriptions.txt file from the app bundle or documents directory
+        guard let fileURL = Bundle.main.url(forResource: "subscriptions", withExtension: "txt") ??
+                FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("subscriptions.txt") else {
+            
+            // If file doesn't exist, create it with the subscription content for testing
+            createTestSubscriptionFile()
+            return
+        }
+        
+        guard let content = try? String(contentsOf: fileURL, encoding: .utf8) else {
+            isSubscriptionImporting = false
+            activeAlert = .subscriptionImport("Could not read subscription file")
+            return
+        }
+        
+        SubscriptionImportService.shared.importFromSubscriptionContent(content) { podcasts, error in
+            DispatchQueue.main.async {
+                self.isSubscriptionImporting = false
+                
+                let message: String
+                if let error = error {
+                    message = "Import failed: \(error.localizedDescription)"
+                } else if podcasts.isEmpty {
+                    message = "No podcasts could be imported. Please check the file format."
+                } else {
+                    var currentPodcasts = PodcastService.shared.loadPodcasts()
+                    var newPodcastsCount = 0
+                    var skippedCount = 0
+                    
+                    for podcast in podcasts {
+                        // Check if podcast already exists
+                        if currentPodcasts.contains(where: { $0.feedURL.absoluteString == podcast.feedURL.absoluteString }) {
+                            skippedCount += 1
+                            continue
+                        }
+                        
+                        currentPodcasts.append(podcast)
+                        newPodcastsCount += 1
+                    }
+                    
+                    // Save updated podcasts
+                    PodcastService.shared.savePodcasts(currentPodcasts)
+                    
+                    if newPodcastsCount > 0 {
+                        if skippedCount > 0 {
+                            message = "🎉 Successfully imported \(newPodcastsCount) new podcasts! (\(skippedCount) already in library)"
+                        } else {
+                            message = "🎉 Successfully imported \(newPodcastsCount) podcasts from subscription file!"
+                        }
+                    } else {
+                        message = "No new podcasts to import. All \(podcasts.count) podcasts are already in your library."
+                    }
+                }
+                
+                self.activeAlert = .subscriptionImport(message)
+            }
+        }
+    }
+    
+    private func createTestSubscriptionFile() {
+        guard let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
+            isSubscriptionImporting = false
+            activeAlert = .subscriptionImport("Could not access documents directory")
+            return
+        }
+        
+        let fileURL = documentsDirectory.appendingPathComponent("subscriptions.txt")
+        
+        // Use the actual subscription data from the user's file
+        let subscriptionContent = """
+עושים פוליטיקה Osim Politika by רשת עושים היסטוריה (https://podcasts.apple.com/us/podcast/%D7%A2%D7%95%D7%A9%D7%99%D7%9D-%D7%A4%D7%95%D7%9C%D7%99%D7%98%D7%99%D7%A7%D7%94-osim-politika/id1215589622?uo=4)--//--שיר אחד One Song by כאן | Kan (https://podcasts.apple.com/us/podcast/%D7%A9%D7%99%D7%A8-%D7%90%D7%97%D7%93-one-song/id1201883177?uo=4)--//--חיות כיס Hayot Kiss by כאן | Kan (https://podcasts.apple.com/us/podcast/%D7%97%D7%99%D7%95%D7%AA-%D7%9B%D7%99%D7%A1-hayot-kiss/id1198989209?uo=4)--//--The Joe Rogan Experience by Joe Rogan (https://podcasts.apple.com/us/podcast/the-joe-rogan-experience/id360084272?uo=4)
+"""
+        
+        do {
+            try subscriptionContent.write(to: fileURL, atomically: true, encoding: .utf8)
+            print("Created test subscription file at: \(fileURL.path)")
+            // Now try to import again
+            importFromSubscriptionFile()
+        } catch {
+            isSubscriptionImporting = false
+            activeAlert = .subscriptionImport("Could not create subscription file: \(error.localizedDescription)")
+        }
+    }
+    
+    private func clearEpisodeCache() {
+        // Clear episode cache service
+        EpisodeCacheService.shared.clearAllCache()
+        
+        // Clear global episode view model
+        EpisodeViewModel.shared.clearAllEpisodes()
+        
+        // Show confirmation (we can reuse the existing alert system)
+        activeAlert = .subscriptionImport("🗑️ Episode cache cleared successfully! Episodes will be re-fetched when you visit podcast pages.")
+    }
+    
+    private func forceFetchAllEpisodes() {
+        // Clear all cached episodes first
+        EpisodeCacheService.shared.clearAllCache()
+        EpisodeViewModel.shared.clearAllEpisodes()
+        
+        // Force fetch episodes for all podcasts
+        let podcasts = PodcastService.shared.loadPodcasts()
+        
+        if podcasts.isEmpty {
+            activeAlert = .subscriptionImport("⚠️ No podcasts found to fetch episodes for.")
+            return
+        }
+        
+        // Force a background update which will fetch all episodes
+        EpisodeUpdateService.shared.forceUpdate()
+        
+        activeAlert = .subscriptionImport("🔄 Force fetching episodes for \(podcasts.count) podcasts. This may take a few moments. Check the Episodes tab to see progress.")
+    }
+    
+    private func diagnosePodcastArtwork() {
+        let podcasts = PodcastService.shared.loadPodcasts()
+        print("\n🔍 PODCAST ARTWORK DIAGNOSIS")
+        print(String(repeating: "=", count: 50))
+        for podcast in podcasts {
+            print("📺 \(podcast.title)")
+            print("   🎨 Artwork: \(podcast.artworkURL?.absoluteString ?? "❌ NIL")")
+            print("   📡 Feed: \(podcast.feedURL.absoluteString)")
+            print("")
+        }
+        print(String(repeating: "=", count: 50))
+        
+        activeAlert = .subscriptionImport("Check console for detailed artwork diagnosis. Found \(podcasts.count) podcasts.")
+    }
+    
+    private func refreshAllPodcastMetadata() {
+        let podcasts = PodcastService.shared.loadPodcasts()
+        guard !podcasts.isEmpty else {
+            activeAlert = .subscriptionImport("No podcasts found to refresh.")
+            return
+        }
+        
+        activeAlert = .subscriptionImport("🔄 Fixing artwork for \(podcasts.count) podcasts...")
+        
+        PodcastService.shared.refreshAllPodcastArtwork { updatedCount, totalProcessed in
+            DispatchQueue.main.async {
+                if updatedCount > 0 {
+                    self.activeAlert = .subscriptionImport("🎨 Successfully fixed artwork for \(updatedCount) of \(totalProcessed) podcasts! Library should now show proper show artwork.")
+                } else {
+                    self.activeAlert = .subscriptionImport("ℹ️ All \(totalProcessed) podcasts already have correct artwork, or no artwork could be found in their RSS feeds.")
+                }
+            }
+        }
+    }
+    
     private func alertTitle() -> String {
         switch activeAlert {
         case .resetData:
@@ -281,6 +463,8 @@ struct SettingsView: View {
             return "Apple Podcasts Import"
         case .opmlImport(_):
             return "OPML Import"
+        case .subscriptionImport(_):
+            return "Subscription Import"
         case .none:
             return ""
         }
@@ -300,7 +484,7 @@ struct SettingsView: View {
                     }
                 }
             )
-        case .appleImport(_), .opmlImport(_), .none:
+        case .appleImport(_), .opmlImport(_), .subscriptionImport(_), .none:
             return AnyView(
                 Button("OK") { 
                     activeAlert = nil
@@ -316,6 +500,8 @@ struct SettingsView: View {
         case .appleImport(let message):
             return Text(message)
         case .opmlImport(let message):
+            return Text(message)
+        case .subscriptionImport(let message):
             return Text(message)
         case .none:
             return Text("")

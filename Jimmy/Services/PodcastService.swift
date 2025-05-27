@@ -71,11 +71,20 @@ class PodcastService {
             let parser = RSSParser()
             let episodes = parser.parseRSS(data: data, podcastID: podcast.id) // Use podcast.id instead of random UUID
             
-            // Update podcast artwork if available and not already set
+            // ALWAYS update podcast artwork from RSS channel data to ensure correct artwork
+            // This prevents episode artwork from being used as podcast artwork
             if let artworkURLString = parser.getPodcastArtworkURL(), 
-               let artworkURL = URL(string: artworkURLString), 
-               podcast.artworkURL == nil {
+               let artworkURL = URL(string: artworkURLString) {
+                print("🎨 Auto-updating podcast artwork for \(podcast.title)")
+                print("   RSS Channel Artwork: \(artworkURL.absoluteString)")
                 self.updatePodcastArtwork(podcast: podcast, artworkURL: artworkURL)
+            } else {
+                print("⚠️ No channel artwork found in RSS for \(podcast.title) - keeping existing artwork")
+            }
+            
+            // Update the podcast's lastEpisodeDate with the most recent episode
+            if let latestEpisodeDate = episodes.compactMap({ $0.publishedDate }).max() {
+                self.updatePodcastLastEpisodeDate(podcast: podcast, lastEpisodeDate: latestEpisodeDate)
             }
             
             DispatchQueue.main.async {
@@ -89,9 +98,101 @@ class PodcastService {
     private func updatePodcastArtwork(podcast: Podcast, artworkURL: URL) {
         var podcasts = loadPodcasts()
         if let index = podcasts.firstIndex(where: { $0.id == podcast.id }) {
+            let oldURL = podcasts[index].artworkURL?.absoluteString ?? "nil"
+            let newURL = artworkURL.absoluteString
+            
+            // Always update, even if URLs are the same (in case the image changed)
             podcasts[index].artworkURL = artworkURL
             savePodcasts(podcasts)
+            
+            if oldURL != newURL {
+                print("🎨 ✅ Updated artwork for '\(podcast.title)'")
+                print("   Old: \(oldURL)")
+                print("   New: \(newURL)")
+            } else {
+                print("🎨 ℹ️ Refreshed artwork for '\(podcast.title)' (same URL)")
+            }
+        } else {
+            print("⚠️ Podcast not found for artwork update: \(podcast.title)")
         }
+    }
+
+    // Update podcast's last episode date in saved podcasts
+    private func updatePodcastLastEpisodeDate(podcast: Podcast, lastEpisodeDate: Date) {
+        var podcasts = loadPodcasts()
+        if let index = podcasts.firstIndex(where: { $0.id == podcast.id }) {
+            podcasts[index].lastEpisodeDate = lastEpisodeDate
+            savePodcasts(podcasts)
+        }
+    }
+
+    // Force refresh podcast metadata (title, author, description, artwork) from RSS feed
+    func refreshPodcastMetadata(for podcast: Podcast, completion: @escaping (Bool) -> Void) {
+        print("🔍 Refreshing metadata for: \(podcast.title)")
+        print("🎨 Current artwork URL: \(podcast.artworkURL?.absoluteString ?? "nil")")
+        
+        URLSession.shared.dataTask(with: podcast.feedURL) { data, response, error in
+            guard let data = data, error == nil else {
+                print("❌ Failed to fetch RSS for \(podcast.title): \(error?.localizedDescription ?? "unknown error")")
+                DispatchQueue.main.async { completion(false) }
+                return
+            }
+            
+            let parser = RSSParser()
+            _ = parser.parseRSS(data: data, podcastID: podcast.id)
+            
+            var podcasts = self.loadPodcasts()
+            guard let index = podcasts.firstIndex(where: { $0.id == podcast.id }) else {
+                print("❌ Podcast not found in saved podcasts: \(podcast.title)")
+                DispatchQueue.main.async { completion(false) }
+                return
+            }
+            
+            var wasUpdated = false
+            
+            // Update artwork if available (ALWAYS update, even if current artwork exists)
+            if let artworkURLString = parser.getPodcastArtworkURL(),
+               let artworkURL = URL(string: artworkURLString) {
+                let oldArtwork = podcasts[index].artworkURL?.absoluteString ?? "nil"
+                podcasts[index].artworkURL = artworkURL
+                wasUpdated = true
+                print("🎨 Updated artwork for \(podcast.title)")
+                print("   Old: \(oldArtwork)")
+                print("   New: \(artworkURL.absoluteString)")
+            } else {
+                print("⚠️ No artwork URL found in RSS for \(podcast.title)")
+            }
+            
+            // Update title if different
+            if let newTitle = parser.getPodcastTitle(), newTitle != podcasts[index].title {
+                podcasts[index].title = newTitle
+                wasUpdated = true
+                print("📝 Updated title for \(podcast.title) -> \(newTitle)")
+            }
+            
+            // Update author if different  
+            if let newAuthor = parser.getPodcastAuthor(), newAuthor != podcasts[index].author {
+                podcasts[index].author = newAuthor
+                wasUpdated = true
+                print("👤 Updated author for \(podcast.title) -> \(newAuthor)")
+            }
+            
+            // Update description if different
+            if let newDescription = parser.getPodcastDescription(), newDescription != podcasts[index].description {
+                podcasts[index].description = newDescription
+                wasUpdated = true
+                print("📄 Updated description for \(podcast.title)")
+            }
+            
+            if wasUpdated {
+                self.savePodcasts(podcasts)
+                print("✅ Successfully updated metadata for \(podcast.title)")
+            } else {
+                print("ℹ️ No changes needed for \(podcast.title)")
+            }
+            
+            DispatchQueue.main.async { completion(wasUpdated) }
+        }.resume()
     }
 
     // Download episode audio file
@@ -163,12 +264,15 @@ class PodcastService {
             // Create podcast object
             let artworkURL = parser.getPodcastArtworkURL().flatMap { URL(string: $0) }
             let description = parser.getPodcastDescription() ?? ""
+            let latestEpisodeDate = episodes.compactMap({ $0.publishedDate }).max()
+            
             let podcast = Podcast(
                 title: podcastTitle,
                 author: podcastAuthor,
                 description: description,
                 feedURL: feedURL,
-                artworkURL: artworkURL
+                artworkURL: artworkURL,
+                lastEpisodeDate: latestEpisodeDate
             )
             
             // Add to saved podcasts
@@ -180,6 +284,65 @@ class PodcastService {
                 completion(podcast, nil)
             }
         }.resume()
+    }
+
+    // Force refresh all podcast artwork from RSS feeds
+    func refreshAllPodcastArtwork(completion: @escaping (Int, Int) -> Void) {
+        let podcasts = loadPodcasts()
+        guard !podcasts.isEmpty else {
+            completion(0, 0)
+            return
+        }
+        
+        print("🔄 Starting artwork refresh for \(podcasts.count) podcasts")
+        
+        let dispatchGroup = DispatchGroup()
+        var updatedCount = 0
+        var totalProcessed = 0
+        
+        for podcast in podcasts {
+            dispatchGroup.enter()
+            
+            print("🔍 Processing: \(podcast.title)")
+            
+            URLSession.shared.dataTask(with: podcast.feedURL) { data, response, error in
+                defer {
+                    totalProcessed += 1
+                    dispatchGroup.leave()
+                }
+                
+                guard let data = data, error == nil else {
+                    print("❌ Failed to fetch RSS for \(podcast.title): \(error?.localizedDescription ?? "unknown")")
+                    return
+                }
+                
+                let parser = RSSParser()
+                _ = parser.parseRSS(data: data, podcastID: podcast.id)
+                
+                if let artworkURLString = parser.getPodcastArtworkURL(),
+                   let artworkURL = URL(string: artworkURLString) {
+                    
+                    var podcasts = self.loadPodcasts()
+                    if let index = podcasts.firstIndex(where: { $0.id == podcast.id }) {
+                        let oldURL = podcasts[index].artworkURL?.absoluteString ?? "nil"
+                        podcasts[index].artworkURL = artworkURL
+                        self.savePodcasts(podcasts)
+                        updatedCount += 1
+                        
+                        print("✅ Updated \(podcast.title)")
+                        print("   Old: \(oldURL)")
+                        print("   New: \(artworkURL.absoluteString)")
+                    }
+                } else {
+                    print("⚠️ No artwork found for \(podcast.title)")
+                }
+            }.resume()
+        }
+        
+        dispatchGroup.notify(queue: .main) {
+            print("🎨 Artwork refresh complete: \(updatedCount) of \(totalProcessed) updated")
+            completion(updatedCount, totalProcessed)
+        }
     }
 }
 

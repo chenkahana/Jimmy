@@ -10,7 +10,7 @@ import SwiftUI
 struct ContentView: View {
     @AppStorage("darkMode") private var darkMode: Bool = false
     @AppStorage("highContrastMode") private var highContrastMode: Bool = false
-    @State private var selectedTab: Int = 0
+    @State private var selectedTab: Int = 3
     
     var body: some View {
         ZStack(alignment: .bottom) {

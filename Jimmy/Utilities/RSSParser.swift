@@ -25,7 +25,15 @@ class RSSParser: NSObject, XMLParserDelegate {
         podcastDescription = ""
         let parser = XMLParser(data: data)
         parser.delegate = self
-        parser.parse()
+        
+        print("🔍 Starting RSS parse...")
+        let parseResult = parser.parse()
+        print("📊 RSS parse result: \(parseResult ? "✅ Success" : "❌ Failed")")
+        print("🎨 Found podcast artwork: \(podcastArtworkURL.isEmpty ? "❌ None" : "✅ \(podcastArtworkURL)")")
+        print("📝 Found podcast title: \(podcastTitle.isEmpty ? "❌ None" : "✅ \(podcastTitle)")")
+        print("👤 Found podcast author: \(podcastAuthor.isEmpty ? "❌ None" : "✅ \(podcastAuthor)")")
+        print("📺 Found \(episodes.count) episodes")
+        
         return episodes
     }
     
@@ -49,8 +57,18 @@ class RSSParser: NSObject, XMLParserDelegate {
         }
         if parsingChannel && (elementName == "itunes:image" || elementName == "image") {
             if let url = attributeDict["href"] ?? attributeDict["url"] {
+                print("🎨 Found channel artwork via \(elementName): \(url)")
                 podcastArtworkURL = url
             }
+        }
+        if parsingChannel && (elementName == "media:thumbnail" || elementName == "thumbnail") {
+            if let url = attributeDict["url"] {
+                print("🎨 Found channel artwork via \(elementName): \(url)")
+                podcastArtworkURL = url
+            }
+        }
+        if parsingChannel && elementName == "url" && currentElementName == "image" {
+            // This will be handled in foundCharacters
         }
         if parsingItem && (elementName == "itunes:image" || elementName == "image") {
             if let url = attributeDict["href"] ?? attributeDict["url"] {
@@ -67,6 +85,13 @@ class RSSParser: NSObject, XMLParserDelegate {
                 podcastAuthor += string
             } else if currentElementName == "description" || currentElementName == "itunes:summary" {
                 podcastDescription += string
+            } else if currentElementName == "url" && podcastArtworkURL.isEmpty {
+                // Handle <image><url>artwork_url</url></image> pattern
+                let trimmedString = string.trimmingCharacters(in: .whitespacesAndNewlines)
+                if trimmedString.hasPrefix("http") {
+                    print("🎨 Found channel artwork via <url> element: \(trimmedString)")
+                    podcastArtworkURL = trimmedString
+                }
             }
         } else if parsingItem {
             if currentElementName == "title" {
@@ -86,7 +111,6 @@ class RSSParser: NSObject, XMLParserDelegate {
         if elementName == "item" && parsingItem {
             if let audioURL = URL(string: currentAudioURL), let podcastID = podcastID {
                 let date = RSSParser.dateFrom(pubDate: currentPubDate)
-                let episodeArtwork = !currentEpisodeArtworkURL.isEmpty ? URL(string: currentEpisodeArtworkURL) : nil
                 
                 // Use raw title with basic trimming, no parsing
                 let title = currentTitle.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -95,7 +119,7 @@ class RSSParser: NSObject, XMLParserDelegate {
                 let episode = Episode(
                     id: UUID(),
                     title: title,
-                    artworkURL: episodeArtwork,
+                    artworkURL: currentEpisodeArtworkURL.isEmpty ? nil : URL(string: currentEpisodeArtworkURL),
                     audioURL: audioURL,
                     description: cleanedDescription.isEmpty ? nil : cleanedDescription,
                     played: false,

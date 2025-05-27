@@ -9,5 +9,6 @@ struct Podcast: Identifiable, Codable {
     var artworkURL: URL?
     var autoAddToQueue: Bool = false
     var notificationsEnabled: Bool = false
+    var lastEpisodeDate: Date? = nil
     // Add more properties as needed
 } 

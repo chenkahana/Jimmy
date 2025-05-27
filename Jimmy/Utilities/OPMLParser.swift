@@ -20,9 +20,8 @@ class OPMLParser: NSObject, XMLParserDelegate {
     func parser(_ parser: XMLParser, didStartElement elementName: String, namespaceURI: String?, qualifiedName qName: String?, attributes attributeDict: [String : String] = [:]) {
         if elementName == "outline", let feedURL = attributeDict["xmlUrl"], let title = attributeDict["text"] ?? attributeDict["title"] {
             let author = attributeDict["author"] ?? ""
-            let artworkURL = attributeDict["image"] ?? attributeDict["artworkURL"] ?? ""
             if let url = URL(string: feedURL) {
-                let podcast = Podcast(title: title, author: author, description: "", feedURL: url, artworkURL: URL(string: artworkURL))
+                let podcast = Podcast(title: title, author: author, description: "", feedURL: url, artworkURL: nil)
                 podcasts.append(podcast)
             }
         }

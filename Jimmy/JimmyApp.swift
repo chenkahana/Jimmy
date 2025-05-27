@@ -9,11 +9,18 @@ import SwiftUI
 
 @main
 struct JimmyApp: App {
+    // Initialize the update service
+    private let updateService = EpisodeUpdateService.shared
+    
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .onOpenURL { url in
                     handleURL(url)
+                }
+                .onAppear {
+                    // Ensure background updates are running
+                    updateService.startPeriodicUpdates()
                 }
         }
     }

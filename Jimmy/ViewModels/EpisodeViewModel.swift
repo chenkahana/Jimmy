@@ -69,15 +69,15 @@ class EpisodeViewModel: ObservableObject {
     // MARK: - Persistence
     
     private func saveEpisodes() {
-        if let data = try? JSONEncoder().encode(episodes) {
-            UserDefaults.standard.set(data, forKey: episodesKey)
-            AppDataDocument.saveToICloudIfEnabled()
-        }
+        _ = FileStorage.shared.save(episodes, to: "episodes.json")
+        AppDataDocument.saveToICloudIfEnabled()
     }
     
     private func loadEpisodes() {
-        if let data = UserDefaults.standard.data(forKey: episodesKey),
-           let savedEpisodes = try? JSONDecoder().decode([Episode].self, from: data) {
+        // Try to migrate from UserDefaults first, then load from file
+        if let migratedEpisodes = FileStorage.shared.migrateFromUserDefaults([Episode].self, userDefaultsKey: episodesKey, filename: "episodes.json") {
+            episodes = migratedEpisodes
+        } else if let savedEpisodes = FileStorage.shared.load([Episode].self, from: "episodes.json") {
             episodes = savedEpisodes
         }
     }
@@ -86,15 +86,102 @@ class EpisodeViewModel: ObservableObject {
     
     func addEpisodes(_ newEpisodes: [Episode]) {
         let existingIDs = Set(episodes.map { $0.id })
-        let episodesToAdd = newEpisodes.filter { !existingIDs.contains($0.id) }
+        
+        // Create a dictionary of existing episodes by podcast+title combination
+        var existingEpisodesByTitle: [String: Episode] = [:]
+        for episode in episodes {
+            if let podcastID = episode.podcastID {
+                // Use podcastID instead of podcast title for more reliable identification
+                let key = "\(podcastID.uuidString)_\(episode.title)"
+                existingEpisodesByTitle[key] = episode
+            }
+        }
+        
+        var episodesToAdd: [Episode] = []
+        
+        for episode in newEpisodes {
+            // Skip if we already have this episode by ID
+            if existingIDs.contains(episode.id) {
+                continue
+            }
+            
+            // Skip if we already have an episode with the same title for this podcast
+            if let podcastID = episode.podcastID {
+                let key = "\(podcastID.uuidString)_\(episode.title)"
+                if let existingEpisode = existingEpisodesByTitle[key] {
+                    // Keep the one with the more recent published date, or first one if dates are equal
+                    switch (episode.publishedDate, existingEpisode.publishedDate) {
+                    case (let newDate?, let existingDate?):
+                        if newDate > existingDate {
+                            // Replace the existing episode with the newer one
+                            if let index = episodes.firstIndex(where: { $0.id == existingEpisode.id }) {
+                                episodes[index] = episode
+                                existingEpisodesByTitle[key] = episode
+                            }
+                        }
+                        // Otherwise keep existing
+                    case (_, nil):
+                        // New episode has date, existing doesn't - prefer new
+                        if let index = episodes.firstIndex(where: { $0.id == existingEpisode.id }) {
+                            episodes[index] = episode
+                            existingEpisodesByTitle[key] = episode
+                        }
+                    default:
+                        // Keep existing episode
+                        break
+                    }
+                    continue
+                }
+            }
+            
+            // New episode - add it to the list to be added
+            episodesToAdd.append(episode)
+            
+            // Also add to our tracking dictionary
+            if let podcastID = episode.podcastID {
+                let key = "\(podcastID.uuidString)_\(episode.title)"
+                existingEpisodesByTitle[key] = episode
+            }
+        }
         
         episodes.append(contentsOf: episodesToAdd)
+        
+        // Sort episodes by publication date immediately
+        sortEpisodesByDate()
+        
         saveEpisodes()
     }
     
     func removeEpisodes(for podcastID: UUID) {
         episodes.removeAll { $0.podcastID == podcastID }
         saveEpisodes()
+    }
+    
+    func clearAllEpisodes() {
+        episodes.removeAll()
+        saveEpisodes()
+    }
+    
+    // MARK: - Sorting
+    
+    private func sortEpisodesByDate() {
+        episodes.sort { episode1, episode2 in
+            switch (episode1.publishedDate, episode2.publishedDate) {
+            case (let date1?, let date2?):
+                return date1 > date2 // Most recent first
+            case (nil, _?):
+                return false // Episodes without dates go to the end
+            case (_?, nil):
+                return true // Episodes with dates come before those without
+            case (nil, nil):
+                return episode1.title.localizedCaseInsensitiveCompare(episode2.title) == .orderedAscending // Alphabetical fallback
+            }
+        }
+    }
+    
+    // MARK: - Public sorting method for manual refresh
+    func sortAllEpisodes() {
+        sortEpisodesByDate()
     }
     
     // MARK: - Statistics
