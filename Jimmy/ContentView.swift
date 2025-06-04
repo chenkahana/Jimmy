@@ -75,9 +75,21 @@ struct ContentView: View {
                     .transition(.opacity)
             }
         }
+        .onAppear {
+            // Ensure the loading screen is visible immediately on launch
+            showLoadingScreen = true
+        }
         .onChange(of: updateService.isUpdating) { updating in
             withAnimation(.easeInOut) {
                 showLoadingScreen = updating
+            }
+        }
+        .onChange(of: updateService.updateProgress) { progress in
+            // Hide the loading screen as soon as some progress is made
+            if progress > 0 {
+                withAnimation(.easeInOut) {
+                    showLoadingScreen = false
+                }
             }
         }
     }
