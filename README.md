@@ -45,6 +45,8 @@ Jimmy is a personal podcast app for iPhone, designed for simplicity, speed, and 
 - **OPML files**: Import subscriptions from exported files
 - **Apple Podcasts**: Import directly from your Apple Podcasts library
 - **Google Podcasts**: Import from Google Takeout exports
+- **Apple JSON**: Import bulk subscriptions using the provided web extractor
+- **Spotify**: Import from exported Spotify show links
 
 ### Playback Features  
 - **Variable speed**: Adjustable playback speed (0.75x to 2x)

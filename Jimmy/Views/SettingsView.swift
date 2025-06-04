@@ -17,6 +17,12 @@ struct SettingsView: View {
     @State private var isOPMLImporting = false
     @State private var opmlImportMessage: String?
     @State private var showingAppleImportGuide = false
+    @State private var showingAppleBulkGuide = false
+    @State private var isAppleJSONImporting = false
+    @State private var appleJSONImportMessage: String?
+    @State private var showingSpotifyImportGuide = false
+    @State private var isSpotifyImporting = false
+    @State private var spotifyImportMessage: String?
     @State private var activeAlert: SettingsAlert?
     @State private var isSubscriptionImporting = false
     @State private var subscriptionImportMessage: String?
@@ -26,6 +32,8 @@ struct SettingsView: View {
         case appleImport(String)
         case opmlImport(String)
         case subscriptionImport(String)
+        case appleBulkImport(String)
+        case spotifyImport(String)
     }
 
     var body: some View {
@@ -119,6 +127,21 @@ struct SettingsView: View {
                                 .font(.caption)
                         }
                     }
+
+                    Button(action: {
+                        showingAppleBulkGuide = true
+                    }) {
+                        HStack {
+                            Image(systemName: "tray.and.arrow.down")
+                                .foregroundColor(.accentColor)
+                            Text("Import from Extractor File")
+                                .foregroundColor(.accentColor)
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .foregroundColor(.secondary)
+                                .font(.caption)
+                        }
+                    }
                 }
                 .padding(.vertical, 4)
             }
@@ -127,11 +150,23 @@ struct SettingsView: View {
                 Button("Import Podcast From URL") {
                     showingManualImport = true
                 }
-                
+
                 Button("Import OPML File") {
                     isOPMLImporting = true
                 }
-                
+
+                Button("Import Apple JSON File") {
+                    isAppleJSONImporting = true
+                }
+
+                Button("Import Spotify File") {
+                    isSpotifyImporting = true
+                }
+
+                Button("Spotify Import Guide") {
+                    showingSpotifyImportGuide = true
+                }
+
                 Button("Import from Subscription File") {
                     importFromSubscriptionFile()
                 }
@@ -199,6 +234,22 @@ struct SettingsView: View {
                 opmlImportMessage = "Error selecting file: \(error.localizedDescription)"
             }
         }
+        .fileImporter(isPresented: $isAppleJSONImporting, allowedContentTypes: [.json]) { result in
+            switch result {
+            case .success(let url):
+                importAppleJSONFile(from: url)
+            case .failure(let error):
+                appleJSONImportMessage = "Error selecting file: \(error.localizedDescription)"
+            }
+        }
+        .fileImporter(isPresented: $isSpotifyImporting, allowedContentTypes: [.text, .data]) { result in
+            switch result {
+            case .success(let url):
+                importSpotifyFile(from: url)
+            case .failure(let error):
+                spotifyImportMessage = "Error selecting file: \(error.localizedDescription)"
+            }
+        }
         .sheet(isPresented: $showingAnalytics) {
             AnalyticsView()
         }
@@ -221,6 +272,12 @@ struct SettingsView: View {
         }
         .sheet(isPresented: $showingAppleImportGuide) {
             ApplePodcastImportGuideSheet()
+        }
+        .sheet(isPresented: $showingAppleBulkGuide) {
+            AppleBulkImportGuideSheet()
+        }
+        .sheet(isPresented: $showingSpotifyImportGuide) {
+            SpotifyImportGuideSheet()
         }
     }
     
@@ -290,7 +347,7 @@ struct SettingsView: View {
         
         // Save updated podcasts
         PodcastService.shared.savePodcasts(currentPodcasts)
-        
+
         // Show success message
         if newPodcastsCount > 0 {
             if skippedCount > 0 {
@@ -300,6 +357,79 @@ struct SettingsView: View {
             }
         } else {
             opmlImportMessage = "No new podcasts to import. All \(importedPodcasts.count) podcasts are already in your library."
+        }
+    }
+
+    private func importAppleJSONFile(from url: URL) {
+        appleJSONImportMessage = "Processing file..."
+        let _ = url.startAccessingSecurityScopedResource()
+        defer { url.stopAccessingSecurityScopedResource() }
+
+        guard let data = try? Data(contentsOf: url) else {
+            appleJSONImportMessage = "Could not read file"
+            return
+        }
+
+        do {
+            let podcasts = try AppleBulkImportParser.parse(data: data)
+            var current = PodcastService.shared.loadPodcasts()
+            var newCount = 0
+            for p in podcasts {
+                if !current.contains(where: { $0.feedURL == p.feedURL }) {
+                    current.append(p)
+                    newCount += 1
+                }
+            }
+            PodcastService.shared.savePodcasts(current)
+            appleJSONImportMessage = "🎉 Imported \(newCount) podcast(s)" 
+        } catch {
+            appleJSONImportMessage = "Import failed: \(error.localizedDescription)"
+        }
+        activeAlert = .appleBulkImport(appleJSONImportMessage ?? "Import finished")
+    }
+
+    private func importSpotifyFile(from url: URL) {
+        spotifyImportMessage = "Processing file..."
+        let _ = url.startAccessingSecurityScopedResource()
+        defer { url.stopAccessingSecurityScopedResource() }
+
+        guard let data = try? Data(contentsOf: url) else {
+            spotifyImportMessage = "Could not read file"
+            activeAlert = .spotifyImport(spotifyImportMessage ?? "")
+            return
+        }
+
+        let urls = SpotifyListParser.parse(data: data)
+        guard !urls.isEmpty else {
+            spotifyImportMessage = "No URLs found in file"
+            activeAlert = .spotifyImport(spotifyImportMessage ?? "")
+            return
+        }
+
+        var current = PodcastService.shared.loadPodcasts()
+        var newCount = 0
+        let group = DispatchGroup()
+        for url in urls {
+            group.enter()
+            PodcastURLResolver.shared.resolveToRSSFeed(from: url.absoluteString) { feedURL in
+                if let feedURL = feedURL, !current.contains(where: { $0.feedURL == feedURL }) {
+                    PodcastService.shared.addPodcast(from: feedURL) { podcast, _ in
+                        if let podcast = podcast {
+                            current.append(podcast)
+                            newCount += 1
+                        }
+                        group.leave()
+                    }
+                } else {
+                    group.leave()
+                }
+            }
+        }
+
+        group.notify(queue: .main) {
+            PodcastService.shared.savePodcasts(current)
+            self.spotifyImportMessage = "🎉 Imported \(newCount) podcast(s)" 
+            self.activeAlert = .spotifyImport(self.spotifyImportMessage ?? "")
         }
     }
     
@@ -465,6 +595,10 @@ struct SettingsView: View {
             return "OPML Import"
         case .subscriptionImport(_):
             return "Subscription Import"
+        case .appleBulkImport(_):
+            return "Apple JSON Import"
+        case .spotifyImport(_):
+            return "Spotify Import"
         case .none:
             return ""
         }
@@ -484,9 +618,9 @@ struct SettingsView: View {
                     }
                 }
             )
-        case .appleImport(_), .opmlImport(_), .subscriptionImport(_), .none:
+        case .appleImport(_), .opmlImport(_), .subscriptionImport(_), .appleBulkImport(_), .spotifyImport(_), .none:
             return AnyView(
-                Button("OK") { 
+                Button("OK") {
                     activeAlert = nil
                 }
             )
@@ -502,6 +636,10 @@ struct SettingsView: View {
         case .opmlImport(let message):
             return Text(message)
         case .subscriptionImport(let message):
+            return Text(message)
+        case .appleBulkImport(let message):
+            return Text(message)
+        case .spotifyImport(let message):
             return Text(message)
         case .none:
             return Text("")
@@ -952,6 +1090,98 @@ struct ShortcutBenefitRow: View {
                 .foregroundColor(.primary)
             
             Spacer()
+        }
+    }
+}
+
+// MARK: - Apple Bulk Import Guide Sheet
+
+struct AppleBulkImportGuideSheet: View {
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    Text("Bulk Import Using Web Extractor")
+                        .font(.title2)
+                        .fontWeight(.bold)
+
+                    VStack(alignment: .leading, spacing: 16) {
+                        ImportStepView(number: "1",
+                                       title: "Open the Extractor",
+                                       description: "Visit the apple-podcasts-extractor.html file and follow the instructions.",
+                                       icon: "safari",
+                                       color: .blue)
+
+                        ImportStepView(number: "2",
+                                       title: "Download JSON",
+                                       description: "The extractor saves a JSON file with all your subscriptions",
+                                       icon: "arrow.down.doc",
+                                       color: .green)
+
+                        ImportStepView(number: "3",
+                                       title: "Import in Jimmy",
+                                       description: "Use 'Import Apple JSON File' in Settings",
+                                       icon: "tray.and.arrow.down",
+                                       color: .accentColor)
+                    }
+                }
+                .padding()
+            }
+            .navigationTitle("Apple JSON Import")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Spotify Import Guide Sheet
+
+struct SpotifyImportGuideSheet: View {
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    Text("Import Subscriptions from Spotify")
+                        .font(.title2)
+                        .fontWeight(.bold)
+
+                    VStack(alignment: .leading, spacing: 16) {
+                        ImportStepView(number: "1",
+                                       title: "Export Show Links",
+                                       description: "Use the Spotify web player and our helper script to save your followed shows as a text file of links",
+                                       icon: "safari",
+                                       color: .green)
+
+                        ImportStepView(number: "2",
+                                       title: "Import File",
+                                       description: "Select 'Import Spotify File' in Settings and choose the exported text file",
+                                       icon: "tray.and.arrow.down",
+                                       color: .accentColor)
+
+                        ImportStepView(number: "3",
+                                       title: "Verify Results",
+                                       description: "Jimmy will match the links to RSS feeds automatically",
+                                       icon: "checkmark",
+                                       color: .purple)
+                    }
+                }
+                .padding()
+            }
+            .navigationTitle("Spotify Import")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") { dismiss() }
+                }
+            }
         }
     }
 }
