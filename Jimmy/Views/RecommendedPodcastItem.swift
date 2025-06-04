@@ -5,6 +5,27 @@ struct RecommendedPodcastItem: View {
     let isSubscribed: Bool
     let onSubscribe: () -> Void
 
+    /// Gradient palette for dynamic backgrounds
+    private static let colorPairs: [(Color, Color)] = [
+        (.pink, .orange),
+        (.purple, .blue),
+        (.green, .teal),
+        (.yellow, .orange),
+        (.mint, .green),
+        (.cyan, .indigo),
+        (.red, .pink),
+        (.orange, .pink)
+    ]
+
+    private var gradient: LinearGradient {
+        let pair = Self.colorPairs[abs(result.id) % Self.colorPairs.count]
+        return LinearGradient(
+            colors: [pair.0.opacity(0.2), pair.1.opacity(0.2)],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+
     var body: some View {
         VStack(spacing: 8) {
             PodcastArtworkView(
@@ -37,6 +58,10 @@ struct RecommendedPodcastItem: View {
             }
             .disabled(isSubscribed)
         }
+        .padding(8)
+        .background(gradient)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
     }
 }
 

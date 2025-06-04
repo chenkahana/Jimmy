@@ -269,7 +269,27 @@ struct SearchResultRow: View {
     let isSubscribed: Bool
     let onTap: () -> Void
     let onSubscribe: () -> Void
-    
+
+    private static let colorPairs: [(Color, Color)] = [
+        (.pink, .orange),
+        (.purple, .blue),
+        (.green, .teal),
+        (.yellow, .orange),
+        (.mint, .green),
+        (.cyan, .indigo),
+        (.red, .pink),
+        (.orange, .pink)
+    ]
+
+    private var gradient: LinearGradient {
+        let pair = Self.colorPairs[abs(result.id) % Self.colorPairs.count]
+        return LinearGradient(
+            colors: [pair.0.opacity(0.1), pair.1.opacity(0.1)],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+
     var body: some View {
         Button(action: onTap) {
             HStack(alignment: .top, spacing: 12) {
@@ -311,7 +331,10 @@ struct SearchResultRow: View {
                 }
                 .buttonStyle(.plain)
             }
+            .padding(8)
+            .background(gradient)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
         }
         .buttonStyle(.plain)
     }
-} 
+}
