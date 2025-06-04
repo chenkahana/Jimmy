@@ -7,8 +7,7 @@
 	objects = {
 
 /* Begin PBXFileReference section */
-		D411ADBD2DE078AE00E1779D /* Jimmy.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Jimmy.app; sourceTree = BUILT_PRODUCTS_DIR; };
-                                D51100092DE078AF00E1779D /* JimmyTests.xctest */
+               D411ADBD2DE078AE00E1779D /* Jimmy.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Jimmy.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -105,9 +104,8 @@
 			packageProductDependencies = (
 			);
 			productName = Jimmy;
-			productReference = D411ADBD2DE078AE00E1779D /* Jimmy.app */;
-                                D51100092DE078AF00E1779D /* JimmyTests.xctest */
-			productType = "com.apple.product-type.application";
+                       productReference = D411ADBD2DE078AE00E1779D /* Jimmy.app */;
+                       productType = "com.apple.product-type.application";
 		};
                 D51100052DE078AF00E1779D /* JimmyTests */ = {
                         isa = PBXNativeTarget;
