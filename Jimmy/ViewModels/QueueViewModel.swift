@@ -34,7 +34,9 @@ class QueueViewModel: ObservableObject {
     }
     
     func removeFromQueue(_ episode: Episode) {
-        queue.removeAll { $0.id == episode.id }
+        if let index = queue.firstIndex(where: { $0.id == episode.id }) {
+            queue.remove(at: index)
+        }
         saveQueue()
     }
     
