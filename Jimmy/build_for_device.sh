@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Build script for Jimmy iOS app
-# This script builds and installs the app on connected iOS device
+# This script builds the app and shows manual installation steps for a connected iOS device
 
 echo "🚀 Building Jimmy for iOS device..."
 
