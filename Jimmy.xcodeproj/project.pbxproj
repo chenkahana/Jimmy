@@ -379,38 +379,48 @@
 			};
                         name = Release;
                 };
-                7f15b3bd2b2844e99caac831 /* Debug */ = {
-                        isa = XCBuildConfiguration;
-                        buildSettings = {
-                                INFOPLIST_FILE = JimmyTests/Info.plist;
-                                PRODUCT_BUNDLE_IDENTIFIER = com.chenkahana.JimmyTests;
-                                PRODUCT_NAME = "$(TARGET_NAME)";
-                                TARGETED_DEVICE_FAMILY = "1,2";
-                                SWIFT_VERSION = 5.0;
-                                IPHONEOS_DEPLOYMENT_TARGET = 18.4;
-                                LD_RUNPATH_SEARCH_PATHS = (
-                                        "$(inherited)",
-                                        "@executable_path/Frameworks",
-                                );
-                        };
-                        name = Debug;
-                };
-                918a5391d28a4056887b5920 /* Release */ = {
-                        isa = XCBuildConfiguration;
-                        buildSettings = {
-                                INFOPLIST_FILE = JimmyTests/Info.plist;
-                                PRODUCT_BUNDLE_IDENTIFIER = com.chenkahana.JimmyTests;
-                                PRODUCT_NAME = "$(TARGET_NAME)";
-                                TARGETED_DEVICE_FAMILY = "1,2";
-                                SWIFT_VERSION = 5.0;
-                                IPHONEOS_DEPLOYMENT_TARGET = 18.4;
-                                LD_RUNPATH_SEARCH_PATHS = (
-                                        "$(inherited)",
-                                        "@executable_path/Frameworks",
-                                );
-                        };
-                        name = Release;
-                };
+               7f15b3bd2b2844e99caac831 /* Debug */ = {
+                       isa = XCBuildConfiguration;
+                       buildSettings = {
+                               INFOPLIST_FILE = JimmyTests/Info.plist;
+                               PRODUCT_BUNDLE_IDENTIFIER = com.chenkahana.JimmyTests;
+                               PRODUCT_NAME = "$(TARGET_NAME)";
+                               TARGETED_DEVICE_FAMILY = "1,2";
+                               SWIFT_VERSION = 5.0;
+                               IPHONEOS_DEPLOYMENT_TARGET = 18.4;
+                               GCC_PREPROCESSOR_DEFINITIONS = (
+                                       "DEBUG=1",
+                                       "$(inherited)",
+                               );
+                               SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+                               LD_RUNPATH_SEARCH_PATHS = (
+                                       "$(inherited)",
+                                       "@executable_path/Frameworks",
+                               );
+                       };
+                       name = Debug;
+               };
+               918a5391d28a4056887b5920 /* Release */ = {
+                       isa = XCBuildConfiguration;
+                       buildSettings = {
+                               INFOPLIST_FILE = JimmyTests/Info.plist;
+                               PRODUCT_BUNDLE_IDENTIFIER = com.chenkahana.JimmyTests;
+                               PRODUCT_NAME = "$(TARGET_NAME)";
+                               TARGETED_DEVICE_FAMILY = "1,2";
+                               SWIFT_VERSION = 5.0;
+                               IPHONEOS_DEPLOYMENT_TARGET = 18.4;
+                               GCC_PREPROCESSOR_DEFINITIONS = (
+                                       "DEBUG=1",
+                                       "$(inherited)",
+                               );
+                               SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+                               LD_RUNPATH_SEARCH_PATHS = (
+                                       "$(inherited)",
+                                       "@executable_path/Frameworks",
+                               );
+                       };
+                       name = Release;
+               };
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
