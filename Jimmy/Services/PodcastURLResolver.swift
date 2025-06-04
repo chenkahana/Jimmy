@@ -134,9 +134,9 @@ class PodcastURLResolver {
     }
 
     private func extractMetaContent(html: String, property: String) -> String? {
-        let pattern = "<meta[^>]*property=\"\(property)\"[^>]*content=\"([^"]+)\""
+        let pattern = "<meta[^>]*property=\"\(property)\"[^>]*content=\"([^\"]+)\""
         if let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive),
-           let match = regex.firstMatch(in: html, range: NSRange(html.startIndex..., in: html)),
+           let match = regex.firstMatch(in: html, range: NSRange(html.startIndex..<html.endIndex, in: html)),
            let range = Range(match.range(at: 1), in: html) {
             return String(html[range])
         }
@@ -166,7 +166,7 @@ class PodcastURLResolver {
             
             for pattern in rssPatterns {
                 if let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive),
-                   let match = regex.firstMatch(in: html, range: NSRange(html.startIndex..., in: html)),
+                   let match = regex.firstMatch(in: html, range: NSRange(html.startIndex..<html.endIndex, in: html)),
                    let urlRange = Range(match.range(at: 1), in: html) {
                     let rssURLString = String(html[urlRange])
                     
