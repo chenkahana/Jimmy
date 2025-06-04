@@ -213,7 +213,7 @@ struct PodcastDetailHeaderView: View {
                         )
                     )
                     .overlay(
-                        Image(systemName: "방송") // Using a generic podcast icon (Korean for broadcast)
+                        Image(systemName: "waveform.circle.fill") // Using a generic podcast icon (Korean for broadcast)
                             .font(.system(size: 40))
                             .foregroundColor(.secondary.opacity(0.8))
                     )
