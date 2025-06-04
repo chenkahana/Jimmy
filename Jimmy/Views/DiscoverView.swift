@@ -13,39 +13,37 @@ struct DiscoverView: View {
 
     var body: some View {
         ScrollView {
-                    if isLoading {
-                        ProgressView("Loading recommendations...")
-                            .progressViewStyle(CircularProgressViewStyle())
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                            .padding(.top, 40)
-                    } else if recommended.isEmpty {
-                        VStack(spacing: 16) {
-                            Image(systemName: "sparkles")
-                                .font(.system(size: 48))
-                                .foregroundColor(.gray)
-                            Text("No recommendations yet")
-                                .font(.headline)
-                                .foregroundColor(.secondary)
+            if isLoading {
+                ProgressView("Loading recommendations...")
+                    .progressViewStyle(CircularProgressViewStyle())
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .padding(.top, 40)
+            } else if recommended.isEmpty {
+                VStack(spacing: 16) {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 48))
+                        .foregroundColor(.gray)
+                    Text("No recommendations yet")
+                        .font(.headline)
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 40)
+            } else {
+                LazyVGrid(columns: columns, spacing: 20) {
+                    ForEach(Array(recommended.enumerated()), id: \.element.id) { index, result in
+                        NavigationLink(destination: SearchResultDetailView(result: result)) {
+                            RecommendedPodcastItem(
+                                result: result,
+                                isSubscribed: isSubscribed(result),
+                                onSubscribe: { subscribe(to: result) },
+                                styleIndex: index
+                            )
                         }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 40)
-                    } else {
-                        LazyVGrid(columns: columns, spacing: 20) {
-                            ForEach(Array(recommended.enumerated()), id: \.element.id) { index, result in
-                                NavigationLink(destination: SearchResultDetailView(result: result)) {
-                                    RecommendedPodcastItem(
-                                        result: result,
-                                        isSubscribed: isSubscribed(result),
-                                        onSubscribe: { subscribe(to: result) },
-                                        styleIndex: index
-                                    )
-                                }
-                                .buttonStyle(.plain)
-                            }
-                        }
-                        .padding()
+                        .buttonStyle(.plain)
                     }
                 }
+                .padding()
             }
         }
         .navigationTitle("Discover")
