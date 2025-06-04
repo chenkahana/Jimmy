@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import UniformTypeIdentifiers
 
 @main
 struct JimmyApp: App {
@@ -26,6 +27,15 @@ struct JimmyApp: App {
     }
     
     private func handleURL(_ url: URL) {
+        // If a local audio file was shared to the app, import it
+        if url.isFileURL {
+            if let type = try? url.resourceValues(forKeys: [.contentTypeKey]).contentType,
+               type.conforms(to: .audio) {
+                _ = SharedAudioImporter.shared.importFile(from: url)
+            }
+            return
+        }
+
         // Handle jimmy://import?url=PODCAST_URL
         guard url.scheme == "jimmy",
               url.host == "import" else {
