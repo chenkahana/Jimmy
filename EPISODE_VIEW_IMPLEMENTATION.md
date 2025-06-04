@@ -190,4 +190,4 @@ The current implementation is designed to be easily extensible:
 - Custom navigation maintains app branding and UX consistency
 - Ready for future enhancements and additional features
 
-The implementation now fully matches the provided design mockup with a beautiful, functional episode detail view that provides users with comprehensive episode information and intuitive playback controls. 
+The implementation now fully matches the provided design mockup with a beautiful, functional episode detail view that provides users with comprehensive episode information and intuitive playback controls.
