@@ -132,7 +132,7 @@ Jimmy/
 
 ## 🤝 Collaboration & Project Rules
 
-See [CURSOR_RULES.md](./CURSOR_RULES.md) for:
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for:
 - Collaboration guidelines
 - Tech stack
 - Ideal project structure
