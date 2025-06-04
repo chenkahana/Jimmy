@@ -96,6 +96,14 @@ The lock-screen widget is fully implemented but requires Xcode project setup:
 - Swift 5.9+
 - Physical device (for widget testing)
 
+## 🧪 Running Tests
+Run all available tests. On macOS the script uses `xcodebuild`, otherwise it
+falls back to Swift Package Manager:
+
+```bash
+./scripts/run_all_tests.sh
+```
+
 ## 📂 Project Structure
 
 ```

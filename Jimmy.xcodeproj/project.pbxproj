@@ -7,55 +7,55 @@
 	objects = {
 
 /* Begin PBXFileReference section */
-                D411ADBD2DE078AE00E1779D /* Jimmy.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Jimmy.app; sourceTree = BUILT_PRODUCTS_DIR; };
-                6883b14d4c38a00040ab4587 /* JimmyTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = JimmyTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		D411ADBD2DE078AE00E1779D /* Jimmy.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Jimmy.app; sourceTree = BUILT_PRODUCTS_DIR; };
+                                D51100092DE078AF00E1779D /* JimmyTests.xctest */
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-                D4741FE52DE108DE00E4FC5D /* Exceptions for "Jimmy" folder in "Jimmy" target */ = {
+		D4741FE52DE108DE00E4FC5D /* Exceptions for "Jimmy" folder in "Jimmy" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = D411ADBC2DE078AE00E1779D /* Jimmy */;
+		};
+                D51100002DE078AF00E1779D /* Exceptions for "JimmyTests" folder in "JimmyTests" target */ = {
                         isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
                         membershipExceptions = (
                                 Info.plist,
                         );
-                        target = D411ADBC2DE078AE00E1779D /* Jimmy */;
-                };
-                4f7129e513d24a17979f9d9a /* Exceptions for "JimmyTests" folder in "JimmyTests" target */ = {
-                        isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-                        membershipExceptions = (
-                                Info.plist,
-                        );
-                        target = fa7cfa869fea8b7ccc3ff7e7 /* JimmyTests */;
+                        target = D51100052DE078AF00E1779D /* JimmyTests */;
                 };
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-                D411ADBF2DE078AE00E1779D /* Jimmy */ = {
+		D411ADBF2DE078AE00E1779D /* Jimmy */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				D4741FE52DE108DE00E4FC5D /* Exceptions for "Jimmy" folder in "Jimmy" target */,
+			);
+			path = Jimmy;
+			sourceTree = "<group>";
+		};
+                D51100012DE078AF00E1779D /* JimmyTests */ = {
                         isa = PBXFileSystemSynchronizedRootGroup;
                         exceptions = (
-                                D4741FE52DE108DE00E4FC5D /* Exceptions for "Jimmy" folder in "Jimmy" target */,
+                                D51100002DE078AF00E1779D /* Exceptions for "JimmyTests" folder in "JimmyTests" target */,
                         );
-                        path = Jimmy;
-                        sourceTree = "<group>";
-                };
-                72f1a162887c44158c67ea57 /* JimmyTests */ = {
-                        isa = PBXFileSystemSynchronizedRootGroup;
-                        exceptions = (
-                                4f7129e513d24a17979f9d9a /* Exceptions for "JimmyTests" folder in "JimmyTests" target */,
-                        );
-                        path = JimmyTests;
+                        path = Tests;
                         sourceTree = "<group>";
                 };
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
-                D411ADBA2DE078AE00E1779D /* Frameworks */ = {
-                        isa = PBXFrameworksBuildPhase;
-                        buildActionMask = 2147483647;
-                        files = (
-                        );
-                        runOnlyForDeploymentPostprocessing = 0;
-                };
-                690f2862677e0460c67eade6 /* Frameworks */ = {
+		D411ADBA2DE078AE00E1779D /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+                D51100032DE078AF00E1779D /* Frameworks */ = {
                         isa = PBXFrameworksBuildPhase;
                         buildActionMask = 2147483647;
                         files = (
@@ -65,69 +65,70 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-                D411ADB42DE078AE00E1779D = {
-                        isa = PBXGroup;
-                        children = (
-                                D411ADBF2DE078AE00E1779D /* Jimmy */,
-                                72f1a162887c44158c67ea57 /* JimmyTests */,
-                                D411ADBE2DE078AE00E1779D /* Products */,
-                        );
-                        sourceTree = "<group>";
-                };
-                D411ADBE2DE078AE00E1779D /* Products */ = {
-                        isa = PBXGroup;
-                        children = (
-                                D411ADBD2DE078AE00E1779D /* Jimmy.app */,
-                                6883b14d4c38a00040ab4587 /* JimmyTests.xctest */,
-                        );
-                        name = Products;
-                        sourceTree = "<group>";
-                };
+		D411ADB42DE078AE00E1779D = {
+			isa = PBXGroup;
+			children = (
+				D411ADBF2DE078AE00E1779D /* Jimmy */,
+                                D51100012DE078AF00E1779D /* JimmyTests */,
+				D411ADBE2DE078AE00E1779D /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		D411ADBE2DE078AE00E1779D /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				D411ADBD2DE078AE00E1779D /* Jimmy.app */,
+                                D51100092DE078AF00E1779D /* JimmyTests.xctest */
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-                D411ADBC2DE078AE00E1779D /* Jimmy */ = {
+		D411ADBC2DE078AE00E1779D /* Jimmy */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D411ADC82DE078AF00E1779D /* Build configuration list for PBXNativeTarget "Jimmy" */;
+			buildPhases = (
+				D411ADB92DE078AE00E1779D /* Sources */,
+				D411ADBA2DE078AE00E1779D /* Frameworks */,
+				D411ADBB2DE078AE00E1779D /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				D411ADBF2DE078AE00E1779D /* Jimmy */,
+			);
+			name = Jimmy;
+			packageProductDependencies = (
+			);
+			productName = Jimmy;
+			productReference = D411ADBD2DE078AE00E1779D /* Jimmy.app */;
+                                D51100092DE078AF00E1779D /* JimmyTests.xctest */
+			productType = "com.apple.product-type.application";
+		};
+                D51100052DE078AF00E1779D /* JimmyTests */ = {
                         isa = PBXNativeTarget;
-                        buildConfigurationList = D411ADC82DE078AF00E1779D /* Build configuration list for PBXNativeTarget "Jimmy" */;
+                        buildConfigurationList = D51100062DE078AF00E1779D /* Build configuration list for PBXNativeTarget "JimmyTests" */;
                         buildPhases = (
-                                D411ADB92DE078AE00E1779D /* Sources */,
-                                D411ADBA2DE078AE00E1779D /* Frameworks */,
-                                D411ADBB2DE078AE00E1779D /* Resources */,
+                                D51100022DE078AF00E1779D /* Sources */,
+                                D51100032DE078AF00E1779D /* Frameworks */,
+                                D51100042DE078AF00E1779D /* Resources */,
                         );
                         buildRules = (
                         );
                         dependencies = (
                         );
                         fileSystemSynchronizedGroups = (
-                                D411ADBF2DE078AE00E1779D /* Jimmy */,
-                        );
-                        name = Jimmy;
-                        packageProductDependencies = (
-                        );
-                        productName = Jimmy;
-                        productReference = D411ADBD2DE078AE00E1779D /* Jimmy.app */;
-                        productType = "com.apple.product-type.application";
-                };
-                fa7cfa869fea8b7ccc3ff7e7 /* JimmyTests */ = {
-                        isa = PBXNativeTarget;
-                        buildConfigurationList = 2e34550305444bafa5e81198 /* Build configuration list for PBXNativeTarget "JimmyTests" */;
-                        buildPhases = (
-                                98686f9f20cfafcada382ee5 /* Sources */,
-                                690f2862677e0460c67eade6 /* Frameworks */,
-                                bf34b9982948a519f9005092 /* Resources */,
-                        );
-                        buildRules = (
-                        );
-                        dependencies = (
-                        );
-                        fileSystemSynchronizedGroups = (
-                                72f1a162887c44158c67ea57 /* JimmyTests */,
+                                D51100012DE078AF00E1779D /* JimmyTests */,
                         );
                         name = JimmyTests;
                         packageProductDependencies = (
                         );
                         productName = JimmyTests;
-                        productReference = 6883b14d4c38a00040ab4587 /* JimmyTests.xctest */;
+                        productReference = D51100092DE078AF00E1779D /* JimmyTests.xctest */;
                         productType = "com.apple.product-type.bundle.unit-test";
                 };
 /* End PBXNativeTarget section */
@@ -158,22 +159,22 @@
 			productRefGroup = D411ADBE2DE078AE00E1779D /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
-                        targets = (
-                                D411ADBC2DE078AE00E1779D /* Jimmy */,
-                                fa7cfa869fea8b7ccc3ff7e7 /* JimmyTests */,
-                        );
-                };
+			targets = (
+				D411ADBC2DE078AE00E1779D /* Jimmy */,
+                                D51100052DE078AF00E1779D /* JimmyTests */
+			);
+		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-                D411ADBB2DE078AE00E1779D /* Resources */ = {
-                        isa = PBXResourcesBuildPhase;
-                        buildActionMask = 2147483647;
-                        files = (
-                        );
-                        runOnlyForDeploymentPostprocessing = 0;
-                };
-                bf34b9982948a519f9005092 /* Resources */ = {
+		D411ADBB2DE078AE00E1779D /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+                D51100042DE078AF00E1779D /* Resources */ = {
                         isa = PBXResourcesBuildPhase;
                         buildActionMask = 2147483647;
                         files = (
@@ -183,14 +184,14 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-                D411ADB92DE078AE00E1779D /* Sources */ = {
-                        isa = PBXSourcesBuildPhase;
-                        buildActionMask = 2147483647;
-                        files = (
-                        );
-                        runOnlyForDeploymentPostprocessing = 0;
-                };
-                98686f9f20cfafcada382ee5 /* Sources */ = {
+		D411ADB92DE078AE00E1779D /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+                D51100022DE078AF00E1779D /* Sources */ = {
                         isa = PBXSourcesBuildPhase;
                         buildActionMask = 2147483647;
                         files = (
@@ -349,10 +350,10 @@
 			};
 			name = Debug;
 		};
-                D411ADCA2DE078AF00E1779D /* Release */ = {
-                        isa = XCBuildConfiguration;
-                        buildSettings = {
-                                ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+		D411ADCA2DE078AF00E1779D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -377,50 +378,28 @@
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
+			name = Release;
+		};
+                D51100072DE078AF00E1779D /* Debug */ = {
+                        isa = XCBuildConfiguration;
+                        buildSettings = {
+                                INFOPLIST_FILE = Tests/Info.plist;
+                                PRODUCT_BUNDLE_IDENTIFIER = com.chenkahana.JimmyTests;
+                                PRODUCT_NAME = "$(TARGET_NAME)";
+                                SWIFT_VERSION = 5.0;
+                        };
+                        name = Debug;
+                };
+                D51100082DE078AF00E1779D /* Release */ = {
+                        isa = XCBuildConfiguration;
+                        buildSettings = {
+                                INFOPLIST_FILE = Tests/Info.plist;
+                                PRODUCT_BUNDLE_IDENTIFIER = com.chenkahana.JimmyTests;
+                                PRODUCT_NAME = "$(TARGET_NAME)";
+                                SWIFT_VERSION = 5.0;
+                        };
                         name = Release;
                 };
-               7f15b3bd2b2844e99caac831 /* Debug */ = {
-                       isa = XCBuildConfiguration;
-                       buildSettings = {
-                               INFOPLIST_FILE = JimmyTests/Info.plist;
-                               PRODUCT_BUNDLE_IDENTIFIER = com.chenkahana.JimmyTests;
-                               PRODUCT_NAME = "$(TARGET_NAME)";
-                               TARGETED_DEVICE_FAMILY = "1,2";
-                               SWIFT_VERSION = 5.0;
-                               IPHONEOS_DEPLOYMENT_TARGET = 18.4;
-                               GCC_PREPROCESSOR_DEFINITIONS = (
-                                       "DEBUG=1",
-                                       "$(inherited)",
-                               );
-                               SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
-                               LD_RUNPATH_SEARCH_PATHS = (
-                                       "$(inherited)",
-                                       "@executable_path/Frameworks",
-                               );
-                       };
-                       name = Debug;
-               };
-               918a5391d28a4056887b5920 /* Release */ = {
-                       isa = XCBuildConfiguration;
-                       buildSettings = {
-                               INFOPLIST_FILE = JimmyTests/Info.plist;
-                               PRODUCT_BUNDLE_IDENTIFIER = com.chenkahana.JimmyTests;
-                               PRODUCT_NAME = "$(TARGET_NAME)";
-                               TARGETED_DEVICE_FAMILY = "1,2";
-                               SWIFT_VERSION = 5.0;
-                               IPHONEOS_DEPLOYMENT_TARGET = 18.4;
-                               GCC_PREPROCESSOR_DEFINITIONS = (
-                                       "DEBUG=1",
-                                       "$(inherited)",
-                               );
-                               SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
-                               LD_RUNPATH_SEARCH_PATHS = (
-                                       "$(inherited)",
-                                       "@executable_path/Frameworks",
-                               );
-                       };
-                       name = Release;
-               };
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -433,20 +412,20 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-                D411ADC82DE078AF00E1779D /* Build configuration list for PBXNativeTarget "Jimmy" */ = {
+		D411ADC82DE078AF00E1779D /* Build configuration list for PBXNativeTarget "Jimmy" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D411ADC92DE078AF00E1779D /* Debug */,
+				D411ADCA2DE078AF00E1779D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+                D51100062DE078AF00E1779D /* Build configuration list for PBXNativeTarget "JimmyTests" */ = {
                         isa = XCConfigurationList;
                         buildConfigurations = (
-                                D411ADC92DE078AF00E1779D /* Debug */,
-                                D411ADCA2DE078AF00E1779D /* Release */,
-                        );
-                        defaultConfigurationIsVisible = 0;
-                        defaultConfigurationName = Release;
-                };
-                2e34550305444bafa5e81198 /* Build configuration list for PBXNativeTarget "JimmyTests" */ = {
-                        isa = XCConfigurationList;
-                        buildConfigurations = (
-                                7f15b3bd2b2844e99caac831 /* Debug */,
-                                918a5391d28a4056887b5920 /* Release */,
+                                D51100072DE078AF00E1779D /* Debug */,
+                                D51100082DE078AF00E1779D /* Release */,
                         );
                         defaultConfigurationIsVisible = 0;
                         defaultConfigurationName = Release;
