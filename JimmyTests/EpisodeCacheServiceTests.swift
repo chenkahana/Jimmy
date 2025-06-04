@@ -45,7 +45,10 @@ final class EpisodeCacheServiceTests: XCTestCase {
 
 final class StubURLProtocol: URLProtocol {
     static var requestCount = 0
-    static var stubData: Data = """<?xml version=\"1.0\"?><rss><channel><item><title>Ep</title><enclosure url=\"https://a.com/1.mp3\" type=\"audio/mpeg\"/></item></channel></rss>""".data(using: .utf8)!
+    static var stubData: Data = """
+    <?xml version="1.0"?>
+    <rss><channel><item><title>Ep</title><enclosure url="https://a.com/1.mp3" type="audio/mpeg"/></item></channel></rss>
+    """.data(using: .utf8)!
 
     override class func canInit(with request: URLRequest) -> Bool { true }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
