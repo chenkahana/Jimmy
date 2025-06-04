@@ -100,19 +100,47 @@ class PodcastURLResolver {
     }
     
     private func resolveSpotifyURL(url: URL, completion: @escaping (URL?) -> Void) {
-        // Spotify doesn't provide RSS feeds directly, but we can try to extract the show name
-        // and search for it
-        let pathComponents = url.pathComponents
-        if pathComponents.count >= 3,
-           pathComponents[1] == "show" {
-            let _ = pathComponents[2]
-            
-            // For now, we can't easily get RSS feeds from Spotify URLs
-            // This would require Spotify API access
-            completion(nil)
-        } else {
-            completion(nil)
+        // Attempt to extract show title from Spotify page metadata
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 10.0
+
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            guard let data = data,
+                  let html = String(data: data, encoding: .utf8) else {
+                completion(nil)
+                return
+            }
+
+            // Extract show title and author from meta tags
+            let title = self.extractMetaContent(html: html, property: "og:title")
+            let author = self.extractMetaContent(html: html, property: "music:creator")
+
+            let searchQuery: String
+            if let title = title, let author = author {
+                searchQuery = "\(title) \(author)"
+            } else if let title = title {
+                searchQuery = title
+            } else {
+                completion(nil)
+                return
+            }
+
+            // Search iTunes directory for a matching podcast
+            iTunesSearchService.shared.searchPodcasts(query: searchQuery) { results in
+                let feedURL = results.first?.feedURL
+                completion(feedURL)
+            }
+        }.resume()
+    }
+
+    private func extractMetaContent(html: String, property: String) -> String? {
+        let pattern = "<meta[^>]*property=\"\(property)\"[^>]*content=\"([^\"]+)\""
+        if let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive),
+           let match = regex.firstMatch(in: html, range: NSRange(html.startIndex..<html.endIndex, in: html)),
+           let range = Range(match.range(at: 1), in: html) {
+            return String(html[range])
         }
+        return nil
     }
     
     private func resolveGooglePodcastsURL(url: URL, completion: @escaping (URL?) -> Void) {
@@ -138,7 +166,7 @@ class PodcastURLResolver {
             
             for pattern in rssPatterns {
                 if let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive),
-                   let match = regex.firstMatch(in: html, range: NSRange(html.startIndex..., in: html)),
+                   let match = regex.firstMatch(in: html, range: NSRange(html.startIndex..<html.endIndex, in: html)),
                    let urlRange = Range(match.range(at: 1), in: html) {
                     let rssURLString = String(html[urlRange])
                     
