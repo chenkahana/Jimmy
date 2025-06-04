@@ -1,1 +1,4 @@
- 
+ # Ignore Xcode workspace UI state
+xcuserdata/
+*.xcuserstate
+.build/
