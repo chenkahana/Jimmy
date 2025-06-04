@@ -75,9 +75,6 @@ struct ContentView: View {
                 .transition(.opacity)
         }
     }
-    .onAppear {
-        showLoadingScreen = updateService.isUpdating
-    }
     .onChange(of: updateService.isUpdating) { updating in
         withAnimation(.easeInOut) {
             showLoadingScreen = updating
