@@ -940,6 +940,20 @@ struct EpisodeLibraryRowView: View {
             .padding(.vertical, 12)
             .background(Color(.systemBackground))
             .opacity(episode.played ? 0.6 : 1.0)
+            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                Button(action: onAddToQueue) {
+                    Label("Add to Queue", systemImage: "plus.circle")
+                }
+
+                Button(action: {
+                    onMarkAsPlayed(!episode.played)
+                }) {
+                    Label(
+                        episode.played ? "Mark as Unplayed" : "Mark as Played",
+                        systemImage: episode.played ? "circle" : "checkmark.circle"
+                    )
+                }
+            }
             
             // Separator
             Divider()
