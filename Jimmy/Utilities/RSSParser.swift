@@ -137,10 +137,28 @@ class RSSParser: NSObject, XMLParserDelegate {
     
     // Helper to parse pubDate string
     static func dateFrom(pubDate: String) -> Date? {
+        // Many podcasts use slightly different date formats for the pubDate
+        // field. Attempt parsing with a set of common formats instead of
+        // relying on a single one so that episodes from more feeds get a
+        // proper publishedDate value.
+        let formats = [
+            "E, d MMM yyyy HH:mm:ss Z",
+            "E, d MMM yyyy HH:mm:ss zzz",
+            "E, d MMM yyyy HH:mm:ss z",
+            "yyyy-MM-dd'T'HH:mm:ssZ",
+            "yyyy-MM-dd'T'HH:mm:ssZZZZZ"
+        ]
+
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.dateFormat = "E, d MMM yyyy HH:mm:ss Z"
-        return formatter.date(from: pubDate)
+
+        for format in formats {
+            formatter.dateFormat = format
+            if let date = formatter.date(from: pubDate) {
+                return date
+            }
+        }
+        return nil
     }
     
     // Add a public accessor for the artwork URL
