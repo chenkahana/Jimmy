@@ -132,7 +132,7 @@ Jimmy/
 
 ## 🤝 Collaboration & Project Rules
 
-See [CURSOR_RULES.md](./CURSOR_RULES.md) for:
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for:
 - Collaboration guidelines
 - Tech stack
 - Ideal project structure
@@ -144,4 +144,4 @@ This project is for personal use and educational purposes.
 
 ---
 
-**🎉 Ready to Use**: The main app is fully functional and ready for use. The lock-screen widget is implemented and ready for Xcode setup following the guide in `WIDGET_README.md`. 
+**🎉 Ready to Use**: The main app is fully functional and ready for use. The lock-screen widget is implemented and ready for Xcode setup following the guide in `WIDGET_README.md`.

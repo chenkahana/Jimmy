@@ -42,4 +42,4 @@ This bypasses the iOS MediaPlayer framework limitations that only find downloade
 
 ---
 
-**Note**: This is the same method other successful podcast apps use to provide complete Apple Podcasts import functionality! 
+**Note**: This is the same method other successful podcast apps use to provide complete Apple Podcasts import functionality!
