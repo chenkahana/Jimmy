@@ -7,6 +7,7 @@ struct AudioPlayerView: View {
     let onProgressUpdate: (TimeInterval) -> Void
 
     @State private var player: AVPlayer?
+    @State private var timeObserver: Any?
     @State private var isPlaying = false
     @State private var playbackPosition: Double = 0
     @State private var totalDuration: Double = 0
@@ -67,7 +68,7 @@ struct AudioPlayerView: View {
         player = AVPlayer(playerItem: playerItem)
         player?.seek(to: CMTime(seconds: startPosition, preferredTimescale: CMTimeScale(NSEC_PER_SEC)))
         
-        player?.addPeriodicTimeObserver(forInterval: CMTime(seconds: 1, preferredTimescale: CMTimeScale(NSEC_PER_SEC)), queue: .main) { time in
+        timeObserver = player?.addPeriodicTimeObserver(forInterval: CMTime(seconds: 1, preferredTimescale: CMTimeScale(NSEC_PER_SEC)), queue: .main) { time in
             let currentPosition = CMTimeGetSeconds(time)
             playbackPosition = currentPosition
             onProgressUpdate(currentPosition)
@@ -93,6 +94,10 @@ struct AudioPlayerView: View {
         // Update final playback position before dismissing if needed
         if let currentTime = player?.currentTime() {
             onProgressUpdate(CMTimeGetSeconds(currentTime))
+        }
+        if let observer = timeObserver {
+            player?.removeTimeObserver(observer)
+            timeObserver = nil
         }
         player = nil
     }

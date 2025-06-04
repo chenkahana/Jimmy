@@ -4,6 +4,7 @@ import AVKit
 struct EpisodePlayerView: View {
     let episode: Episode
     @State private var player: AVPlayer?
+    @State private var timeObserver: Any?
     @State private var isPlaying = false
     @State private var playbackPosition: Double = 0
     @State private var totalDuration: Double = 0
@@ -80,7 +81,7 @@ struct EpisodePlayerView: View {
         let playerItem = AVPlayerItem(url: url)
         player = AVPlayer(playerItem: playerItem)
         
-        player?.addPeriodicTimeObserver(forInterval: CMTime(seconds: 1, preferredTimescale: CMTimeScale(NSEC_PER_SEC)), queue: .main) { time in
+        timeObserver = player?.addPeriodicTimeObserver(forInterval: CMTime(seconds: 1, preferredTimescale: CMTimeScale(NSEC_PER_SEC)), queue: .main) { time in
             playbackPosition = CMTimeGetSeconds(time)
         }
         
@@ -95,6 +96,10 @@ struct EpisodePlayerView: View {
 
     private func stopPlayer() {
         player?.pause()
+        if let observer = timeObserver {
+            player?.removeTimeObserver(observer)
+            timeObserver = nil
+        }
         player = nil
     }
 
