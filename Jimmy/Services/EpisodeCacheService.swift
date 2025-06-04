@@ -335,6 +335,15 @@ class EpisodeCacheService: ObservableObject {
             }
         }
     }
+#if DEBUG
+    /// Insert a cache entry for testing purposes
+    func insertCache(episodes: [Episode], for podcastID: UUID, timestamp: Date = Date()) {
+        cacheQueue.async(flags: .barrier) {
+            let entry = CacheEntry(episodes: episodes, timestamp: timestamp, lastModified: nil)
+            self.episodeCache[podcastID] = entry
+        }
+    }
+#endif
 }
 
 // MARK: - Cache Extension for EpisodeViewModel Integration
