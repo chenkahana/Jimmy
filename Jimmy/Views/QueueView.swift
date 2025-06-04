@@ -5,7 +5,6 @@ struct QueueView: View {
     @ObservedObject private var audioPlayer = AudioPlayerService.shared
     private let podcastService = PodcastService.shared
     @State private var editMode: EditMode = .inactive
-    @State private var currentlyOpenEpisodeID: UUID? = nil // Track which episode has swipe actions open
     
     var currentPlayingEpisode: Episode? {
         return audioPlayer.currentEpisode
@@ -42,29 +41,16 @@ struct QueueView: View {
                                 podcast: getPodcast(for: episode),
                                 isCurrentlyPlaying: currentPlayingEpisode?.id == episode.id,
                                 isEditMode: editMode == .active,
-                                isSwipeOpen: currentlyOpenEpisodeID == episode.id,
                                 onTap: {
                                     if editMode == .inactive {
-                                        // Close any open swipe actions first
-                                        currentlyOpenEpisodeID = nil
                                         viewModel.playEpisodeFromQueue(at: index)
                                     }
                                 },
                                 onRemove: {
-                                    currentlyOpenEpisodeID = nil
                                     viewModel.removeFromQueue(at: IndexSet(integer: index))
                                 },
                                 onMoveToEnd: {
-                                    currentlyOpenEpisodeID = nil
                                     viewModel.moveToEndOfQueue(at: index)
-                                },
-                                onSwipeOpen: {
-                                    currentlyOpenEpisodeID = episode.id
-                                },
-                                onSwipeClose: {
-                                    if currentlyOpenEpisodeID == episode.id {
-                                        currentlyOpenEpisodeID = nil
-                                    }
                                 }
                             )
                             .overlay(
