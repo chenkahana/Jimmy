@@ -40,6 +40,7 @@ struct RecommendedPodcastItem: View {
     }
 }
 
+#if canImport(SwiftUI) && DEBUG
 #Preview {
     RecommendedPodcastItem(
         result: PodcastSearchResult(
@@ -56,3 +57,4 @@ struct RecommendedPodcastItem: View {
         onSubscribe: {}
     )
 }
+#endif

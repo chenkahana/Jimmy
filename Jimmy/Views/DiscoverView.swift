@@ -151,8 +151,10 @@ struct DiscoverView: View {
     }
 }
 
+#if canImport(SwiftUI) && DEBUG
 #Preview {
     NavigationView {
         DiscoverView()
     }
 }
+#endif

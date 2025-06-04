@@ -708,6 +708,7 @@ struct SearchResultHeaderView: View {
     }
 }
 
+#if canImport(SwiftUI) && DEBUG
 #Preview {
     NavigationView {
         PodcastDetailView(podcast: Podcast(
@@ -720,3 +721,4 @@ struct SearchResultHeaderView: View {
         ))
     }
 } 
+#endif

@@ -257,6 +257,7 @@ struct EpisodeDetailView: View {
     }
 }
 
+#if canImport(SwiftUI) && DEBUG
 #Preview {
     let samplePodcast = Podcast(
         id: UUID(),
@@ -294,3 +295,4 @@ struct EpisodeDetailView: View {
     
     EpisodeDetailView(episode: sampleEpisode, podcast: samplePodcast)
 } 
+#endif

@@ -161,6 +161,7 @@ struct EpisodeListView: View {
     }
 }
 
+#if canImport(SwiftUI) && DEBUG
 #Preview {
     let samplePodcast = Podcast(
         id: UUID(),
@@ -219,3 +220,4 @@ struct EpisodeListView: View {
         )
     }
 } 
+#endif

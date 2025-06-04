@@ -286,6 +286,7 @@ struct EpisodeRowView: View {
     }
 }
 
+#if canImport(SwiftUI) && DEBUG
 #Preview {
     let samplePodcast = Podcast(
         id: UUID(),
@@ -344,3 +345,4 @@ struct EpisodeRowView: View {
         Spacer()
     }
 } 
+#endif

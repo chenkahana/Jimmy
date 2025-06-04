@@ -1000,6 +1000,8 @@ struct EmptyEpisodesView: View {
     }
 }
 
+#if canImport(SwiftUI) && DEBUG
 #Preview {
     LibraryView()
 } 
+#endif

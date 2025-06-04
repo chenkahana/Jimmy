@@ -96,6 +96,8 @@ struct StorageDebugView: View {
     }
 }
 
+#if canImport(SwiftUI) && DEBUG
 #Preview {
     StorageDebugView()
 } 
+#endif

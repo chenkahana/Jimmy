@@ -41,6 +41,8 @@ struct AppLoadingView: View {
     }
 }
 
+#if canImport(SwiftUI) && DEBUG
 #Preview {
     AppLoadingView(progress: .constant(0.5))
 }
+#endif

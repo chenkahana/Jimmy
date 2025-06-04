@@ -122,6 +122,8 @@ struct QueueView: View {
     }
 }
 
+#if canImport(SwiftUI) && DEBUG
 #Preview {
     QueueView()
 } 
+#endif

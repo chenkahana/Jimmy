@@ -550,6 +550,7 @@ struct GlowingProgressViewStyle: ProgressViewStyle {
     }
 }
 
+#if canImport(SwiftUI) && DEBUG
 #Preview {
     VStack {
         Spacer()
@@ -559,3 +560,4 @@ struct GlowingProgressViewStyle: ProgressViewStyle {
         MiniPlayerView(onTap: {})
     }
 } 
+#endif

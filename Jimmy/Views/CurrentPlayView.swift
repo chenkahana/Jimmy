@@ -749,6 +749,8 @@ struct AVRoutePickerViewWrapper: UIViewRepresentable {
     }
 }
 
+#if canImport(SwiftUI) && DEBUG
 #Preview {
     CurrentPlayView()
 } 
+#endif

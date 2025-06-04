@@ -116,6 +116,8 @@ struct CacheManagementView: View {
     }
 }
 
+#if canImport(SwiftUI) && DEBUG
 #Preview {
     CacheManagementView()
 } 
+#endif

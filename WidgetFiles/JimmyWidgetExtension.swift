@@ -125,6 +125,7 @@ struct JimmyWidgetExtensionEntryView : View {
     }
 }
 
+#if canImport(SwiftUI) && DEBUG
 #Preview {
     JimmyWidgetExtensionEntryView(entry: SimpleEntry(
         date: Date(),
@@ -141,3 +142,4 @@ struct JimmyWidgetExtensionEntryView : View {
     ))
     .previewContext(WidgetPreviewContext(family: .accessoryRectangular))
 } 
+#endif

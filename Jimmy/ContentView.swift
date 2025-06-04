@@ -230,6 +230,8 @@ struct TabItem {
     let selectedIcon: String
 }
 
+#if canImport(SwiftUI) && DEBUG
 #Preview {
     ContentView()
 }
+#endif

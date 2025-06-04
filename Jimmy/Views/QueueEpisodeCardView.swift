@@ -117,6 +117,7 @@ struct QueueEpisodeCardView: View {
     }
 }
 
+#if canImport(SwiftUI) && DEBUG
 #Preview {
     let sampleEpisode = Episode(
         id: UUID(),
@@ -150,3 +151,4 @@ struct QueueEpisodeCardView: View {
     )
     .padding()
 }
+#endif

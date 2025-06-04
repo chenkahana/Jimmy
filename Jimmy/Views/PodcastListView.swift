@@ -232,6 +232,8 @@ struct PodcastGridItem: View {
     }
 }
 
+#if canImport(SwiftUI) && DEBUG
 #Preview {
     PodcastListView()
 } 
+#endif
