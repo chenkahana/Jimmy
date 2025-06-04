@@ -80,7 +80,7 @@ struct EpisodeRowView: View {
             HStack(spacing: 12) {
                 // Episode artwork with played indicator overlay
                 ZStack(alignment: .bottomTrailing) {
-                    AsyncImage(url: episode.artworkURL ?? podcast.artworkURL) { image in
+                    CachedAsyncImage(url: episode.artworkURL ?? podcast.artworkURL) { image in
                         image
                             .resizable()
                             .aspectRatio(contentMode: .fill)
@@ -92,6 +92,7 @@ struct EpisodeRowView: View {
                                     .foregroundColor(.gray)
                             )
                     }
+                    .transition(.opacity.combined(with: .scale))
                     .frame(width: 60, height: 60)
                     .clipShape(RoundedRectangle(cornerRadius: 8))
                     .opacity(episode.played ? 0.6 : 1.0) // Dim played episodes

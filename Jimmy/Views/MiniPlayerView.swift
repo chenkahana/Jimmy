@@ -15,7 +15,7 @@ struct FloatingMiniPlayerView: View {
                 // Floating card with enhanced 3D styling
                 HStack(spacing: 16) {
                     // Episode artwork with less rounded corners
-                    AsyncImage(url: currentEpisode.artworkURL ?? getPodcast(for: currentEpisode)?.artworkURL) { image in
+                    CachedAsyncImage(url: currentEpisode.artworkURL ?? getPodcast(for: currentEpisode)?.artworkURL) { image in
                         image
                             .resizable()
                             .aspectRatio(contentMode: .fill)
@@ -24,7 +24,7 @@ struct FloatingMiniPlayerView: View {
                             .fill(
                                 LinearGradient(
                                     colors: [
-                                        Color.orange.opacity(0.6), 
+                                        Color.orange.opacity(0.6),
                                         Color.orange.opacity(0.4),
                                         Color.orange.opacity(0.2)
                                     ],
@@ -39,6 +39,7 @@ struct FloatingMiniPlayerView: View {
                                     .shadow(color: .orange.opacity(0.5), radius: 4, x: 0, y: 2)
                             )
                     }
+                    .transition(.opacity.combined(with: .scale))
                     .frame(width: 64, height: 64)
                     .clipShape(RoundedRectangle(cornerRadius: 8))
                     .shadow(color: .black.opacity(0.2), radius: 8, x: 0, y: 4)
@@ -220,7 +221,7 @@ struct MiniPlayerView: View {
                 // Mini player content - Enhanced 3D design
                 HStack(spacing: 16) {
                     // Episode artwork - Enhanced with 3D effect
-                    AsyncImage(url: currentEpisode.artworkURL ?? getPodcast(for: currentEpisode)?.artworkURL) { image in
+                    CachedAsyncImage(url: currentEpisode.artworkURL ?? getPodcast(for: currentEpisode)?.artworkURL) { image in
                         image
                             .resizable()
                             .aspectRatio(contentMode: .fill)
@@ -229,7 +230,7 @@ struct MiniPlayerView: View {
                             .fill(
                                 LinearGradient(
                                     colors: [
-                                        Color.orange.opacity(0.4), 
+                                        Color.orange.opacity(0.4),
                                         Color.orange.opacity(0.2),
                                         Color.orange.opacity(0.1)
                                     ],
@@ -244,6 +245,7 @@ struct MiniPlayerView: View {
                                     .shadow(color: .orange.opacity(0.3), radius: 2, x: 0, y: 1)
                             )
                     }
+                    .transition(.opacity.combined(with: .scale))
                     .frame(width: 58, height: 58)
                     .clipShape(RoundedRectangle(cornerRadius: 12))
                     .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)

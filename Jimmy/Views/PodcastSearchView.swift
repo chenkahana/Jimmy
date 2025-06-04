@@ -232,20 +232,11 @@ struct LocalPodcastRow: View {
     var body: some View {
         Button(action: onTap) {
             HStack(alignment: .top, spacing: 12) {
-                AsyncImage(url: podcast.artworkURL) { image in
-                    image
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                } placeholder: {
-                    Rectangle()
-                        .fill(Color.gray.opacity(0.2))
-                        .overlay(
-                            Image(systemName: "waveform.circle")
-                                .foregroundColor(.gray)
-                        )
-                }
-                .frame(width: 60, height: 60)
-                .cornerRadius(8)
+                PodcastArtworkView(
+                    artworkURL: podcast.artworkURL,
+                    size: 60,
+                    cornerRadius: 8
+                )
                 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(podcast.title)
@@ -282,20 +273,11 @@ struct SearchResultRow: View {
     var body: some View {
         Button(action: onTap) {
             HStack(alignment: .top, spacing: 12) {
-                AsyncImage(url: result.artworkURL) { image in
-                    image
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                } placeholder: {
-                    Rectangle()
-                        .fill(Color.gray.opacity(0.2))
-                        .overlay(
-                            Image(systemName: "waveform.circle")
-                                .foregroundColor(.gray)
-                        )
-                }
-                .frame(width: 60, height: 60)
-                .cornerRadius(8)
+                PodcastArtworkView(
+                    artworkURL: result.artworkURL,
+                    size: 60,
+                    cornerRadius: 8
+                )
                 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(result.title)

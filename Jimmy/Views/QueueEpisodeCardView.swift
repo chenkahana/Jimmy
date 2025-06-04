@@ -72,7 +72,7 @@ struct QueueEpisodeCardView: View {
             // Main card content
             HStack(spacing: 16) {
                 // Episode Image
-                AsyncImage(url: episode.artworkURL ?? podcast?.artworkURL) { image in
+                CachedAsyncImage(url: episode.artworkURL ?? podcast?.artworkURL) { image in
                     image
                         .resizable()
                         .aspectRatio(contentMode: .fill)
@@ -80,7 +80,7 @@ struct QueueEpisodeCardView: View {
                     RoundedRectangle(cornerRadius: 12)
                         .fill(
                             LinearGradient(
-                                colors: isCurrentlyPlaying ? 
+                                colors: isCurrentlyPlaying ?
                                     [Color.orange.opacity(0.3), Color.orange.opacity(0.1)] :
                                     [Color(.systemGray5), Color(.systemGray4)],
                                 startPoint: .topLeading,
@@ -93,11 +93,12 @@ struct QueueEpisodeCardView: View {
                                 .font(.title2)
                         )
                 }
+                .transition(.opacity.combined(with: .scale))
                 .frame(width: 60, height: 60)
                 .clipShape(RoundedRectangle(cornerRadius: 12))
                 .overlay(
-                    isCurrentlyPlaying ? 
-                    RoundedRectangle(cornerRadius: 12)
+                    isCurrentlyPlaying ?
+                        RoundedRectangle(cornerRadius: 12)
                         .stroke(Color.orange, lineWidth: 2)
                     : nil
                 )
