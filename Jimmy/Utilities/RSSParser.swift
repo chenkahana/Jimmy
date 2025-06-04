@@ -55,19 +55,19 @@ class RSSParser: NSObject, XMLParserDelegate {
         if parsingItem && elementName == "enclosure" {
             currentAudioURL = attributeDict["url"] ?? ""
         }
-        if parsingChannel && (elementName == "itunes:image" || elementName == "image") {
+        if parsingChannel && !parsingItem && (elementName == "itunes:image" || elementName == "image") {
             if let url = attributeDict["href"] ?? attributeDict["url"] {
                 print("🎨 Found channel artwork via \(elementName): \(url)")
                 podcastArtworkURL = url
             }
         }
-        if parsingChannel && (elementName == "media:thumbnail" || elementName == "thumbnail") {
+        if parsingChannel && !parsingItem && (elementName == "media:thumbnail" || elementName == "thumbnail") {
             if let url = attributeDict["url"] {
                 print("🎨 Found channel artwork via \(elementName): \(url)")
                 podcastArtworkURL = url
             }
         }
-        if parsingChannel && elementName == "url" && currentElementName == "image" {
+        if parsingChannel && !parsingItem && elementName == "url" && currentElementName == "image" {
             // This will be handled in foundCharacters
         }
         if parsingItem && (elementName == "itunes:image" || elementName == "image") {
