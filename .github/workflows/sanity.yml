@@ -16,3 +16,6 @@ jobs:
       - name: Run sanity tests
         shell: bash
         run: ./scripts/run_sanity_tests.sh
+      - name: Run all tests
+        shell: bash
+        run: ./scripts/run_all_tests.sh
