@@ -35,13 +35,16 @@ struct CachedAsyncImage<Content: View, Placeholder: View>: View {
         Group {
             if let image = image {
                 content(Image(uiImage: image))
+                    .transition(.opacity.combined(with: .scale))
             } else {
                 placeholder()
+                    .transition(.opacity)
                     .onAppear {
                         loadImage()
                     }
             }
         }
+        .animation(.easeInOut(duration: 0.2), value: image)
         .onChange(of: url) { _, newURL in
             // Reset state when URL changes
             image = nil

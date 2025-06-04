@@ -17,54 +17,59 @@ struct EpisodeListView: View {
     var body: some View {
         NavigationView {
             VStack {
-                if isLoading {
-                    VStack(spacing: 16) {
-                        ProgressView()
-                            .scaleEffect(1.2)
-                        Text("Loading episodes...")
-                            .font(.headline)
-                            .foregroundColor(.secondary)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if episodes.isEmpty {
-                    VStack(spacing: 16) {
-                        Image(systemName: "waveform.circle")
-                            .font(.system(size: 48))
-                            .foregroundColor(.gray)
-                        
-                        Text("No Episodes Found")
-                            .font(.title2)
-                            .fontWeight(.medium)
-                        
-                        Text("This podcast doesn't have any episodes yet")
-                            .font(.body)
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else {
-                    List {
-                        ForEach(episodes) { episode in
-                            EpisodeRowView(
-                                episode: episode,
-                                podcast: podcast,
-                                isCurrentlyPlaying: currentPlayingEpisode?.id == episode.id,
-                                onTap: {
-                                    onEpisodeTap(episode)
-                                },
-                                onPlayNext: { episode in
-                                    handlePlayNext(episode)
-                                },
-                                onMarkAsPlayed: { episode, played in
-                                    episodeViewModel.markEpisodeAsPlayed(episode, played: played)
-                                }
-                            )
-                            .listRowSeparator(.hidden)
-                            .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+                Group {
+                    if isLoading {
+                        VStack(spacing: 16) {
+                            ProgressView()
+                                .scaleEffect(1.2)
+                            Text("Loading episodes...")
+                                .font(.headline)
+                                .foregroundColor(.secondary)
                         }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else if episodes.isEmpty {
+                        VStack(spacing: 16) {
+                            Image(systemName: "waveform.circle")
+                                .font(.system(size: 48))
+                                .foregroundColor(.gray)
+
+                            Text("No Episodes Found")
+                                .font(.title2)
+                                .fontWeight(.medium)
+
+                            Text("This podcast doesn't have any episodes yet")
+                                .font(.body)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else {
+                        List {
+                            ForEach(episodes) { episode in
+                                EpisodeRowView(
+                                    episode: episode,
+                                    podcast: podcast,
+                                    isCurrentlyPlaying: currentPlayingEpisode?.id == episode.id,
+                                    onTap: {
+                                        onEpisodeTap(episode)
+                                    },
+                                    onPlayNext: { episode in
+                                        handlePlayNext(episode)
+                                    },
+                                    onMarkAsPlayed: { episode, played in
+                                        episodeViewModel.markEpisodeAsPlayed(episode, played: played)
+                                    }
+                                )
+                                .listRowSeparator(.hidden)
+                                .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+                            }
+                        }
+                        .listStyle(.plain)
+                        .animation(.easeInOut(duration: 0.2), value: episodes.count)
                     }
-                    .listStyle(.plain)
                 }
+                .transition(.opacity)
+                .animation(.easeInOut(duration: 0.2), value: isLoading)
             }
             .navigationTitle(podcast.title)
             .navigationBarTitleDisplayMode(.large)

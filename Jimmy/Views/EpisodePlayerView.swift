@@ -22,11 +22,12 @@ struct EpisodePlayerView: View {
                 .padding()
             
             // Use episode artwork first, then podcast artwork as fallback
-            AsyncImage(url: episode.artworkURL ?? podcast?.artworkURL) {
+            CachedAsyncImage(url: episode.artworkURL ?? podcast?.artworkURL) {
                 $0.resizable()
             } placeholder: {
                 ProgressView()
             }
+            .transition(.opacity.combined(with: .scale))
             .aspectRatio(contentMode: .fit)
             .frame(height: 200)
             .cornerRadius(8)

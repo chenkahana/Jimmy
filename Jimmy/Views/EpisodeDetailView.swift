@@ -14,7 +14,7 @@ struct EpisodeDetailView: View {
                     VStack(spacing: 16) {
                         HStack(spacing: 16) {
                             // Episode artwork
-                            AsyncImage(url: episode.artworkURL ?? podcast.artworkURL) { image in
+                            CachedAsyncImage(url: episode.artworkURL ?? podcast.artworkURL) { image in
                                 image
                                     .resizable()
                                     .aspectRatio(contentMode: .fill)
@@ -27,6 +27,7 @@ struct EpisodeDetailView: View {
                                             .foregroundColor(.gray)
                                     )
                             }
+                            .transition(.opacity.combined(with: .scale))
                             .frame(width: 120, height: 120)
                             .clipShape(RoundedRectangle(cornerRadius: 12))
                             .shadow(color: Color.black.opacity(0.1), radius: 4, x: 0, y: 2)

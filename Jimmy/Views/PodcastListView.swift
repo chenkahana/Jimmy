@@ -212,25 +212,11 @@ struct PodcastGridItem: View {
     var body: some View {
         Button(action: onTap) {
             VStack(spacing: 8) {
-                AsyncImage(url: podcast.artworkURL) { image in
-                    image
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                } placeholder: {
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(LinearGradient(
-                            colors: [Color.orange.opacity(0.3), Color.red.opacity(0.3)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ))
-                        .overlay(
-                            Image(systemName: "waveform.circle")
-                                .font(.title)
-                                .foregroundColor(.white)
-                        )
-                }
-                .frame(width: 100, height: 100)
-                .clipShape(RoundedRectangle(cornerRadius: 12))
+                PodcastArtworkView(
+                    artworkURL: podcast.artworkURL,
+                    size: 100,
+                    cornerRadius: 12
+                )
                 .shadow(color: .black.opacity(0.15), radius: 4, x: 0, y: 2)
                 
                 Text(podcast.title)

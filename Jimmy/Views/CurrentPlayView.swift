@@ -166,7 +166,7 @@ struct ModernNowPlayingView: View {
                     .frame(height: 40)
                 
                 // Episode Artwork - Made larger and more prominent
-                AsyncImage(url: episode.artworkURL ?? podcast?.artworkURL) { image in
+                CachedAsyncImage(url: episode.artworkURL ?? podcast?.artworkURL) { image in
                     image
                         .resizable()
                         .aspectRatio(contentMode: .fill)
@@ -574,13 +574,14 @@ struct EpisodeDetailsFullView: View {
     }
     
     private var episodeArtwork: some View {
-        AsyncImage(url: episode.artworkURL ?? podcast.artworkURL) { image in
+        CachedAsyncImage(url: episode.artworkURL ?? podcast.artworkURL) { image in
             image
                 .resizable()
                 .aspectRatio(contentMode: .fill)
         } placeholder: {
             artworkPlaceholder
         }
+        .transition(.opacity.combined(with: .scale))
         .frame(width: 120, height: 120)
         .clipShape(RoundedRectangle(cornerRadius: 12))
     }
