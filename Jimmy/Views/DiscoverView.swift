@@ -7,15 +7,17 @@ struct DiscoverView: View {
     @State private var showingSubscriptionAlert = false
     @State private var subscriptionMessage = ""
 
+    private let columns = [
+        GridItem(.adaptive(minimum: 150), spacing: 16)
+    ]
+
     var body: some View {
-        List {
+        ScrollView {
             if isLoading {
-                HStack {
-                    Spacer()
-                    ProgressView("Loading recommendations...")
-                        .progressViewStyle(CircularProgressViewStyle())
-                    Spacer()
-                }
+                ProgressView("Loading recommendations...")
+                    .progressViewStyle(CircularProgressViewStyle())
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .padding(.top, 40)
             } else if recommended.isEmpty {
                 VStack(spacing: 16) {
                     Image(systemName: "sparkles")
@@ -28,22 +30,21 @@ struct DiscoverView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 40)
             } else {
-                ForEach(recommended) { result in
-                    NavigationLink(destination: SearchResultDetailView(result: result)) {
-                        SearchResultRow(
-                            result: result,
-                            isSubscribed: isSubscribed(result)
-                        ) {
-                            // navigation handled by NavigationLink
-                        } onSubscribe: {
-                            subscribe(to: result)
+                LazyVGrid(columns: columns, spacing: 20) {
+                    ForEach(recommended) { result in
+                        NavigationLink(destination: SearchResultDetailView(result: result)) {
+                            RecommendedPodcastItem(
+                                result: result,
+                                isSubscribed: isSubscribed(result),
+                                onSubscribe: { subscribe(to: result) }
+                            )
                         }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
                 }
+                .padding()
             }
         }
-        .listStyle(.plain)
         .navigationTitle("Discover")
         .onAppear {
             loadData()

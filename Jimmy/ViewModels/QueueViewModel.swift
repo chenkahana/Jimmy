@@ -227,9 +227,11 @@ class QueueViewModel: ObservableObject {
     }
     
     func saveQueue() {
-        if let data = try? JSONEncoder().encode(queue) {
-            UserDefaults.standard.set(data, forKey: queueKey)
-            AppDataDocument.saveToICloudIfEnabled()
+        DispatchQueue.global(qos: .utility).async {
+            if let data = try? JSONEncoder().encode(self.queue) {
+                UserDefaults.standard.set(data, forKey: self.queueKey)
+                AppDataDocument.saveToICloudIfEnabled()
+            }
         }
     }
     

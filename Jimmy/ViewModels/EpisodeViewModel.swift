@@ -79,16 +79,21 @@ class EpisodeViewModel: ObservableObject {
     // MARK: - Persistence
     
     private func saveEpisodes() {
-        _ = FileStorage.shared.save(episodes, to: "episodes.json")
-        AppDataDocument.saveToICloudIfEnabled()
+        FileStorage.shared.saveAsync(episodes, to: "episodes.json") { _ in
+            AppDataDocument.saveToICloudIfEnabled()
+        }
     }
     
     private func loadEpisodes() {
         // Try to migrate from UserDefaults first, then load from file
         if let migratedEpisodes = FileStorage.shared.migrateFromUserDefaults([Episode].self, userDefaultsKey: episodesKey, filename: "episodes.json") {
             episodes = migratedEpisodes
-        } else if let savedEpisodes = FileStorage.shared.load([Episode].self, from: "episodes.json") {
-            episodes = savedEpisodes
+        } else {
+            FileStorage.shared.loadAsync([Episode].self, from: "episodes.json") { [weak self] saved in
+                if let saved = saved {
+                    self?.episodes = saved
+                }
+            }
         }
     }
     
