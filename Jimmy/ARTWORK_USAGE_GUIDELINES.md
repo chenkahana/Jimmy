@@ -71,8 +71,8 @@ Each time you visit a podcast page, the artwork will be automatically updated if
 ## Common Issues & Solutions
 
 ### Issue: Show displays first episode's artwork
-**Cause**: RSS feed was parsed before artwork enhancement, or feed has complex artwork structure
-**Solution**: Use "Fix Podcast Artwork" button in Settings
+**Cause**: Older versions of the RSS parser treated the first episode's artwork as the podcast artwork
+**Solution**: Update Jimmy to the latest version and then use the "Fix Podcast Artwork" button in Settings
 
 ### Issue: Episode shows podcast artwork instead of episode-specific artwork
 **Cause**: Episode doesn't have its own artwork in the RSS feed
