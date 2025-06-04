@@ -6,47 +6,108 @@ struct DiscoverView: View {
     @State private var subscribed: [Podcast] = []
     @State private var showingSubscriptionAlert = false
     @State private var subscriptionMessage = ""
+    @State private var searchText = ""
+    @State private var searchResults: [PodcastSearchResult] = []
+    @State private var isSearching = false
+    @State private var lastSearchText = ""
 
     private let columns = [
         GridItem(.adaptive(minimum: 150), spacing: 16)
     ]
 
     var body: some View {
-        ScrollView {
-            if isLoading {
-                ProgressView("Loading recommendations...")
-                    .progressViewStyle(CircularProgressViewStyle())
+        Group {
+            if !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                if isSearching {
+                    VStack {
+                        ProgressView("Searching...")
+                            .progressViewStyle(CircularProgressViewStyle())
+                    }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .padding(.top, 40)
-            } else if recommended.isEmpty {
-                VStack(spacing: 16) {
-                    Image(systemName: "sparkles")
-                        .font(.system(size: 48))
-                        .foregroundColor(.gray)
-                    Text("No recommendations yet")
-                        .font(.headline)
-                        .foregroundColor(.secondary)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 40)
-            } else {
-                LazyVGrid(columns: columns, spacing: 20) {
-                    ForEach(Array(recommended.enumerated()), id: \.element.id) { index, result in
-                        NavigationLink(destination: SearchResultDetailView(result: result)) {
-                            RecommendedPodcastItem(
-                                result: result,
-                                isSubscribed: isSubscribed(result),
-                                onSubscribe: { subscribe(to: result) },
-                                styleIndex: index
-                            )
+                } else {
+                    List {
+                        Section("Search Results") {
+                            ForEach(searchResults) { result in
+                                NavigationLink(destination: SearchResultDetailView(result: result)) {
+                                    SearchResultRow(
+                                        result: result,
+                                        isSubscribed: isSubscribed(result)
+                                    ) {
+                                        // Navigation handled by NavigationLink
+                                    } onSubscribe: {
+                                        subscribe(to: result)
+                                    }
+                                }
+                                .buttonStyle(.plain)
+                            }
                         }
-                        .buttonStyle(.plain)
+
+                        if searchResults.isEmpty {
+                            VStack(spacing: 16) {
+                                Image(systemName: "magnifyingglass")
+                                    .font(.system(size: 48))
+                                    .foregroundColor(.gray)
+                                Text("No results")
+                                    .font(.headline)
+                                    .foregroundColor(.secondary)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 40)
+                        }
+                    }
+                    .listStyle(.insetGrouped)
+                }
+            } else {
+                ScrollView {
+                    if isLoading {
+                        ProgressView("Loading recommendations...")
+                            .progressViewStyle(CircularProgressViewStyle())
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .padding(.top, 40)
+                    } else if recommended.isEmpty {
+                        VStack(spacing: 16) {
+                            Image(systemName: "sparkles")
+                                .font(.system(size: 48))
+                                .foregroundColor(.gray)
+                            Text("No recommendations yet")
+                                .font(.headline)
+                                .foregroundColor(.secondary)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 40)
+                    } else {
+                        LazyVGrid(columns: columns, spacing: 20) {
+                            ForEach(Array(recommended.enumerated()), id: \.
+ element.id) { index, result in
+                                NavigationLink(destination: SearchResultDetailView(result: result)) {
+                                    RecommendedPodcastItem(
+                                        result: result,
+                                        isSubscribed: isSubscribed(result),
+                                        onSubscribe: { subscribe(to: result) },
+                                        styleIndex: index
+                                    )
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .padding()
                     }
                 }
-                .padding()
             }
         }
         .navigationTitle("Discover")
+        .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search Podcasts")
+        .onChange(of: searchText) { newValue in
+            let trimmed = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmed.isEmpty {
+                searchResults = []
+                isSearching = false
+            } else if trimmed != lastSearchText {
+                lastSearchText = trimmed
+                performSearch(query: trimmed)
+            }
+        }
         .onAppear {
             loadData()
         }
@@ -83,6 +144,13 @@ struct DiscoverView: View {
         showingSubscriptionAlert = true
     }
 
+    private func performSearch(query: String) {
+        isSearching = true
+        iTunesSearchService.shared.searchPodcasts(query: query) { results in
+            searchResults = results
+            isSearching = false
+        }
+    }
 }
 
 #Preview {

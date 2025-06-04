@@ -20,30 +20,52 @@ struct PodcastDetailView: View {
     }
     
     var body: some View {
-        VStack(spacing: 0) {
-            // Main Content
-            ScrollView {
-                VStack(spacing: 0) {
-                    // Podcast Header - Show Picture + Details
-                    PodcastDetailHeaderView(podcast: podcast)
-                    
-                    // Episodes List
-                    PodcastEpisodesListView(
-                        episodes: episodes,
-                        isLoading: isLoading,
-                        loadingError: loadingError,
+        List {
+            // Podcast Header
+            PodcastDetailHeaderView(podcast: podcast)
+                .listRowInsets(EdgeInsets())
+                .listRowSeparator(.hidden)
+
+            // Episodes List
+            if episodes.isEmpty && !isLoading {
+                EmptyEpisodesStateView(loadingError: loadingError) {
+                    loadEpisodes(forceRefresh: true)
+                }
+                .listRowInsets(EdgeInsets())
+            } else {
+                ForEach(episodes) { episode in
+                    EpisodeRowView(
+                        episode: episode,
                         podcast: podcast,
-                        currentPlayingEpisode: currentPlayingEpisode,
-                        onRetry: {
-                            loadEpisodes(forceRefresh: true)
+                        isCurrentlyPlaying: currentPlayingEpisode?.id == episode.id,
+                        onTap: {
+                            QueueViewModel.shared.playEpisodeFromLibrary(episode)
                         },
-                        onRefresh: {
-                            loadEpisodes(forceRefresh: true)
+                        onPlayNext: { episode in
+                            QueueViewModel.shared.addToTopOfQueue(episode)
+                            FeedbackManager.shared.playNext()
+                        },
+                        onMarkAsPlayed: { episode, played in
+                            EpisodeViewModel.shared.markEpisodeAsPlayed(episode, played: played)
                         }
                     )
+                    .listRowSeparator(.hidden)
+                    .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+                }
+
+                if isLoading {
+                    HStack {
+                        Spacer()
+                        ProgressView()
+                            .scaleEffect(0.8)
+                        Spacer()
+                    }
+                    .padding(.vertical, 20)
+                    .listRowInsets(EdgeInsets())
                 }
             }
         }
+        .listStyle(.plain)
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
@@ -386,25 +408,74 @@ struct SearchResultDetailView: View {
     }
     
     var body: some View {
-        ScrollView {
-            VStack(spacing: 0) {
-                SearchResultHeaderView(
-                    result: result,
-                    isSubscribed: isSubscribed,
-                    onSubscribe: subscribe
-                )
-                SearchResultEpisodesSection(
-                    episodes: episodes,
-                    isLoading: isLoading,
-                    loadingError: loadingError,
-                    result: result,
-                    currentPlayingEpisode: currentPlayingEpisode,
-                    onRetry: {
+        List {
+            SearchResultHeaderView(
+                result: result,
+                isSubscribed: isSubscribed,
+                onSubscribe: subscribe
+            )
+            .listRowInsets(EdgeInsets())
+            .listRowSeparator(.hidden)
+
+            if episodes.isEmpty && !isLoading {
+                VStack(spacing: 16) {
+                    Image(systemName: "wifi.slash")
+                        .font(.system(size: 48))
+                        .foregroundColor(.gray)
+
+                    Text("Unable to Load Episodes")
+                        .font(.headline)
+                        .foregroundColor(.primary)
+
+                    Text("Check your internet connection and try again")
+                        .font(.body)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+
+                    Button("Retry") {
                         loadEpisodes(forceRefresh: true)
                     }
-                )
+                    .buttonStyle(.borderedProminent)
+                    .padding(.top, 8)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 40)
+                .padding(.horizontal, 20)
+                .listRowInsets(EdgeInsets())
+            } else {
+                ForEach(episodes.prefix(10)) { episode in
+                    EpisodeRowView(
+                        episode: episode,
+                        podcast: podcast,
+                        isCurrentlyPlaying: currentPlayingEpisode?.id == episode.id,
+                        onTap: {
+                            QueueViewModel.shared.playEpisodeFromLibrary(episode)
+                        },
+                        onPlayNext: { episode in
+                            QueueViewModel.shared.addToTopOfQueue(episode)
+                            FeedbackManager.shared.playNext()
+                        },
+                        onMarkAsPlayed: { episode, played in
+                            EpisodeViewModel.shared.markEpisodeAsPlayed(episode, played: played)
+                        }
+                    )
+                    .listRowSeparator(.hidden)
+                    .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+                }
+
+                if isLoading {
+                    HStack {
+                        Spacer()
+                        ProgressView()
+                            .scaleEffect(0.8)
+                        Spacer()
+                    }
+                    .padding(.vertical, 20)
+                    .listRowInsets(EdgeInsets())
+                }
             }
         }
+        .listStyle(.plain)
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -634,74 +705,6 @@ struct SearchResultHeaderView: View {
         .padding(.top, 20)
         .padding(.bottom, 40)
         .padding(.horizontal, 20)
-    }
-}
-
-struct SearchResultEpisodesSection: View {
-    let episodes: [Episode]
-    let isLoading: Bool
-    let loadingError: String?
-    let result: PodcastSearchResult
-    let currentPlayingEpisode: Episode?
-    let onRetry: () -> Void
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Text("Latest Episodes")
-                    .font(.system(.title2, design: .rounded, weight: .bold))
-                    .foregroundColor(.primary)
-                
-                Spacer()
-                
-                if isLoading {
-                    ProgressView()
-                        .scaleEffect(0.8)
-                }
-            }
-            .padding(.horizontal, 20)
-            
-            if episodes.isEmpty && !isLoading {
-                VStack(spacing: 16) {
-                    Image(systemName: "wifi.slash")
-                        .font(.system(size: 48))
-                        .foregroundColor(.gray)
-                    
-                    Text("Unable to Load Episodes")
-                        .font(.headline)
-                        .foregroundColor(.primary)
-                    
-                    Text("Check your internet connection and try again")
-                        .font(.body)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 40)
-                .padding(.horizontal, 20)
-            } else {
-                LazyVStack(spacing: 8) {
-                    ForEach(episodes.prefix(10)) { episode in
-                        EpisodeRowView(
-                            episode: episode,
-                            podcast: result.toPodcast(),
-                            isCurrentlyPlaying: currentPlayingEpisode?.id == episode.id,
-                            onTap: {
-                                QueueViewModel.shared.playEpisodeFromLibrary(episode)
-                            },
-                            onPlayNext: { episode in
-                                QueueViewModel.shared.addToTopOfQueue(episode)
-                                FeedbackManager.shared.playNext()
-                            },
-                            onMarkAsPlayed: { episode, played in
-                                EpisodeViewModel.shared.markEpisodeAsPlayed(episode, played: played)
-                            }
-                        )
-                    }
-                }
-                .padding(.horizontal, 16)
-            }
-        }
     }
 }
 

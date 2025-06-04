@@ -103,9 +103,9 @@ struct LibraryView: View {
                     .padding(.top, 8)
                 
                 // Main Content Area
-                ScrollView {
-                    VStack(spacing: 24) {
-                        if selectedViewType == .shows {
+                if selectedViewType == .shows {
+                    ScrollView {
+                        VStack(spacing: 24) {
                             // Subscribed Shows Section
                             SubscribedShowsGridView(
                                 podcasts: filteredPodcasts,
@@ -115,18 +115,17 @@ struct LibraryView: View {
                                     deletePodcast(podcast)
                                 }
                             )
-                        } else {
-                            // Episodes Section
-                            EpisodesListView(
-                                episodes: allEpisodes,
-                                searchText: searchText,
-                                getPodcast: getPodcast
-                            )
+
+                            Spacer(minLength: 50)
                         }
-                        
-                        // Spacer to push content up properly  
-                        Spacer(minLength: 50)
+                        .padding(.top, 16)
                     }
+                } else {
+                    EpisodesListView(
+                        episodes: allEpisodes,
+                        searchText: searchText,
+                        getPodcast: getPodcast
+                    )
                     .padding(.top, 16)
                 }
             }
@@ -760,13 +759,13 @@ struct EpisodesListView: View {
                     Text("Recent Episodes")
                         .font(.system(size: 18, weight: .semibold))
                         .foregroundColor(.primary)
-                    
+
                     if !episodes.isEmpty {
                         HStack(spacing: 4) {
                             Text("Sorted by upload date")
                                 .font(.system(size: 11))
                                 .foregroundColor(.secondary)
-                            
+
                             if updateService.lastUpdateTime != nil {
                                 Text("• Updated \(updateService.lastUpdateTimeString())")
                                     .font(.system(size: 11))
@@ -778,12 +777,13 @@ struct EpisodesListView: View {
                 Spacer()
             }
             .padding(.horizontal, 16)
-            
+
             // Episodes List
             if episodes.isEmpty {
                 EmptyEpisodesView(hasSearchText: !searchText.isEmpty)
+                    .frame(maxWidth: .infinity)
             } else {
-                LazyVStack(spacing: 12) {
+                List {
                     ForEach(episodes) { episode in
                         if let podcast = getPodcast(episode) {
                             EpisodeLibraryRowView(
@@ -801,10 +801,12 @@ struct EpisodesListView: View {
                                     episodeViewModel.markEpisodeAsPlayed(episode, played: played)
                                 }
                             )
-                            .padding(.horizontal, 16)
+                            .listRowSeparator(.hidden)
+                            .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
                         }
                     }
                 }
+                .listStyle(.plain)
             }
         }
     }
