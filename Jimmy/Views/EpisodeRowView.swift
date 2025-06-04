@@ -11,8 +11,6 @@ struct EpisodeRowView: View {
     @ObservedObject private var queueViewModel = QueueViewModel.shared
     @ObservedObject private var audioPlayer = AudioPlayerService.shared
     @State private var showingEpisodeDetail = false
-    @State private var dragOffset = CGSize.zero
-    @State private var isShowingSwipeOptions = false
     
     init(episode: Episode, podcast: Podcast, isCurrentlyPlaying: Bool, onTap: @escaping () -> Void, onPlayNext: ((Episode) -> Void)? = nil, onMarkAsPlayed: ((Episode, Bool) -> Void)? = nil) {
         self.episode = episode
@@ -24,65 +22,12 @@ struct EpisodeRowView: View {
     }
     
     var body: some View {
-        ZStack {
-            // Background swipe options
-            HStack {
-                Spacer()
-                
-                if isShowingSwipeOptions {
-                    // Quick action buttons revealed by swipe
-                    HStack(spacing: 12) {
-                        // Add to Queue button
-                        Button(action: {
-                            addToQueue()
-                            withAnimation(.spring(response: 0.3)) {
-                                resetSwipeState()
-                            }
-                        }) {
-                            VStack(spacing: 4) {
-                                Image(systemName: "plus.circle.fill")
-                                    .font(.title2)
-                                Text("Add to\nQueue")
-                                    .font(.caption2)
-                                    .multilineTextAlignment(.center)
-                            }
-                            .foregroundColor(.white)
-                            .frame(width: 60, height: 80)
-                            .background(Color.blue)
-                            .cornerRadius(12)
-                        }
-                        
-                        // Mark as Played button
-                        Button(action: {
-                            togglePlayedStatus()
-                            withAnimation(.spring(response: 0.3)) {
-                                resetSwipeState()
-                            }
-                        }) {
-                            VStack(spacing: 4) {
-                                Image(systemName: episode.played ? "checkmark.circle" : "checkmark.circle.fill")
-                                    .font(.title2)
-                                Text(episode.played ? "Mark\nUnplayed" : "Mark\nPlayed")
-                                    .font(.caption2)
-                                    .multilineTextAlignment(.center)
-                            }
-                            .foregroundColor(.white)
-                            .frame(width: 60, height: 80)
-                            .background(episode.played ? Color.orange : Color.green)
-                            .cornerRadius(12)
-                        }
-                    }
-                    .padding(.trailing, 16)
-                }
-            }
-            
-            // Main episode content
-            HStack(spacing: 12) {
-                // Episode artwork with played indicator overlay
-                ZStack(alignment: .bottomTrailing) {
-                    CachedAsyncImage(url: episode.artworkURL ?? podcast.artworkURL) { image in
-                        image
-                            .resizable()
+        HStack(spacing: 12) {
+            // Episode artwork with played indicator overlay
+            ZStack(alignment: .bottomTrailing) {
+                CachedAsyncImage(url: episode.artworkURL ?? podcast.artworkURL) { image in
+                    image
+                        .resizable()
                             .aspectRatio(contentMode: .fill)
                     } placeholder: {
                         RoundedRectangle(cornerRadius: 8)
@@ -256,77 +201,52 @@ struct EpisodeRowView: View {
                 }
                 .frame(height: 60)
             }
-            .padding(.vertical, 8)
-            .padding(.horizontal, 16)
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(
-                        isCurrentlyPlaying ? Color.orange.opacity(0.1) : 
-                        episode.played ? Color.gray.opacity(0.05) : Color(.systemBackground)
-                    )
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(
-                        isCurrentlyPlaying ? Color.orange.opacity(0.3) : 
-                        episode.played ? Color.gray.opacity(0.1) : Color.clear, 
-                        lineWidth: 1
-                    )
-            )
-            .offset(x: dragOffset.width)
-            .onTapGesture {
-                if isShowingSwipeOptions {
-                    // If swipe options are showing, reset them
-                    withAnimation(.spring(response: 0.3)) {
-                        resetSwipeState()
-                    }
-                } else {
-                    // Otherwise, show episode detail
-                    showingEpisodeDetail = true
-                }
+        .padding(.vertical, 8)
+        .padding(.horizontal, 16)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(
+                    isCurrentlyPlaying ? Color.orange.opacity(0.1) :
+                    episode.played ? Color.gray.opacity(0.05) : Color(.systemBackground)
+                )
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(
+                    isCurrentlyPlaying ? Color.orange.opacity(0.3) :
+                    episode.played ? Color.gray.opacity(0.1) : Color.clear,
+                    lineWidth: 1
+                )
+        )
+        .onTapGesture {
+            showingEpisodeDetail = true
+        }
+        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+            Button {
+                addToQueue()
+            } label: {
+                Label("Queue", systemImage: "plus.circle")
             }
-            .simultaneousGesture(
-                DragGesture()
-                    .onChanged { value in
-                        // Only allow left swipe (negative values)
-                        if value.translation.width < 0 {
-                            let clampedX = max(value.translation.width, -140) // Limit swipe distance
-                            dragOffset = CGSize(width: clampedX, height: 0)
-                            
-                            // Show options when swiped enough
-                            if clampedX < -60 {
-                                withAnimation(.easeInOut(duration: 0.2)) {
-                                    isShowingSwipeOptions = true
-                                }
-                            }
-                        }
-                    }
-                    .onEnded { value in
-                        let threshold: CGFloat = -80
-                        
-                        if value.translation.width < threshold {
-                            // Keep options visible
-                            withAnimation(.spring(response: 0.3)) {
-                                dragOffset = CGSize(width: -140, height: 0)
-                                isShowingSwipeOptions = true
-                            }
-                        } else {
-                            // Reset to original position
-                            withAnimation(.spring(response: 0.3)) {
-                                resetSwipeState()
-                            }
-                        }
-                    }
-            )
+            .tint(.blue)
+
+            Button {
+                playNext()
+            } label: {
+                Label("Play Next", systemImage: "text.line.first.and.arrowtriangle.forward")
+            }
+            .tint(.green)
+
+            Button {
+                togglePlayedStatus()
+            } label: {
+                Label(episode.played ? "Mark Unplayed" : "Mark Played",
+                      systemImage: episode.played ? "checkmark.circle" : "checkmark.circle.fill")
+            }
+            .tint(episode.played ? .orange : .gray)
         }
         .fullScreenCover(isPresented: $showingEpisodeDetail) {
             EpisodeDetailView(episode: episode, podcast: podcast)
         }
-    }
-    
-    private func resetSwipeState() {
-        dragOffset = .zero
-        isShowingSwipeOptions = false
     }
     
     private func addToQueue() {
