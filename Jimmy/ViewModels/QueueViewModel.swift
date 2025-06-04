@@ -178,10 +178,10 @@ class QueueViewModel: ObservableObject {
         saveQueue()
     }
     
-    func markEpisodesAsPlayed(withIDs ids: Set<UUID>) {
+    func markEpisodesAsPlayed(withIDs ids: Set<UUID>, played: Bool = true) {
         for i in queue.indices {
             if ids.contains(queue[i].id) {
-                queue[i].played = true
+                queue[i].played = played
             }
         }
         saveQueue()
