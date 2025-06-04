@@ -7,16 +7,7 @@ struct RecommendedPodcastItem: View {
     let styleIndex: Int
 
     private var colorPair: (Color, Color) {
-        let sets: [(Color, Color)] = [
-            (.pink, .orange),
-            (.purple, .blue),
-            (.green, .mint),
-            (.yellow, .red),
-            (.indigo, .purple),
-            (.teal, .cyan),
-            (.orange, .red),
-            (.pink, .purple)
-        ]
+        let sets = ColorPalette.gradientPairs
         return sets[styleIndex % sets.count]
     }
 
