@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXFileReference section */
-               D411ADBD2DE078AE00E1779D /* Jimmy.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Jimmy.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D411ADBD2DE078AE00E1779D /* Jimmy.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Jimmy.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -18,13 +18,13 @@
 			);
 			target = D411ADBC2DE078AE00E1779D /* Jimmy */;
 		};
-                D51100002DE078AF00E1779D /* Exceptions for "JimmyTests" folder in "JimmyTests" target */ = {
-                        isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-                        membershipExceptions = (
-                                Info.plist,
-                        );
-                        target = D51100052DE078AF00E1779D /* JimmyTests */;
-                };
+		D51100002DE078AF00E1779D /* Exceptions for "Tests" folder in "JimmyTests" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = D51100052DE078AF00E1779D /* JimmyTests */;
+		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -36,14 +36,14 @@
 			path = Jimmy;
 			sourceTree = "<group>";
 		};
-                D51100012DE078AF00E1779D /* JimmyTests */ = {
-                        isa = PBXFileSystemSynchronizedRootGroup;
-                        exceptions = (
-                                D51100002DE078AF00E1779D /* Exceptions for "JimmyTests" folder in "JimmyTests" target */,
-                        );
-                        path = Tests;
-                        sourceTree = "<group>";
-                };
+		D51100012DE078AF00E1779D /* Tests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				D51100002DE078AF00E1779D /* Exceptions for "Tests" folder in "JimmyTests" target */,
+			);
+			path = Tests;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -54,13 +54,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-                D51100032DE078AF00E1779D /* Frameworks */ = {
-                        isa = PBXFrameworksBuildPhase;
-                        buildActionMask = 2147483647;
-                        files = (
-                        );
-                        runOnlyForDeploymentPostprocessing = 0;
-                };
+		D51100032DE078AF00E1779D /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -68,7 +68,7 @@
 			isa = PBXGroup;
 			children = (
 				D411ADBF2DE078AE00E1779D /* Jimmy */,
-                                D51100012DE078AF00E1779D /* JimmyTests */,
+				D51100012DE078AF00E1779D /* Tests */,
 				D411ADBE2DE078AE00E1779D /* Products */,
 			);
 			sourceTree = "<group>";
@@ -77,7 +77,6 @@
 			isa = PBXGroup;
 			children = (
 				D411ADBD2DE078AE00E1779D /* Jimmy.app */,
-                                D51100092DE078AF00E1779D /* JimmyTests.xctest */
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -104,31 +103,30 @@
 			packageProductDependencies = (
 			);
 			productName = Jimmy;
-                       productReference = D411ADBD2DE078AE00E1779D /* Jimmy.app */;
-                       productType = "com.apple.product-type.application";
+			productReference = D411ADBD2DE078AE00E1779D /* Jimmy.app */;
+			productType = "com.apple.product-type.application";
 		};
-                D51100052DE078AF00E1779D /* JimmyTests */ = {
-                        isa = PBXNativeTarget;
-                        buildConfigurationList = D51100062DE078AF00E1779D /* Build configuration list for PBXNativeTarget "JimmyTests" */;
-                        buildPhases = (
-                                D51100022DE078AF00E1779D /* Sources */,
-                                D51100032DE078AF00E1779D /* Frameworks */,
-                                D51100042DE078AF00E1779D /* Resources */,
-                        );
-                        buildRules = (
-                        );
-                        dependencies = (
-                        );
-                        fileSystemSynchronizedGroups = (
-                                D51100012DE078AF00E1779D /* JimmyTests */,
-                        );
-                        name = JimmyTests;
-                        packageProductDependencies = (
-                        );
-                        productName = JimmyTests;
-                        productReference = D51100092DE078AF00E1779D /* JimmyTests.xctest */;
-                        productType = "com.apple.product-type.bundle.unit-test";
-                };
+		D51100052DE078AF00E1779D /* JimmyTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D51100062DE078AF00E1779D /* Build configuration list for PBXNativeTarget "JimmyTests" */;
+			buildPhases = (
+				D51100022DE078AF00E1779D /* Sources */,
+				D51100032DE078AF00E1779D /* Frameworks */,
+				D51100042DE078AF00E1779D /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				D51100012DE078AF00E1779D /* Tests */,
+			);
+			name = JimmyTests;
+			packageProductDependencies = (
+			);
+			productName = JimmyTests;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -159,7 +157,7 @@
 			projectRoot = "";
 			targets = (
 				D411ADBC2DE078AE00E1779D /* Jimmy */,
-                                D51100052DE078AF00E1779D /* JimmyTests */
+				D51100052DE078AF00E1779D /* JimmyTests */,
 			);
 		};
 /* End PBXProject section */
@@ -172,13 +170,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-                D51100042DE078AF00E1779D /* Resources */ = {
-                        isa = PBXResourcesBuildPhase;
-                        buildActionMask = 2147483647;
-                        files = (
-                        );
-                        runOnlyForDeploymentPostprocessing = 0;
-                };
+		D51100042DE078AF00E1779D /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -189,13 +187,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-                D51100022DE078AF00E1779D /* Sources */ = {
-                        isa = PBXSourcesBuildPhase;
-                        buildActionMask = 2147483647;
-                        files = (
-                        );
-                        runOnlyForDeploymentPostprocessing = 0;
-                };
+		D51100022DE078AF00E1779D /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
@@ -378,26 +376,26 @@
 			};
 			name = Release;
 		};
-                D51100072DE078AF00E1779D /* Debug */ = {
-                        isa = XCBuildConfiguration;
-                        buildSettings = {
-                                INFOPLIST_FILE = Tests/Info.plist;
-                                PRODUCT_BUNDLE_IDENTIFIER = com.chenkahana.JimmyTests;
-                                PRODUCT_NAME = "$(TARGET_NAME)";
-                                SWIFT_VERSION = 5.0;
-                        };
-                        name = Debug;
-                };
-                D51100082DE078AF00E1779D /* Release */ = {
-                        isa = XCBuildConfiguration;
-                        buildSettings = {
-                                INFOPLIST_FILE = Tests/Info.plist;
-                                PRODUCT_BUNDLE_IDENTIFIER = com.chenkahana.JimmyTests;
-                                PRODUCT_NAME = "$(TARGET_NAME)";
-                                SWIFT_VERSION = 5.0;
-                        };
-                        name = Release;
-                };
+		D51100072DE078AF00E1779D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				INFOPLIST_FILE = Tests/Info.plist;
+				PRODUCT_BUNDLE_IDENTIFIER = com.chenkahana.JimmyTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		D51100082DE078AF00E1779D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				INFOPLIST_FILE = Tests/Info.plist;
+				PRODUCT_BUNDLE_IDENTIFIER = com.chenkahana.JimmyTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -419,15 +417,15 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-                D51100062DE078AF00E1779D /* Build configuration list for PBXNativeTarget "JimmyTests" */ = {
-                        isa = XCConfigurationList;
-                        buildConfigurations = (
-                                D51100072DE078AF00E1779D /* Debug */,
-                                D51100082DE078AF00E1779D /* Release */,
-                        );
-                        defaultConfigurationIsVisible = 0;
-                        defaultConfigurationName = Release;
-                };
+		D51100062DE078AF00E1779D /* Build configuration list for PBXNativeTarget "JimmyTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D51100072DE078AF00E1779D /* Debug */,
+				D51100082DE078AF00E1779D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 /* End XCConfigurationList section */
 	};
 	rootObject = D411ADB52DE078AE00E1779D /* Project object */;
