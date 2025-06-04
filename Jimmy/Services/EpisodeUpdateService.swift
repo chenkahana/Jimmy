@@ -29,6 +29,9 @@ class EpisodeUpdateService: ObservableObject {
     
     /// Start periodic background updates
     func startPeriodicUpdates() {
+        // Prevent starting multiple timers if called again
+        guard updateTimer == nil else { return }
+
         // Schedule immediate update on app launch
         Task {
             await updateAllEpisodes()
