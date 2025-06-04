@@ -49,21 +49,31 @@ class EpisodeViewModel: ObservableObject {
     // MARK: - Batch Operations
     
     func markAllEpisodesAsPlayed(for podcastID: UUID) {
+        var affectedIDs = Set<UUID>()
         for i in episodes.indices {
             if episodes[i].podcastID == podcastID {
                 episodes[i].played = true
+                affectedIDs.insert(episodes[i].id)
             }
         }
         saveEpisodes()
+        if !affectedIDs.isEmpty {
+            QueueViewModel.shared.markEpisodesAsPlayed(withIDs: affectedIDs, played: true)
+        }
     }
-    
+
     func markAllEpisodesAsUnplayed(for podcastID: UUID) {
+        var affectedIDs = Set<UUID>()
         for i in episodes.indices {
             if episodes[i].podcastID == podcastID {
                 episodes[i].played = false
+                affectedIDs.insert(episodes[i].id)
             }
         }
         saveEpisodes()
+        if !affectedIDs.isEmpty {
+            QueueViewModel.shared.markEpisodesAsPlayed(withIDs: affectedIDs, played: false)
+        }
     }
     
     // MARK: - Persistence
