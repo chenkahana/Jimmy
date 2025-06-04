@@ -31,12 +31,13 @@ struct DiscoverView: View {
                 .padding(.vertical, 40)
             } else {
                 LazyVGrid(columns: columns, spacing: 20) {
-                    ForEach(recommended) { result in
+                    ForEach(Array(recommended.enumerated()), id: \.element.id) { index, result in
                         NavigationLink(destination: SearchResultDetailView(result: result)) {
                             RecommendedPodcastItem(
                                 result: result,
                                 isSubscribed: isSubscribed(result),
-                                onSubscribe: { subscribe(to: result) }
+                                onSubscribe: { subscribe(to: result) },
+                                styleIndex: index
                             )
                         }
                         .buttonStyle(.plain)

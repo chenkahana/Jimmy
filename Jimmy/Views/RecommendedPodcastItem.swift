@@ -4,6 +4,21 @@ struct RecommendedPodcastItem: View {
     let result: PodcastSearchResult
     let isSubscribed: Bool
     let onSubscribe: () -> Void
+    let styleIndex: Int
+
+    private var colorPair: (Color, Color) {
+        let sets: [(Color, Color)] = [
+            (.pink, .orange),
+            (.purple, .blue),
+            (.green, .mint),
+            (.yellow, .red),
+            (.indigo, .purple),
+            (.teal, .cyan),
+            (.orange, .red),
+            (.pink, .purple)
+        ]
+        return sets[styleIndex % sets.count]
+    }
 
     var body: some View {
         VStack(spacing: 8) {
@@ -12,7 +27,11 @@ struct RecommendedPodcastItem: View {
                 size: 120,
                 cornerRadius: 12
             )
-            .shadow(color: .black.opacity(0.15), radius: 4, x: 0, y: 2)
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(colorPair.0.opacity(0.6), lineWidth: 2)
+            )
+            .shadow(color: colorPair.0.opacity(0.3), radius: 4, x: 0, y: 2)
 
             Text(result.title)
                 .font(.caption)
@@ -29,14 +48,30 @@ struct RecommendedPodcastItem: View {
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
                     .background(
-                        (isSubscribed ? Color.green : Color.blue)
-                            .opacity(0.2)
+                        LinearGradient(
+                            colors: [colorPair.0, colorPair.1],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                        .opacity(isSubscribed ? 0.4 : 1.0)
                     )
-                    .foregroundColor(isSubscribed ? .green : .blue)
+                    .foregroundColor(.white)
                     .cornerRadius(8)
             }
+            .buttonStyle(.plain)
             .disabled(isSubscribed)
         }
+        .padding(8)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(
+                    LinearGradient(
+                        colors: [colorPair.0.opacity(0.15), colorPair.1.opacity(0.15)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+        )
     }
 }
 
@@ -53,6 +88,7 @@ struct RecommendedPodcastItem: View {
             trackCount: 0
         ),
         isSubscribed: false,
-        onSubscribe: {}
+        onSubscribe: {},
+        styleIndex: 0
     )
 }
