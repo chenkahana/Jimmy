@@ -11,11 +11,14 @@ struct ContentView: View {
     @AppStorage("darkMode") private var darkMode: Bool = false
     @AppStorage("highContrastMode") private var highContrastMode: Bool = false
     @State private var selectedTab: Int = 3
+    @ObservedObject private var updateService = EpisodeUpdateService.shared
+    @State private var showLoadingScreen: Bool = true
     
     var body: some View {
-        ZStack(alignment: .bottom) {
-            // Main content area with tab bar
-            VStack(spacing: 0) {
+        ZStack {
+            ZStack(alignment: .bottom) {
+                // Main content area with tab bar
+                VStack(spacing: 0) {
                 // Main content area - Custom tab switching without intermediate glimpses
                 ZStack {
                     // Show only the selected tab content
@@ -66,6 +69,19 @@ struct ContentView: View {
             }
         }
         .preferredColorScheme(darkMode ? .dark : .light)
+
+        if showLoadingScreen {
+            AppLoadingView(progress: $updateService.updateProgress)
+                .transition(.opacity)
+        }
+    }
+    .onAppear {
+        showLoadingScreen = updateService.isUpdating
+    }
+    .onChange(of: updateService.isUpdating) { updating in
+        withAnimation(.easeInOut) {
+            showLoadingScreen = updating
+        }
     }
 }
 
