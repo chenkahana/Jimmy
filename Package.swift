@@ -13,7 +13,10 @@ let package = Package(
         .target(
             name: "JimmyUtilities",
             path: "Jimmy/Utilities",
-            sources: ["FileStorage.swift"]
+            sources: [
+                "FileStorage.swift",
+                "SpotifyListParser.swift"
+            ]
         ),
         .testTarget(
             name: "JimmyTests",
