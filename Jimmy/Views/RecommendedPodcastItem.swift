@@ -6,9 +6,10 @@ struct RecommendedPodcastItem: View {
     let onSubscribe: () -> Void
     let styleIndex: Int
 
+    @State private var appeared = false
+
     private var colorPair: (Color, Color) {
-        let sets = ColorPalette.gradientPairs
-        return sets[styleIndex % sets.count]
+        ColorPalette.pair(for: styleIndex)
     }
 
     var body: some View {
@@ -57,12 +58,22 @@ struct RecommendedPodcastItem: View {
             RoundedRectangle(cornerRadius: 16)
                 .fill(
                     LinearGradient(
-                        colors: [colorPair.0.opacity(0.15), colorPair.1.opacity(0.15)],
+                        colors: [colorPair.0.opacity(0.2), colorPair.1.opacity(0.2)],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
                 )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(colorPair.1.opacity(0.6), lineWidth: 2)
+                )
         )
+        .scaleEffect(appeared ? 1.0 : 0.9)
+        .onAppear {
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
+                appeared = true
+            }
+        }
     }
 }
 
