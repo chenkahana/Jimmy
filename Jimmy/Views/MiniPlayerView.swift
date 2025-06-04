@@ -176,7 +176,7 @@ struct FloatingMiniPlayerView: View {
             .animation(.spring(response: 0.5, dampingFraction: 0.8), value: audioPlayer.currentEpisode?.id)
             .animation(.easeInOut(duration: 0.2), value: audioPlayer.isPlaying)
         }
-        .onChange(of: currentTab) { _, newTab in
+        .onChange(of: currentTab) { newTab in
             // Reset mini player hidden state when visiting "Now Playing" tab
             // This allows it to reappear when navigating back to other tabs
             if newTab == 2 {
