@@ -21,7 +21,7 @@ struct ContentView: View {
                     // Show only the selected tab content
                     if selectedTab == 0 {
                         NavigationView {
-                            PodcastSearchView()
+                            DiscoverView()
                         }
                         .transition(.opacity.combined(with: .scale(scale: 0.95)))
                     } else if selectedTab == 1 {
