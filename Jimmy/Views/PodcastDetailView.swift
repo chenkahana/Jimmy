@@ -69,6 +69,7 @@ struct PodcastDetailView: View {
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
+        .background(SwipeBackHelper())
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {
                 Button(action: {
