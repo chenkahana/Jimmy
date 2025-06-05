@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(Combine)
+import Combine
+#endif
 
 public enum LoginProvider {
     case apple
@@ -21,15 +24,34 @@ public struct AuthUser: Codable, Equatable {
 /// Apple or Google. On platforms where the respective frameworks are not
 /// available, it returns a demo user immediately.
 public class AuthenticationService: NSObject {
+#if canImport(Combine)
+    @Published public private(set) var currentUser: AuthUser?
+#else
+    public private(set) var currentUser: AuthUser?
+#endif
     public static let shared = AuthenticationService()
     private var completion: ((Result<AuthUser, Error>) -> Void)?
+    private let userKey = "authUser"
 
-    private override init() {}
+    private override init() {
+        if let data = UserDefaults.standard.data(forKey: userKey),
+           let user = try? JSONDecoder().decode(AuthUser.self, from: data) {
+            currentUser = user
+        }
+    }
 
     /// Login with the given provider. This uses platform specific frameworks
     /// when available. On unsupported platforms a placeholder user is returned.
     public func login(with provider: LoginProvider, completion: @escaping (Result<AuthUser, Error>) -> Void) {
-        self.completion = completion
+        self.completion = { result in
+            if case .success(let user) = result {
+                self.currentUser = user
+                if let data = try? JSONEncoder().encode(user) {
+                    UserDefaults.standard.set(data, forKey: self.userKey)
+                }
+            }
+            completion(result)
+        }
 
         #if canImport(AuthenticationServices) && os(iOS)
         if provider == .apple {
@@ -46,14 +68,14 @@ public class AuthenticationService: NSObject {
         if provider == .google {
             GIDSignIn.sharedInstance.signIn(withPresenting: nil) { result, error in
                 if let error = error {
-                    completion(.failure(error))
+                    self.completion?(.failure(error))
                 } else if let user = result?.user {
                     let authUser = AuthUser(id: user.userID ?? UUID().uuidString,
                                             name: user.profile?.name ?? "User",
                                             email: user.profile?.email)
-                    completion(.success(authUser))
+                    self.completion?(.success(authUser))
                 } else {
-                    completion(.failure(NSError(domain: "Auth", code: -1)))
+                    self.completion?(.failure(NSError(domain: "Auth", code: -1)))
                 }
             }
             return
@@ -62,9 +84,18 @@ public class AuthenticationService: NSObject {
 
         // Fallback for unsupported platforms
         let demo = AuthUser(id: UUID().uuidString, name: "Demo User")
-        completion(.success(demo))
+        self.completion?(.success(demo))
+    }
+
+    public func signOut() {
+        currentUser = nil
+        UserDefaults.standard.removeObject(forKey: userKey)
     }
 }
+
+#if canImport(Combine)
+extension AuthenticationService: ObservableObject {}
+#endif
 
 #if canImport(AuthenticationServices) && os(iOS)
 import AuthenticationServices
