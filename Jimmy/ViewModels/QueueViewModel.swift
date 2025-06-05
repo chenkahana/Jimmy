@@ -233,12 +233,16 @@ class QueueViewModel: ObservableObject {
                 AppDataDocument.saveToICloudIfEnabled()
             }
         }
+        DispatchQueue.main.async {
+            CarPlayManager.shared.reloadData()
+        }
     }
-    
+
     private func loadQueue() {
         if let data = UserDefaults.standard.data(forKey: queueKey),
            let savedQueue = try? JSONDecoder().decode([Episode].self, from: data) {
             queue = savedQueue
         }
+        CarPlayManager.shared.reloadData()
     }
-} 
+}
