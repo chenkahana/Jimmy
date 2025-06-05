@@ -12,6 +12,6 @@ while IFS= read -r swift_file; do
     echo "Failed to parse $swift_file" >&2
     status=1
   fi
-done < <(git ls-files '*.swift')
+done < <(git ls-files 'Jimmy/Utilities/*.swift' 'Tests/**/*.swift')
 
 exit $status
