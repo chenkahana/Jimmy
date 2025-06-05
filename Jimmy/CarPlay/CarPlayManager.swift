@@ -27,6 +27,11 @@ final class CarPlayManager: NSObject {
     func reloadData() {
         MPPlayableContentManager.shared().reloadData()
     }
+
+    /// Helper to retrieve the podcast associated with an episode
+    private func getPodcast(for episode: Episode) -> Podcast? {
+        return PodcastService.shared.loadPodcasts().first { $0.id == episode.podcastID }
+    }
 }
 
 extension CarPlayManager: MPPlayableContentDelegate {
@@ -57,7 +62,7 @@ extension CarPlayManager: MPPlayableContentDataSource {
             let episode = QueueViewModel.shared.queue[indexPath[1]]
             let item = MPContentItem(identifier: episode.id.uuidString)
             item.title = episode.title
-            item.subtitle = episode.podcastTitle
+            item.subtitle = getPodcast(for: episode)?.title
             item.isContainer = false
             item.isPlayable = true
             return item
