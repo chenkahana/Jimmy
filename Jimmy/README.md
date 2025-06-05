@@ -29,6 +29,7 @@ Jimmy is a personal podcast app for iPhone, designed for simplicity, speed, and 
 - **Queue-Centric Design**: Primary focus on managing your listening queue
 - **Episode Downloads**: Download episodes for offline listening
 - **Progress Tracking**: Resume playback where you left off
+- **CarPlay Support**: Browse your queue and control playback directly from CarPlay
 - **Swipe Actions**: Customizable swipe gestures for quick actions
 
 ### ⚙️ **Modern UI & Experience**

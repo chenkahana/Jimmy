@@ -52,6 +52,7 @@ Jimmy is a personal podcast app for iPhone, designed for simplicity, speed, and 
 - **Variable speed**: Adjustable playback speed (0.75x to 2x)
 - **Background play**: Continues playing in background
 - **Audio controls**: Standard media controls and lock screen integration
+- **CarPlay support**: Browse your queue and control playback in the car
 - **Widget integration**: Data sync between main app and widget
 
 ### User Experience
