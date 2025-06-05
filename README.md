@@ -19,6 +19,11 @@ A minimalist, queue-centric iOS podcast app inspired by Google Podcasts with enh
 - ⚠️ **Requires Xcode Widget Extension target setup**
 - 📋 **Detailed setup guide** available in `Jimmy/WIDGET_README.md`
 
+### ⚠️ Apple Watch App - **IN PROGRESS**
+- 🆕 **Basic watch app code** in `WatchFiles/` directory
+- ⚠️ **Requires Xcode Watch App target setup**
+- 📋 **Instructions** in `Jimmy/WATCH_README.md`
+
 ## Overview
 Jimmy is a personal podcast app for iPhone, designed for simplicity, speed, and a queue-focused listening experience. It allows you to import your podcast subscriptions, discover and manage shows, and listen to episodes with a clean, modern interface. The app includes a beautiful lock-screen widget that matches your wireframe design for seamless playback control.
 
@@ -54,6 +59,7 @@ Jimmy is a personal podcast app for iPhone, designed for simplicity, speed, and 
 - **Audio controls**: Standard media controls and lock screen integration
 - **CarPlay support**: Browse your queue and control playback in the car
 - **Widget integration**: Data sync between main app and widget
+- **Watch app companion**: Control playback from Apple Watch
 
 ### User Experience
 - **Search functionality**: Find podcasts and episodes quickly
@@ -123,6 +129,10 @@ Jimmy/
 │   ├── JimmyWidgetExtension.swift
 │   ├── WidgetIntents.swift
 │   └── Configuration files
+├── WatchFiles/              # Apple Watch app implementation files
+│   ├── JimmyWatchApp.swift
+│   ├── WatchContentView.swift
+│   └── WatchPlayerManager.swift
 └── Documentation/
     ├── WIDGET_README.md     # Comprehensive widget setup guide
     ├── FEATURE_SUMMARY.md   # Feature documentation
@@ -133,11 +143,13 @@ Jimmy/
 
 ### Essential Reading:
 - **Widget Setup**: `Jimmy/WIDGET_README.md` - Complete widget implementation guide
+- **Watch Setup**: `Jimmy/WATCH_README.md` - Apple Watch companion instructions
 - **Features**: `Jimmy/FEATURE_SUMMARY.md` - Detailed feature documentation
 - **App Summary**: `APP_RENAME_SUMMARY.md` - Project overview
 
 ### Quick Links:
 - **Widget Status**: Implementation complete, Xcode setup required
+- **Watch Status**: Basic code provided, Xcode setup required
 - **Build Issues**: All resolved, main app builds successfully
 - **Repository**: Published and updated on GitHub
 
@@ -155,4 +167,4 @@ This project is for personal use and educational purposes.
 
 ---
 
-**🎉 Ready to Use**: The main app is fully functional and ready for use. The lock-screen widget is implemented and ready for Xcode setup following the guide in `WIDGET_README.md`.
+**🎉 Ready to Use**: The main app is fully functional and ready for use. The lock-screen widget is implemented and ready for Xcode setup following the guide in `WIDGET_README.md`. The Apple Watch companion is provided as sample code and needs an Xcode Watch App target to run.
