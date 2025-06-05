@@ -192,6 +192,7 @@ struct LibraryView: View {
             // Reset edit mode when switching views
             isEditMode = false
         }
+        .keyboardDismissToolbar()
     }
     
     private func loadSubscribedPodcasts() {

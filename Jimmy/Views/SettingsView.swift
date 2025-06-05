@@ -880,6 +880,7 @@ struct ManualPodcastImportView: View {
                     }
                 }
             }
+            .keyboardDismissToolbar()
         }
     }
     

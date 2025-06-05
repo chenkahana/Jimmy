@@ -51,6 +51,7 @@ struct ContentView: View {
                     // Custom Tab Bar
                     CustomTabBar(selectedTab: $selectedTab)
                 }
+                .ignoresSafeArea(.keyboard, edges: .bottom)
                 
                 // Floating Mini Player - Above tab bar with enhanced 3D effect
                 VStack {
