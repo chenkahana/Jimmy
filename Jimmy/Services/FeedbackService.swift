@@ -6,8 +6,11 @@ import Foundation
 class FeedbackService {
     static let shared = FeedbackService()
 
-    /// Replace with the URL of your Google Apps Script Web App
-    var endpointURL: URL?
+    /// URL for the Google Apps Script that writes to the feedback sheet
+    /// Defaults to the shared demo script but can be replaced if needed.
+    var endpointURL: URL? = URL(
+        string: "https://script.google.com/macros/s/AKfycbz_lWE8VJGfqb1oIpvL9gzKcgS7O7OO8-cjL7t5y_qq5GH4KajHBaQwWkEKSafy8OHZ/exec"
+    )
 
     private init() {}
 

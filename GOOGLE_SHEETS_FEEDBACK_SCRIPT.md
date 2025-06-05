@@ -5,9 +5,9 @@ This short Apps Script receives JSON feedback from the app and writes it to your
 ## Steps
 
 1. Open your Google Sheet and choose **Extensions → Apps Script**.
-2. Replace any code with the snippet below.
+2. Replace any code with the snippet below, updating the `openById` call if your sheet ID ever changes.
 3. Click **Deploy → New deployment**, select **Web app**, and allow access to Anyone (or choose your preferred restrictions).
-4. Copy the deployment URL and set it as `FeedbackService.shared.endpointURL` in the app.
+4. Copy the deployment URL and set it as `FeedbackService.shared.endpointURL` in the app (the app defaults to the script URL provided in the repo).
 
 ```javascript
 function doPost(e) {
@@ -16,7 +16,9 @@ function doPost(e) {
   }
 
   var data = JSON.parse(e.postData.contents);
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
+  var sheet = SpreadsheetApp
+      .openById('1eqOJQlUkj5NVMwm7OI26blyru5gsPxZqN9xPEDD8JgI')
+      .getSheets()[0];
   var nextNo = sheet.getLastRow(); // assumes row 1 has headers "no.", "user", "notes"
   sheet.appendRow([nextNo, data.name, data.notes]);
 
