@@ -5,6 +5,8 @@ struct EpisodeDetailView: View {
     let podcast: Podcast
     @Environment(\.dismiss) private var dismiss
     @ObservedObject private var audioPlayer = AudioPlayerService.shared
+    @State private var shareURL: URL?
+    @State private var showingShareSheet = false
     
     var body: some View {
         NavigationView {
@@ -228,9 +230,9 @@ struct EpisodeDetailView: View {
                         }
                         
                         Divider()
-                        
+
                         Button(action: {
-                            // Share episode (future implementation)
+                            shareEpisode()
                         }) {
                             Label("Share Episode", systemImage: "square.and.arrow.up")
                         }
@@ -242,17 +244,31 @@ struct EpisodeDetailView: View {
             }
         }
         .navigationViewStyle(StackNavigationViewStyle())
+        .sheet(isPresented: $showingShareSheet) {
+            if let url = shareURL {
+                ShareSheet(items: [url])
+            }
+        }
     }
-    
+
     private func formatTime(_ timeInterval: TimeInterval) -> String {
         let hours = Int(timeInterval) / 3600
         let minutes = Int(timeInterval.truncatingRemainder(dividingBy: 3600)) / 60
         let seconds = Int(timeInterval.truncatingRemainder(dividingBy: 60))
-        
+
         if hours > 0 {
             return String(format: "%d:%02d:%02d", hours, minutes, seconds)
         } else {
             return String(format: "%d:%02d", minutes, seconds)
+        }
+    }
+
+    private func shareEpisode() {
+        AppleEpisodeLinkService.shared.fetchAppleLink(for: episode, podcast: podcast) { url in
+            if let url = url {
+                shareURL = url
+                showingShareSheet = true
+            }
         }
     }
 }
