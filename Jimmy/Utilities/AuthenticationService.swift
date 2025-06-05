@@ -1,6 +1,12 @@
 import Foundation
+#if canImport(UIKit)
+import UIKit
+#endif
 #if canImport(Combine)
 import Combine
+#endif
+#if canImport(GoogleSignIn) && os(iOS)
+import GoogleSignIn
 #endif
 
 public enum LoginProvider {
@@ -59,6 +65,7 @@ public class AuthenticationService: NSObject {
             request.requestedScopes = [.fullName, .email]
             let controller = ASAuthorizationController(authorizationRequests: [request])
             controller.delegate = self
+            controller.presentationContextProvider = self
             controller.performRequests()
             return
         }
@@ -66,7 +73,12 @@ public class AuthenticationService: NSObject {
 
         #if canImport(GoogleSignIn) && os(iOS)
         if provider == .google {
-            GIDSignIn.sharedInstance.signIn(withPresenting: nil) { result, error in
+            guard let presentingVC = UIApplication.topViewController else {
+                let error = NSError(domain: "Auth", code: -2, userInfo: [NSLocalizedDescriptionKey: "No presenting view controller"])
+                self.completion?(.failure(error))
+                return
+            }
+            GIDSignIn.sharedInstance.signIn(withPresenting: presentingVC) { result, error in
                 if let error = error {
                     self.completion?(.failure(error))
                 } else if let user = result?.user {
@@ -99,7 +111,7 @@ extension AuthenticationService: ObservableObject {}
 
 #if canImport(AuthenticationServices) && os(iOS)
 import AuthenticationServices
-extension AuthenticationService: ASAuthorizationControllerDelegate {
+extension AuthenticationService: ASAuthorizationControllerDelegate, ASAuthorizationControllerPresentationContextProviding {
     public func authorizationController(controller: ASAuthorizationController, didCompleteWithAuthorization authorization: ASAuthorization) {
         if let credential = authorization.credential as? ASAuthorizationAppleIDCredential {
             let user = AuthUser(id: credential.user,
@@ -111,6 +123,13 @@ extension AuthenticationService: ASAuthorizationControllerDelegate {
 
     public func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: Error) {
         completion?(.failure(error))
+    }
+
+    public func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
+        UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap { $0.windows }
+            .first(where: { $0.isKeyWindow }) ?? UIWindow()
     }
 }
 #endif
