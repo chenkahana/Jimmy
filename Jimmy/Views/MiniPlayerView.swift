@@ -12,9 +12,23 @@ struct FloatingMiniPlayerView: View {
             if let currentEpisode = audioPlayer.currentEpisode,
                !isMiniPlayerHidden,
                currentTab != 2 { // Don't show mini player on "Now Playing" tab (tab 2)
-                VStack(spacing: 0) {
-                    // Floating card with enhanced 3D styling
-                    HStack(spacing: 16) {
+                miniPlayer(for: currentEpisode)
+            }
+        }
+        .onChange(of: currentTab) { _, newTab in
+            // Reset mini player hidden state when visiting "Now Playing" tab
+            // This allows it to reappear when navigating back to other tabs
+            if newTab == 2 {
+                isMiniPlayerHidden = false
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func miniPlayer(for currentEpisode: Episode) -> some View {
+        VStack(spacing: 0) {
+            // Floating card with enhanced 3D styling
+            HStack(spacing: 16) {
                         // Episode artwork with less rounded corners
                         CachedAsyncImage(url: currentEpisode.artworkURL ?? getPodcast(for: currentEpisode)?.artworkURL) { image in
                             image
@@ -176,13 +190,6 @@ struct FloatingMiniPlayerView: View {
                 .animation(.spring(response: 0.5, dampingFraction: 0.8), value: audioPlayer.currentEpisode?.id)
                 .animation(.easeInOut(duration: 0.2), value: audioPlayer.isPlaying)
             }
-                .onChange(of: currentTab) { _, newTab in
-                    // Reset mini player hidden state when visiting "Now Playing" tab
-                    // This allows it to reappear when navigating back to other tabs
-                    if newTab == 2 {
-                        isMiniPlayerHidden = false
-                    }
-                }
         }
         
         private func getPodcast(for episode: Episode) -> Podcast? {
