@@ -202,7 +202,7 @@ struct FloatingMiniPlayerView: View {
             let seconds = Int(time) % 60
             return String(format: "%d:%02d", minutes, seconds)
         }
-    }
+    
     
     // Simple button style for the play/pause button
     struct SimpleButtonStyle: ButtonStyle {
@@ -566,4 +566,4 @@ struct FloatingMiniPlayerView: View {
             MiniPlayerView(onTap: {})
         }
     }
-}
+
