@@ -18,10 +18,10 @@ class FeedbackService {
     /// - Parameters:
     ///   - name: Name of the person submitting
     ///   - notes: Feedback text or bug description
-    ///   - completion: Called with `true` on success, `false` on failure
-    func submit(name: String, notes: String, completion: @escaping (Bool) -> Void) {
+    ///   - completion: Called with a success flag and an optional message on failure
+    func submit(name: String, notes: String, completion: @escaping (Bool, String?) -> Void) {
         guard let url = endpointURL else {
-            completion(false)
+            completion(false, "No endpoint URL configured")
             return
         }
 
@@ -34,15 +34,26 @@ class FeedbackService {
         request.timeoutInterval = 15.0
 
         URLSession.shared.dataTask(with: request) { data, response, error in
-            guard
-                error == nil,
-                let http = response as? HTTPURLResponse,
-                (200...299).contains(http.statusCode)
-            else {
-                DispatchQueue.main.async { completion(false) }
+            if let error = error {
+                DispatchQueue.main.async { completion(false, error.localizedDescription) }
                 return
             }
-            DispatchQueue.main.async { completion(true) }
+
+            guard let http = response as? HTTPURLResponse else {
+                DispatchQueue.main.async { completion(false, "No response") }
+                return
+            }
+
+            guard (200...299).contains(http.statusCode) || (300...399).contains(http.statusCode) else {
+                var message: String? = HTTPURLResponse.localizedString(forStatusCode: http.statusCode)
+                if let data = data, let body = String(data: data, encoding: .utf8), !body.isEmpty {
+                    message = body.trimmingCharacters(in: .whitespacesAndNewlines)
+                }
+                DispatchQueue.main.async { completion(false, message) }
+                return
+            }
+
+            DispatchQueue.main.async { completion(true, nil) }
         }.resume()
     }
 }

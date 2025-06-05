@@ -52,7 +52,7 @@ struct FeedbackFormView: View {
     private func submitFeedback() {
         isSubmitting = true
         statusMessage = nil
-        FeedbackService.shared.submit(name: name, notes: notes) { success in
+        FeedbackService.shared.submit(name: name, notes: notes) { success, message in
             isSubmitting = false
             if success {
                 statusMessage = "Thank you!"
@@ -62,7 +62,11 @@ struct FeedbackFormView: View {
                     dismiss()
                 }
             } else {
-                statusMessage = "Submission failed. Please try again."
+                if let message = message, !message.isEmpty {
+                    statusMessage = "Error: \(message)"
+                } else {
+                    statusMessage = "Submission failed. Please try again."
+                }
             }
         }
     }
