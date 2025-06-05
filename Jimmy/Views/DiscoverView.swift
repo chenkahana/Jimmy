@@ -11,9 +11,9 @@ struct DiscoverView: View {
     @State private var isSearching = false
     @State private var lastSearchText = ""
 
-    private let columns = [
-        GridItem(.adaptive(minimum: 150), spacing: 16)
-    ]
+    private var groupedRecommended: [String: [PodcastSearchResult]] {
+        Dictionary(grouping: recommended, by: { $0.genre })
+    }
 
     var body: some View {
         Group {
@@ -77,19 +77,19 @@ struct DiscoverView: View {
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 40)
                     } else {
-                        LazyVGrid(columns: columns, spacing: 20) {
-                            ForEach(recommended) { result in
-                                NavigationLink(destination: SearchResultDetailView(result: result)) {
-                                    RecommendedPodcastItem(
-                                        result: result,
-                                        isSubscribed: isSubscribed(result),
-                                        onSubscribe: { subscribe(to: result) }
+                        VStack(alignment: .leading, spacing: 32) {
+                            ForEach(groupedRecommended.keys.sorted(), id: \.self) { genre in
+                                if let items = groupedRecommended[genre] {
+                                    DiscoverGenreSectionView(
+                                        genre: genre,
+                                        results: items,
+                                        isSubscribed: isSubscribed,
+                                        onSubscribe: { subscribe(to: $0) }
                                     )
                                 }
-                                .buttonStyle(.plain)
                             }
                         }
-                        .padding()
+                        .padding(.vertical)
                     }
                 }
             }
@@ -114,6 +114,15 @@ struct DiscoverView: View {
         } message: {
             Text(subscriptionMessage)
         }
+        .background(
+            RadialGradient(
+                gradient: Gradient(colors: [Color.accentColor.opacity(0.05), Color(.systemBackground)]),
+                center: .topLeading,
+                startRadius: 100,
+                endRadius: 500
+            )
+            .ignoresSafeArea()
+        )
     }
 
     private func loadData() {
