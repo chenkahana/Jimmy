@@ -15,7 +15,10 @@ let package = Package(
             path: "Jimmy/Utilities",
             sources: [
                 "FileStorage.swift",
-                "SpotifyListParser.swift"
+                "SpotifyListParser.swift",
+                "AuthenticationService.swift",
+                "UserDataService.swift",
+                "../Models/Podcast.swift"
             ]
         ),
         .testTarget(
