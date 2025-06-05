@@ -23,6 +23,7 @@ struct SettingsView: View {
     @State private var showingSpotifyImportGuide = false
     @State private var isSpotifyImporting = false
     @State private var spotifyImportMessage: String?
+    @State private var showingFeedbackForm = false
     @State private var activeAlert: SettingsAlert?
     @State private var isSubscriptionImporting = false
     @State private var subscriptionImportMessage: String?
@@ -216,7 +217,13 @@ struct SettingsView: View {
                     }
                 }
             }
-            
+
+            Section(header: Text("Feedback")) {
+                Button("Submit a Request or Bug") {
+                    showingFeedbackForm = true
+                }
+            }
+
             Section(header: Text("Debug/Developer Mode")) {
                 Button("View Analytics") {
                     showingAnalytics = true
@@ -320,6 +327,9 @@ struct SettingsView: View {
         }
         .sheet(isPresented: $showingSpotifyImportGuide) {
             SpotifyImportGuideSheet()
+        }
+        .sheet(isPresented: $showingFeedbackForm) {
+            FeedbackFormView()
         }
     }
     
