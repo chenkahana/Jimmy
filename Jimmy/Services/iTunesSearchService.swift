@@ -221,4 +221,59 @@ struct PodcastSearchResult: Identifiable {
             artworkURL: artworkURL
         )
     }
-} 
+}
+
+// MARK: - Episode Search Models
+
+struct iTunesEpisodeSearchResponse: Codable {
+    let resultCount: Int
+    let results: [iTunesEpisodeResult]
+}
+
+struct iTunesEpisodeResult: Codable {
+    let collectionId: Int
+    let collectionName: String
+    let trackId: Int
+    let trackName: String
+    let trackViewUrl: String
+}
+
+extension iTunesSearchService {
+    /// Search for an episode within a specific podcast.
+    /// - Parameters:
+    ///   - podcastId: iTunes collection ID of the podcast.
+    ///   - episodeTitle: Title of the episode to look up.
+    ///   - completion: Callback with optional episode result.
+    func searchEpisode(podcastId: Int, episodeTitle: String, completion: @escaping (iTunesEpisodeResult?) -> Void) {
+        let trimmed = episodeTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            completion(nil)
+            return
+        }
+
+        let encodedQuery = trimmed.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+        let urlString = "https://itunes.apple.com/search?term=\(encodedQuery)&entity=podcastEpisode&limit=50"
+
+        guard let url = URL(string: urlString) else {
+            completion(nil)
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 10.0
+
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            guard let data = data, error == nil else {
+                DispatchQueue.main.async { completion(nil) }
+                return
+            }
+
+            if let searchResponse = try? JSONDecoder().decode(iTunesEpisodeSearchResponse.self, from: data) {
+                let match = searchResponse.results.first { $0.collectionId == podcastId }
+                DispatchQueue.main.async { completion(match) }
+            } else {
+                DispatchQueue.main.async { completion(nil) }
+            }
+        }.resume()
+    }
+}

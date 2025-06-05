@@ -11,6 +11,8 @@ struct EpisodeRowView: View {
     @ObservedObject private var queueViewModel = QueueViewModel.shared
     @ObservedObject private var audioPlayer = AudioPlayerService.shared
     @State private var showingEpisodeDetail = false
+    @State private var showingShareSheet = false
+    @State private var shareURL: URL?
     
     init(episode: Episode, podcast: Podcast, isCurrentlyPlaying: Bool, onTap: @escaping () -> Void, onPlayNext: ((Episode) -> Void)? = nil, onMarkAsPlayed: ((Episode, Bool) -> Void)? = nil) {
         self.episode = episode
@@ -160,11 +162,17 @@ struct EpisodeRowView: View {
                         }
                         
                         Divider()
-                        
+
                         Button(action: {
                             showingEpisodeDetail = true
                         }) {
                             Label("Episode Details", systemImage: "info.circle")
+                        }
+
+                        Button(action: {
+                            shareEpisode()
+                        }) {
+                            Label("Share Episode", systemImage: "square.and.arrow.up")
                         }
                     } label: {
                         Image(systemName: "ellipsis")
@@ -247,6 +255,11 @@ struct EpisodeRowView: View {
         .fullScreenCover(isPresented: $showingEpisodeDetail) {
             EpisodeDetailView(episode: episode, podcast: podcast)
         }
+        .sheet(isPresented: $showingShareSheet) {
+            if let url = shareURL {
+                ShareSheet(items: [url])
+            }
+        }
     }
     
     private func addToQueue() {
@@ -268,11 +281,20 @@ struct EpisodeRowView: View {
     
     private func togglePlayedStatus() {
         onMarkAsPlayed?(episode, !episode.played)
-        
+
         // Show haptic feedback
         FeedbackManager.shared.markAsPlayed()
     }
-    
+
+    private func shareEpisode() {
+        AppleEpisodeLinkService.shared.fetchAppleLink(for: episode, podcast: podcast) { url in
+            if let url = url {
+                shareURL = url
+                showingShareSheet = true
+            }
+        }
+    }
+
     private func formatTime(_ timeInterval: TimeInterval) -> String {
         let hours = Int(timeInterval) / 3600
         let minutes = Int(timeInterval.truncatingRemainder(dividingBy: 3600)) / 60
