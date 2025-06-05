@@ -158,6 +158,7 @@ struct PodcastSearchView: View {
         .onAppear {
             loadLocalPodcasts()
         }
+        .keyboardDismissToolbar()
         .alert("Subscription", isPresented: $showingSubscriptionAlert) {
             Button("OK") { }
         } message: {

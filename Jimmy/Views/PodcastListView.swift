@@ -186,6 +186,7 @@ struct PodcastListView: View {
         } message: {
             Text("Are you sure you want to remove \"\(podcastToDelete?.title ?? "this podcast")\" from your subscriptions?")
         }
+        .keyboardDismissToolbar()
     }
     
     private func loadSubscribedPodcasts() {
