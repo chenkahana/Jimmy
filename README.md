@@ -22,6 +22,7 @@ A minimalist, queue-centric iOS podcast app inspired by Google Podcasts with enh
 ### ⚠️ Apple Watch App - **IN PROGRESS**
 - 🆕 **Basic watch app code** in `WatchFiles/` directory
 - ⚠️ **Requires Xcode Watch App target setup**
+- 💫 **Watch connectivity implemented** for playback control
 - 📋 **Instructions** in `Jimmy/WATCH_README.md`
 
 ## Overview
@@ -149,7 +150,7 @@ Jimmy/
 
 ### Quick Links:
 - **Widget Status**: Implementation complete, Xcode setup required
-- **Watch Status**: Basic code provided, Xcode setup required
+- **Watch Status**: Connectivity implemented, Xcode setup required
 - **Build Issues**: All resolved, main app builds successfully
 - **Repository**: Published and updated on GitHub
 

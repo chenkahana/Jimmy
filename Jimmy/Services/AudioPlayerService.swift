@@ -497,6 +497,14 @@ class AudioPlayerService: ObservableObject {
         widgetData.saveCurrentEpisode(currentEpisode)
         widgetData.savePlaybackState(isPlaying: isPlaying, position: playbackPosition, duration: duration)
         widgetData.notifyWidgetUpdate()
+
+        // Send playback info to Apple Watch
+        WatchConnectivityService.shared.sendPlaybackUpdate(
+            episode: currentEpisode,
+            isPlaying: isPlaying,
+            position: playbackPosition,
+            duration: duration
+        )
         
         // Reload widget timelines
         WidgetCenter.shared.reloadTimelines(ofKind: "JimmyWidgetExtension")

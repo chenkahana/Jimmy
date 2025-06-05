@@ -11,7 +11,7 @@ This document explains how to add the optional Apple Watch companion app for Jim
 ### ⚠️ Watch App Status
 - Basic watch app code provided in `WatchFiles/` directory
 - Requires Xcode watchOS App target setup
-- Uses `WatchConnectivity` to control playback (implementation pending)
+- Uses `WatchConnectivity` to control playback
 
 ## 🎯 Features
 - Quickly view the current episode on your watch
@@ -34,4 +34,4 @@ This document explains how to add the optional Apple Watch companion app for Jim
    - Add `WatchConnectivity` capability
 4. **Build and run** on a paired Apple Watch device
 
-The watch app currently provides a simple interface with playback controls. Full data syncing will work once `WatchPlayerManager` is wired up to the main app using `WatchConnectivity`.
+The watch app provides a simple interface with playback controls. Full data syncing is handled by `WatchPlayerManager` using `WatchConnectivity`.
