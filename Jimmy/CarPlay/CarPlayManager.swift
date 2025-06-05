@@ -1,11 +1,11 @@
 import Foundation
 import CarPlay
-import MediaPlayer
 
 final class CarPlayManager: NSObject {
     static let shared = CarPlayManager()
 
     private var interfaceController: CPInterfaceController?
+    private var queueTemplate: CPListTemplate?
 
     private override init() {
         super.init()
@@ -13,59 +13,49 @@ final class CarPlayManager: NSObject {
 
     func connect(interfaceController: CPInterfaceController, window: CPWindow) {
         self.interfaceController = interfaceController
-        MPPlayableContentManager.shared().delegate = self
-        MPPlayableContentManager.shared().dataSource = self
-        interfaceController.setRootTemplate(CPNowPlayingTemplate.shared, animated: false)
+        queueTemplate = buildQueueTemplate()
+        if let template = queueTemplate {
+            interfaceController.setRootTemplate(CPNowPlayingTemplate.shared, animated: false)
+            interfaceController.pushTemplate(template, animated: false)
+        }
     }
 
     func disconnect() {
         interfaceController = nil
-        MPPlayableContentManager.shared().delegate = nil
-        MPPlayableContentManager.shared().dataSource = nil
+        queueTemplate = nil
     }
 
     func reloadData() {
-        MPPlayableContentManager.shared().reloadData()
+        guard let controller = interfaceController else { return }
+        queueTemplate = buildQueueTemplate()
+        if let template = queueTemplate {
+            controller.setRootTemplate(CPNowPlayingTemplate.shared, animated: false)
+            controller.pushTemplate(template, animated: false)
+        }
     }
 
     /// Helper to retrieve the podcast associated with an episode
     private func getPodcast(for episode: Episode) -> Podcast? {
         return PodcastService.shared.loadPodcasts().first { $0.id == episode.podcastID }
     }
-}
 
-extension CarPlayManager: MPPlayableContentDelegate {
-    func playableContentManager(_ contentManager: MPPlayableContentManager, initiatePlaybackOf item: MPContentItem, completionHandler: @escaping (Error?) -> Void) {
-        guard let uuid = UUID(uuidString: item.identifier),
-              let episode = QueueViewModel.shared.queue.first(where: { $0.id == uuid }) else {
-            completionHandler(NSError(domain: "Jimmy", code: 0))
-            return
-        }
-        QueueViewModel.shared.playEpisodeFromQueue(episode)
-        completionHandler(nil)
-    }
-}
-
-extension CarPlayManager: MPPlayableContentDataSource {
-    func numberOfChildItems(at indexPath: IndexPath) -> Int {
-        if indexPath.isEmpty { return 1 }
-        return QueueViewModel.shared.queue.count
-    }
-
-    func contentItem(at indexPath: IndexPath) -> MPContentItem? {
-        if indexPath.isEmpty {
-            let item = MPContentItem(identifier: "queueRoot")
-            item.title = "Queue"
-            item.isContainer = true
-            return item
-        } else {
-            let episode = QueueViewModel.shared.queue[indexPath[1]]
-            let item = MPContentItem(identifier: episode.id.uuidString)
-            item.title = episode.title
-            item.subtitle = getPodcast(for: episode)?.title
-            item.isContainer = false
-            item.isPlayable = true
+    private func queueSection() -> CPListSection {
+        let items = QueueViewModel.shared.queue.map { episode -> CPListItem in
+            let item = CPListItem(text: episode.title,
+                                 detailText: getPodcast(for: episode)?.title ?? "")
+            item.handler = { _, completion in
+                QueueViewModel.shared.playEpisodeFromQueue(episode)
+                completion()
+            }
             return item
         }
+        return CPListSection(items: items)
+    }
+
+    private func buildQueueTemplate() -> CPListTemplate {
+        let section = queueSection()
+        let template = CPListTemplate(title: "Queue", sections: [section])
+        return template
     }
 }
+
