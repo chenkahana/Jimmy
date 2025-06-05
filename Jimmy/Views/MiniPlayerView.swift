@@ -8,10 +8,11 @@ struct FloatingMiniPlayerView: View {
     let currentTab: Int // Add parameter to know current tab
     
     var body: some View {
-        if let currentEpisode = audioPlayer.currentEpisode, 
-           !isMiniPlayerHidden,
-           currentTab != 2 { // Don't show mini player on "Now Playing" tab (tab 2)
-            VStack(spacing: 0) {
+        Group {
+            if let currentEpisode = audioPlayer.currentEpisode,
+               !isMiniPlayerHidden,
+               currentTab != 2 { // Don't show mini player on "Now Playing" tab (tab 2)
+                VStack(spacing: 0) {
                 // Floating card with enhanced 3D styling
                 HStack(spacing: 16) {
                     // Episode artwork with less rounded corners
@@ -174,12 +175,12 @@ struct FloatingMiniPlayerView: View {
             ))
             .animation(.spring(response: 0.5, dampingFraction: 0.8), value: audioPlayer.currentEpisode?.id)
             .animation(.easeInOut(duration: 0.2), value: audioPlayer.isPlaying)
-            .onChange(of: currentTab) { _, newTab in
-                // Reset mini player hidden state when visiting "Now Playing" tab
-                // This allows it to reappear when navigating back to other tabs
-                if newTab == 2 {
-                    isMiniPlayerHidden = false
-                }
+        }
+        .onChange(of: currentTab) { newTab in
+            // Reset mini player hidden state when visiting "Now Playing" tab
+            // This allows it to reappear when navigating back to other tabs
+            if newTab == 2 {
+                isMiniPlayerHidden = false
             }
         }
     }
