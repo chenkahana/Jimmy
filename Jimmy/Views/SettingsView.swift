@@ -653,8 +653,6 @@ struct SettingsView: View {
         
         // 6. Reload data in view models to reflect changes in UI
         PodcastDataManager.shared.loadPodcasts()
-        EpisodeViewModel.shared.loadEpisodes()
-        QueueViewModel.shared.loadQueue()
     }
     
     private func alertTitle() -> String {
