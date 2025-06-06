@@ -9,8 +9,7 @@ struct EpisodeDetailView: View {
     @State private var showingShareSheet = false
     
     var body: some View {
-        NavigationView {
-            ScrollView {
+        ScrollView {
                 VStack(spacing: 0) {
                     // Header section with episode info
                     VStack(spacing: 16) {
@@ -190,7 +189,6 @@ struct EpisodeDetailView: View {
                     Spacer()
                         .frame(height: 100)
                 }
-            }
             .navigationTitle("Episode Details")
             .navigationBarTitleDisplayMode(.inline)
             .navigationBarBackButtonHidden(true)
@@ -244,7 +242,6 @@ struct EpisodeDetailView: View {
                 }
             }
         }
-        .navigationViewStyle(StackNavigationViewStyle())
         .sheet(isPresented: $showingShareSheet) {
             if let url = shareURL {
                 ShareSheet(items: [url])
