@@ -1,0 +1,768 @@
+{
+  "" : {
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/Jimmy-master.dia",
+    "emit-module-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/Jimmy-master-emit-module.d",
+    "emit-module-diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/Jimmy-master-emit-module.dia",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/Jimmy-master.swiftdeps"
+  },
+  "/Users/chenk/Jimmy/Jimmy/CarPlay/CarPlayManager.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/CarPlayManager.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/CarPlayManager.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/CarPlayManager.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/CarPlayManager.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/CarPlayManager.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/CarPlayManager.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/CarPlayManager.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/CarPlayManager~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/CarPlay/CarPlaySceneDelegate.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/CarPlaySceneDelegate.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/CarPlaySceneDelegate.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/CarPlaySceneDelegate.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/CarPlaySceneDelegate.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/CarPlaySceneDelegate.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/CarPlaySceneDelegate.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/CarPlaySceneDelegate.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/CarPlaySceneDelegate~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/ContentView.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/ContentView.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/ContentView.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/ContentView.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/ContentView.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/ContentView.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/ContentView.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/ContentView.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/ContentView~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/JimmyApp.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/JimmyApp.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/JimmyApp.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/JimmyApp.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/JimmyApp.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/JimmyApp.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/JimmyApp.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/JimmyApp.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/JimmyApp~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/Models/Documentation.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/Documentation.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/Documentation.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/Documentation.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/Documentation.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/Documentation.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/Documentation.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/Documentation.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/Documentation~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/Models/Episode.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/Episode.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/Episode.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/Episode.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/Episode.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/Episode.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/Episode.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/Episode.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/Episode~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/Models/Podcast.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/Podcast.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/Podcast.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/Podcast.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/Podcast.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/Podcast.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/Podcast.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/Podcast.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/Podcast~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/Services/AppleEpisodeLinkService.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AppleEpisodeLinkService.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AppleEpisodeLinkService.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AppleEpisodeLinkService.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AppleEpisodeLinkService.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AppleEpisodeLinkService.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AppleEpisodeLinkService.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AppleEpisodeLinkService.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AppleEpisodeLinkService~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/Services/ApplePodcastService.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/ApplePodcastService.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/ApplePodcastService.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/ApplePodcastService.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/ApplePodcastService.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/ApplePodcastService.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/ApplePodcastService.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/ApplePodcastService.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/ApplePodcastService~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/Services/AudioPlayerService.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AudioPlayerService.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AudioPlayerService.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AudioPlayerService.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AudioPlayerService.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AudioPlayerService.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AudioPlayerService.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AudioPlayerService.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AudioPlayerService~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/Services/BackupService.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/BackupService.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/BackupService.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/BackupService.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/BackupService.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/BackupService.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/BackupService.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/BackupService.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/BackupService~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/Services/EpisodeCacheService.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/EpisodeCacheService.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/EpisodeCacheService.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/EpisodeCacheService.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/EpisodeCacheService.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/EpisodeCacheService.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/EpisodeCacheService.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/EpisodeCacheService.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/EpisodeCacheService~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/Services/EpisodeUpdateService.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/EpisodeUpdateService.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/EpisodeUpdateService.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/EpisodeUpdateService.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/EpisodeUpdateService.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/EpisodeUpdateService.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/EpisodeUpdateService.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/EpisodeUpdateService.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/EpisodeUpdateService~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/Services/FeedbackService.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/FeedbackService.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/FeedbackService.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/FeedbackService.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/FeedbackService.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/FeedbackService.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/FeedbackService.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/FeedbackService.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/FeedbackService~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/Services/LoadingStateManager.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/LoadingStateManager.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/LoadingStateManager.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/LoadingStateManager.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/LoadingStateManager.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/LoadingStateManager.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/LoadingStateManager.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/LoadingStateManager.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/LoadingStateManager~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/Services/PodcastDataManager.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/PodcastDataManager.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/PodcastDataManager.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/PodcastDataManager.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/PodcastDataManager.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/PodcastDataManager.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/PodcastDataManager.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/PodcastDataManager.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/PodcastDataManager~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/Services/PodcastService.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/PodcastService.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/PodcastService.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/PodcastService.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/PodcastService.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/PodcastService.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/PodcastService.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/PodcastService.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/PodcastService~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/Services/PodcastURLResolver.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/PodcastURLResolver.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/PodcastURLResolver.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/PodcastURLResolver.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/PodcastURLResolver.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/PodcastURLResolver.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/PodcastURLResolver.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/PodcastURLResolver.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/PodcastURLResolver~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/Services/RecommendationService.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/RecommendationService.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/RecommendationService.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/RecommendationService.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/RecommendationService.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/RecommendationService.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/RecommendationService.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/RecommendationService.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/RecommendationService~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/Services/ShakeUndoManager.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/ShakeUndoManager.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/ShakeUndoManager.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/ShakeUndoManager.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/ShakeUndoManager.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/ShakeUndoManager.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/ShakeUndoManager.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/ShakeUndoManager.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/ShakeUndoManager~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/Services/SharedAudioImporter.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/SharedAudioImporter.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/SharedAudioImporter.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/SharedAudioImporter.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/SharedAudioImporter.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/SharedAudioImporter.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/SharedAudioImporter.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/SharedAudioImporter.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/SharedAudioImporter~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/Services/SubscriptionImportService.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/SubscriptionImportService.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/SubscriptionImportService.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/SubscriptionImportService.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/SubscriptionImportService.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/SubscriptionImportService.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/SubscriptionImportService.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/SubscriptionImportService.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/SubscriptionImportService~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/Services/WatchConnectivityService.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/WatchConnectivityService.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/WatchConnectivityService.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/WatchConnectivityService.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/WatchConnectivityService.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/WatchConnectivityService.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/WatchConnectivityService.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/WatchConnectivityService.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/WatchConnectivityService~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/Services/iTunesSearchService.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/iTunesSearchService.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/iTunesSearchService.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/iTunesSearchService.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/iTunesSearchService.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/iTunesSearchService.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/iTunesSearchService.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/iTunesSearchService.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/iTunesSearchService~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/Utilities/AccessibilityHelper.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AccessibilityHelper.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AccessibilityHelper.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AccessibilityHelper.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AccessibilityHelper.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AccessibilityHelper.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AccessibilityHelper.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AccessibilityHelper.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AccessibilityHelper~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/Utilities/AppDataDocument.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AppDataDocument.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AppDataDocument.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AppDataDocument.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AppDataDocument.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AppDataDocument.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AppDataDocument.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AppDataDocument.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AppDataDocument~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/Utilities/AppleBulkImportParser.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AppleBulkImportParser.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AppleBulkImportParser.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AppleBulkImportParser.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AppleBulkImportParser.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AppleBulkImportParser.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AppleBulkImportParser.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AppleBulkImportParser.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AppleBulkImportParser~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/Utilities/DebugHelper.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/DebugHelper.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/DebugHelper.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/DebugHelper.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/DebugHelper.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/DebugHelper.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/DebugHelper.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/DebugHelper.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/DebugHelper~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/Utilities/Enhanced3DStyles.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/Enhanced3DStyles.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/Enhanced3DStyles.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/Enhanced3DStyles.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/Enhanced3DStyles.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/Enhanced3DStyles.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/Enhanced3DStyles.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/Enhanced3DStyles.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/Enhanced3DStyles~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/Utilities/FeedbackManager.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/FeedbackManager.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/FeedbackManager.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/FeedbackManager.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/FeedbackManager.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/FeedbackManager.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/FeedbackManager.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/FeedbackManager.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/FeedbackManager~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/Utilities/FileStorage.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/FileStorage.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/FileStorage.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/FileStorage.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/FileStorage.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/FileStorage.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/FileStorage.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/FileStorage.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/FileStorage~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/Utilities/GoogleTakeoutParser.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/GoogleTakeoutParser.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/GoogleTakeoutParser.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/GoogleTakeoutParser.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/GoogleTakeoutParser.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/GoogleTakeoutParser.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/GoogleTakeoutParser.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/GoogleTakeoutParser.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/GoogleTakeoutParser~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/Utilities/ImageCache.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/ImageCache.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/ImageCache.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/ImageCache.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/ImageCache.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/ImageCache.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/ImageCache.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/ImageCache.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/ImageCache~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/Utilities/KeyboardDismissModifier.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/KeyboardDismissModifier.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/KeyboardDismissModifier.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/KeyboardDismissModifier.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/KeyboardDismissModifier.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/KeyboardDismissModifier.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/KeyboardDismissModifier.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/KeyboardDismissModifier.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/KeyboardDismissModifier~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/Utilities/Logger.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/Logger.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/Logger.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/Logger.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/Logger.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/Logger.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/Logger.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/Logger.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/Logger~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/Utilities/NetworkManager.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/NetworkManager.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/NetworkManager.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/NetworkManager.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/NetworkManager.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/NetworkManager.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/NetworkManager.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/NetworkManager.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/NetworkManager~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/Utilities/NetworkMonitor.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/NetworkMonitor.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/NetworkMonitor.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/NetworkMonitor.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/NetworkMonitor.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/NetworkMonitor.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/NetworkMonitor.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/NetworkMonitor.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/NetworkMonitor~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/Utilities/OPMLParser.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/OPMLParser.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/OPMLParser.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/OPMLParser.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/OPMLParser.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/OPMLParser.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/OPMLParser.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/OPMLParser.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/OPMLParser~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/Utilities/RSSParser.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/RSSParser.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/RSSParser.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/RSSParser.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/RSSParser.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/RSSParser.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/RSSParser.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/RSSParser.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/RSSParser~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/Utilities/ShareSheet.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/ShareSheet.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/ShareSheet.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/ShareSheet.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/ShareSheet.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/ShareSheet.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/ShareSheet.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/ShareSheet.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/ShareSheet~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/Utilities/SpotifyListParser.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/SpotifyListParser.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/SpotifyListParser.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/SpotifyListParser.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/SpotifyListParser.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/SpotifyListParser.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/SpotifyListParser.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/SpotifyListParser.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/SpotifyListParser~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/Utilities/StringExtensions.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/StringExtensions.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/StringExtensions.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/StringExtensions.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/StringExtensions.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/StringExtensions.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/StringExtensions.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/StringExtensions.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/StringExtensions~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/Utilities/UserDataService.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/UserDataService.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/UserDataService.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/UserDataService.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/UserDataService.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/UserDataService.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/UserDataService.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/UserDataService.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/UserDataService~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/Utilities/UserDefaultsCleanup.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/UserDefaultsCleanup.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/UserDefaultsCleanup.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/UserDefaultsCleanup.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/UserDefaultsCleanup.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/UserDefaultsCleanup.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/UserDefaultsCleanup.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/UserDefaultsCleanup.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/UserDefaultsCleanup~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/ViewModels/EpisodeViewModel.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/EpisodeViewModel.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/EpisodeViewModel.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/EpisodeViewModel.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/EpisodeViewModel.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/EpisodeViewModel.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/EpisodeViewModel.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/EpisodeViewModel.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/EpisodeViewModel~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/ViewModels/QueueViewModel.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/QueueViewModel.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/QueueViewModel.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/QueueViewModel.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/QueueViewModel.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/QueueViewModel.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/QueueViewModel.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/QueueViewModel.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/QueueViewModel~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/Views/AnalyticsView.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AnalyticsView.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AnalyticsView.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AnalyticsView.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AnalyticsView.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AnalyticsView.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AnalyticsView.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AnalyticsView.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AnalyticsView~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/Views/AppLoadingView.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AppLoadingView.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AppLoadingView.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AppLoadingView.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AppLoadingView.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AppLoadingView.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AppLoadingView.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AppLoadingView.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AppLoadingView~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/Views/AudioPlayerView.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AudioPlayerView.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AudioPlayerView.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AudioPlayerView.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AudioPlayerView.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AudioPlayerView.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AudioPlayerView.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AudioPlayerView.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AudioPlayerView~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/Views/CacheManagementView.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/CacheManagementView.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/CacheManagementView.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/CacheManagementView.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/CacheManagementView.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/CacheManagementView.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/CacheManagementView.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/CacheManagementView.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/CacheManagementView~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/Views/Components/CachedAsyncImage.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/CachedAsyncImage.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/CachedAsyncImage.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/CachedAsyncImage.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/CachedAsyncImage.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/CachedAsyncImage.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/CachedAsyncImage.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/CachedAsyncImage.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/CachedAsyncImage~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/Views/Components/ExampleCachedImageUsage.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/ExampleCachedImageUsage.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/ExampleCachedImageUsage.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/ExampleCachedImageUsage.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/ExampleCachedImageUsage.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/ExampleCachedImageUsage.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/ExampleCachedImageUsage.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/ExampleCachedImageUsage.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/ExampleCachedImageUsage~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/Views/Components/FileImportNamingView.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/FileImportNamingView.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/FileImportNamingView.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/FileImportNamingView.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/FileImportNamingView.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/FileImportNamingView.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/FileImportNamingView.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/FileImportNamingView.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/FileImportNamingView~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/Views/Components/LoadingIndicator.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/LoadingIndicator.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/LoadingIndicator.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/LoadingIndicator.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/LoadingIndicator.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/LoadingIndicator.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/LoadingIndicator.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/LoadingIndicator.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/LoadingIndicator~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/Views/Components/UndoToastView.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/UndoToastView.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/UndoToastView.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/UndoToastView.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/UndoToastView.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/UndoToastView.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/UndoToastView.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/UndoToastView.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/UndoToastView~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/Views/CurrentPlayView.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/CurrentPlayView.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/CurrentPlayView.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/CurrentPlayView.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/CurrentPlayView.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/CurrentPlayView.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/CurrentPlayView.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/CurrentPlayView.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/CurrentPlayView~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/Views/DiscoverGenreSectionView.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/DiscoverGenreSectionView.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/DiscoverGenreSectionView.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/DiscoverGenreSectionView.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/DiscoverGenreSectionView.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/DiscoverGenreSectionView.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/DiscoverGenreSectionView.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/DiscoverGenreSectionView.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/DiscoverGenreSectionView~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/Views/DiscoverView.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/DiscoverView.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/DiscoverView.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/DiscoverView.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/DiscoverView.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/DiscoverView.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/DiscoverView.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/DiscoverView.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/DiscoverView~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/Views/DocumentationView.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/DocumentationView.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/DocumentationView.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/DocumentationView.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/DocumentationView.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/DocumentationView.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/DocumentationView.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/DocumentationView.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/DocumentationView~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/Views/EpisodeDetailView.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/EpisodeDetailView.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/EpisodeDetailView.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/EpisodeDetailView.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/EpisodeDetailView.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/EpisodeDetailView.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/EpisodeDetailView.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/EpisodeDetailView.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/EpisodeDetailView~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/Views/EpisodeListView.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/EpisodeListView.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/EpisodeListView.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/EpisodeListView.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/EpisodeListView.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/EpisodeListView.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/EpisodeListView.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/EpisodeListView.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/EpisodeListView~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/Views/EpisodePlayerView.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/EpisodePlayerView.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/EpisodePlayerView.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/EpisodePlayerView.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/EpisodePlayerView.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/EpisodePlayerView.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/EpisodePlayerView.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/EpisodePlayerView.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/EpisodePlayerView~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/Views/EpisodeRowView.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/EpisodeRowView.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/EpisodeRowView.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/EpisodeRowView.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/EpisodeRowView.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/EpisodeRowView.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/EpisodeRowView.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/EpisodeRowView.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/EpisodeRowView~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/Views/FeedbackFormView.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/FeedbackFormView.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/FeedbackFormView.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/FeedbackFormView.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/FeedbackFormView.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/FeedbackFormView.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/FeedbackFormView.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/FeedbackFormView.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/FeedbackFormView~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/Views/LargeRecommendedPodcastItem.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/LargeRecommendedPodcastItem.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/LargeRecommendedPodcastItem.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/LargeRecommendedPodcastItem.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/LargeRecommendedPodcastItem.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/LargeRecommendedPodcastItem.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/LargeRecommendedPodcastItem.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/LargeRecommendedPodcastItem.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/LargeRecommendedPodcastItem~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/Views/LibraryView.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/LibraryView.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/LibraryView.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/LibraryView.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/LibraryView.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/LibraryView.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/LibraryView.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/LibraryView.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/LibraryView~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/Views/MiniPlayerView.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/MiniPlayerView.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/MiniPlayerView.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/MiniPlayerView.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/MiniPlayerView.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/MiniPlayerView.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/MiniPlayerView.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/MiniPlayerView.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/MiniPlayerView~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/Views/PodcastDetailView.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/PodcastDetailView.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/PodcastDetailView.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/PodcastDetailView.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/PodcastDetailView.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/PodcastDetailView.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/PodcastDetailView.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/PodcastDetailView.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/PodcastDetailView~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/Views/PodcastListView.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/PodcastListView.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/PodcastListView.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/PodcastListView.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/PodcastListView.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/PodcastListView.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/PodcastListView.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/PodcastListView.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/PodcastListView~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/Views/PodcastSearchView.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/PodcastSearchView.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/PodcastSearchView.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/PodcastSearchView.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/PodcastSearchView.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/PodcastSearchView.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/PodcastSearchView.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/PodcastSearchView.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/PodcastSearchView~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/Views/QueueEpisodeCardView.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/QueueEpisodeCardView.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/QueueEpisodeCardView.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/QueueEpisodeCardView.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/QueueEpisodeCardView.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/QueueEpisodeCardView.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/QueueEpisodeCardView.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/QueueEpisodeCardView.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/QueueEpisodeCardView~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/Views/QueueView.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/QueueView.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/QueueView.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/QueueView.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/QueueView.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/QueueView.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/QueueView.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/QueueView.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/QueueView~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/Views/RecommendedPodcastItem.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/RecommendedPodcastItem.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/RecommendedPodcastItem.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/RecommendedPodcastItem.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/RecommendedPodcastItem.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/RecommendedPodcastItem.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/RecommendedPodcastItem.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/RecommendedPodcastItem.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/RecommendedPodcastItem~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/Views/SettingsView.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/SettingsView.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/SettingsView.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/SettingsView.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/SettingsView.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/SettingsView.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/SettingsView.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/SettingsView.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/SettingsView~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/Jimmy/Views/StorageDebugView.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/StorageDebugView.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/StorageDebugView.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/StorageDebugView.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/StorageDebugView.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/StorageDebugView.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/StorageDebugView.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/StorageDebugView.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/StorageDebugView~partial.swiftmodule"
+  },
+  "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/DerivedSources/GeneratedAssetSymbols.swift" : {
+    "const-values" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/GeneratedAssetSymbols.swiftconstvalues",
+    "dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/GeneratedAssetSymbols.d",
+    "diagnostics" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/GeneratedAssetSymbols.dia",
+    "index-unit-output-path" : "/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/GeneratedAssetSymbols.o",
+    "llvm-bc" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/GeneratedAssetSymbols.bc",
+    "object" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/GeneratedAssetSymbols.o",
+    "swift-dependencies" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/GeneratedAssetSymbols.swiftdeps",
+    "swiftmodule" : "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/GeneratedAssetSymbols~partial.swiftmodule"
+  }
+}

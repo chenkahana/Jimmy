@@ -1,0 +1,24 @@
+{
+  "source": "/Users/chenk/Jimmy/Jimmy/Views/EpisodePlayerView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Loading player...",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 65
+        }
+      },
+      {
+        "comment": "",
+        "key": "Done",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 71
+        }
+      }
+    ]
+  },
+  "version": 1
+}

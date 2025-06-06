@@ -1,0 +1,16 @@
+{
+  "source": "/Users/chenk/Jimmy/Jimmy/Views/AppLoadingView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Updating library…",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 36
+        }
+      }
+    ]
+  },
+  "version": 1
+}

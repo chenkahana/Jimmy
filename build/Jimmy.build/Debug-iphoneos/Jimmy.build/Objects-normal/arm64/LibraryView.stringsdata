@@ -1,0 +1,208 @@
+{
+  "source": "/Users/chenk/Jimmy/Jimmy/Views/LibraryView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Library",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 133
+        }
+      },
+      {
+        "comment": "",
+        "key": "View Type",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 92
+        }
+      },
+      {
+        "comment": "",
+        "key": "Done",
+        "location": {
+          "startingColumn": 49,
+          "startingLine": 151
+        }
+      },
+      {
+        "comment": "",
+        "key": "Edit",
+        "location": {
+          "startingColumn": 58,
+          "startingLine": 151
+        }
+      },
+      {
+        "comment": "",
+        "key": "Search",
+        "location": {
+          "startingColumn": 23,
+          "startingLine": 544
+        }
+      },
+      {
+        "comment": "",
+        "key": "Subscribed Shows",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 583
+        }
+      },
+      {
+        "comment": "",
+        "key": "Sorted by latest update",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 588
+        }
+      },
+      {
+        "comment": "",
+        "key": "No Results",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 738
+        }
+      },
+      {
+        "comment": "",
+        "key": "No Subscriptions",
+        "location": {
+          "startingColumn": 49,
+          "startingLine": 738
+        }
+      },
+      {
+        "comment": "",
+        "key": "Try a different search term",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 743
+        }
+      },
+      {
+        "comment": "",
+        "key": "Your subscribed podcasts will appear here",
+        "location": {
+          "startingColumn": 66,
+          "startingLine": 743
+        }
+      },
+      {
+        "comment": "",
+        "key": "Recent Episodes",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 769
+        }
+      },
+      {
+        "comment": "",
+        "key": "Sorted by upload date",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 775
+        }
+      },
+      {
+        "comment": "",
+        "key": "• Updated %@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 780
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add to Queue",
+        "location": {
+          "startingColumn": 35,
+          "startingLine": 928
+        }
+      },
+      {
+        "comment": "",
+        "key": "Mark as Unplayed",
+        "location": {
+          "startingColumn": 52,
+          "startingLine": 934
+        }
+      },
+      {
+        "comment": "",
+        "key": "Mark as Played",
+        "location": {
+          "startingColumn": 73,
+          "startingLine": 934
+        }
+      },
+      {
+        "comment": "",
+        "key": "Episode Details",
+        "location": {
+          "startingColumn": 35,
+          "startingLine": 941
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add to Queue",
+        "location": {
+          "startingColumn": 27,
+          "startingLine": 959
+        }
+      },
+      {
+        "comment": "",
+        "key": "Mark as Unplayed",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 966
+        }
+      },
+      {
+        "comment": "",
+        "key": "Mark as Played",
+        "location": {
+          "startingColumn": 63,
+          "startingLine": 966
+        }
+      },
+      {
+        "comment": "",
+        "key": "No Episodes Found",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 999
+        }
+      },
+      {
+        "comment": "",
+        "key": "No Episodes",
+        "location": {
+          "startingColumn": 56,
+          "startingLine": 999
+        }
+      },
+      {
+        "comment": "",
+        "key": "Try a different search term",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1004
+        }
+      },
+      {
+        "comment": "",
+        "key": "Episodes from your subscribed podcasts will appear here",
+        "location": {
+          "startingColumn": 66,
+          "startingLine": 1004
+        }
+      }
+    ]
+  },
+  "version": 1
+}

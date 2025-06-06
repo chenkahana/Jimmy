@@ -1,0 +1,42 @@
+"/Users/chenk/Jimmy/Jimmy/Utilities/FeedbackManager.swift":
+  dependencies: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/FeedbackManager.d"
+  object: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/FeedbackManager.o"
+  swift-dependencies: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/FeedbackManager.swiftdeps"
+  diagnostics: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/FeedbackManager.dia"
+  const-values: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/FeedbackManager.swiftconstvalues"
+"/Users/chenk/Jimmy/Jimmy/Views/CacheManagementView.swift":
+  swift-dependencies: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/CacheManagementView.swiftdeps"
+  dependencies: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/CacheManagementView.d"
+  const-values: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/CacheManagementView.swiftconstvalues"
+  diagnostics: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/CacheManagementView.dia"
+  object: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/CacheManagementView.o"
+"/Users/chenk/Jimmy/Jimmy/Utilities/KeyboardDismissModifier.swift":
+  swift-dependencies: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/KeyboardDismissModifier.swiftdeps"
+  diagnostics: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/KeyboardDismissModifier.dia"
+  const-values: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/KeyboardDismissModifier.swiftconstvalues"
+  object: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/KeyboardDismissModifier.o"
+  dependencies: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/KeyboardDismissModifier.d"
+"/Users/chenk/Jimmy/Jimmy/Views/DiscoverGenreSectionView.swift":
+  swift-dependencies: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/DiscoverGenreSectionView.swiftdeps"
+  dependencies: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/DiscoverGenreSectionView.d"
+  diagnostics: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/DiscoverGenreSectionView.dia"
+  object: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/DiscoverGenreSectionView.o"
+  const-values: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/DiscoverGenreSectionView.swiftconstvalues"
+"/Users/chenk/Jimmy/Jimmy/Utilities/StringExtensions.swift":
+  const-values: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/StringExtensions.swiftconstvalues"
+  dependencies: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/StringExtensions.d"
+  diagnostics: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/StringExtensions.dia"
+  object: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/StringExtensions.o"
+  swift-dependencies: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/StringExtensions.swiftdeps"
+"/Users/chenk/Jimmy/Jimmy/Services/ShakeUndoManager.swift":
+  diagnostics: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/ShakeUndoManager.dia"
+  const-values: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/ShakeUndoManager.swiftconstvalues"
+  swift-dependencies: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/ShakeUndoManager.swiftdeps"
+  dependencies: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/ShakeUndoManager.d"
+  object: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/ShakeUndoManager.o"
+"/Users/chenk/Jimmy/Jimmy/Utilities/AccessibilityHelper.swift":
+  const-values: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AccessibilityHelper.swiftconstvalues"
+  dependencies: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AccessibilityHelper.d"
+  swift-dependencies: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AccessibilityHelper.swiftdeps"
+  diagnostics: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AccessibilityHelper.dia"
+  object: "/Users/chenk/Jimmy/build/Jimmy.build/Debug-iphoneos/Jimmy.build/Objects-normal/arm64/AccessibilityHelper.o"

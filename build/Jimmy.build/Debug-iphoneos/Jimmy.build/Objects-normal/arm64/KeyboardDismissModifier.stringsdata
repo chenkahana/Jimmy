@@ -1,0 +1,16 @@
+{
+  "source": "/Users/chenk/Jimmy/Jimmy/Utilities/KeyboardDismissModifier.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Close",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 15
+        }
+      }
+    ]
+  },
+  "version": 1
+}

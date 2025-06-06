@@ -1,0 +1,96 @@
+{
+  "source": "/Users/chenk/Jimmy/Jimmy/Views/CurrentPlayView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 57
+        }
+      },
+      {
+        "comment": "",
+        "key": "-%@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 293
+        }
+      },
+      {
+        "comment": "",
+        "key": "Episode Details",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 355
+        }
+      },
+      {
+        "comment": "",
+        "key": "From: %@",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 385
+        }
+      },
+      {
+        "comment": "",
+        "key": "Audio Output",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 476
+        }
+      },
+      {
+        "comment": "",
+        "key": "Done",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 480
+        }
+      },
+      {
+        "comment": "",
+        "key": "Episode Details",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 544
+        }
+      },
+      {
+        "comment": "",
+        "key": "Done",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 548
+        }
+      },
+      {
+        "comment": "",
+        "key": "Description",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 622
+        }
+      },
+      {
+        "comment": "",
+        "key": "No Episode Playing",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 708
+        }
+      },
+      {
+        "comment": "",
+        "key": "Choose an episode from your queue or library to start listening",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 713
+        }
+      }
+    ]
+  },
+  "version": 1
+}

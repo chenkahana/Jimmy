@@ -1,0 +1,56 @@
+{
+  "source": "/Users/chenk/Jimmy/Jimmy/Views/EpisodeListView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Loading episodes...",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 25
+        }
+      },
+      {
+        "comment": "",
+        "key": "No Episodes Found",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 36
+        }
+      },
+      {
+        "comment": "",
+        "key": "This podcast doesn't have any episodes yet",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 40
+        }
+      },
+      {
+        "comment": "",
+        "key": "Mark All as Played",
+        "location": {
+          "startingColumn": 35,
+          "startingLine": 82
+        }
+      },
+      {
+        "comment": "",
+        "key": "Mark All as Unplayed",
+        "location": {
+          "startingColumn": 35,
+          "startingLine": 88
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add All to Queue",
+        "location": {
+          "startingColumn": 35,
+          "startingLine": 96
+        }
+      }
+    ]
+  },
+  "version": 1
+}

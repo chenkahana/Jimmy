@@ -1,0 +1,128 @@
+{
+  "source": "/Users/chenk/Jimmy/Jimmy/Views/EpisodeDetailView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Episode Details",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 192
+        }
+      },
+      {
+        "comment": "",
+        "key": "Played",
+        "location": {
+          "startingColumn": 51,
+          "startingLine": 60
+        }
+      },
+      {
+        "comment": "",
+        "key": "In Progress",
+        "location": {
+          "startingColumn": 51,
+          "startingLine": 64
+        }
+      },
+      {
+        "comment": "",
+        "key": "Now Playing",
+        "location": {
+          "startingColumn": 51,
+          "startingLine": 71
+        }
+      },
+      {
+        "comment": "",
+        "key": "Pause",
+        "location": {
+          "startingColumn": 116,
+          "startingLine": 97
+        }
+      },
+      {
+        "comment": "",
+        "key": "Play",
+        "location": {
+          "startingColumn": 126,
+          "startingLine": 97
+        }
+      },
+      {
+        "comment": "",
+        "key": "Queue",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 114
+        }
+      },
+      {
+        "comment": "",
+        "key": "No description available for this episode.",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 150
+        }
+      },
+      {
+        "comment": "",
+        "key": "Episode Details",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 138
+        }
+      },
+      {
+        "comment": "",
+        "key": "Progress:",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 160
+        }
+      },
+      {
+        "comment": "",
+        "key": "Audio URL:",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 172
+        }
+      },
+      {
+        "comment": "",
+        "key": "Play Next",
+        "location": {
+          "startingColumn": 35,
+          "startingLine": 202
+        }
+      },
+      {
+        "comment": "",
+        "key": "Mark as Unplayed",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 210
+        }
+      },
+      {
+        "comment": "",
+        "key": "Mark as Played",
+        "location": {
+          "startingColumn": 71,
+          "startingLine": 210
+        }
+      },
+      {
+        "comment": "",
+        "key": "Share Episode",
+        "location": {
+          "startingColumn": 35,
+          "startingLine": 220
+        }
+      }
+    ]
+  },
+  "version": 1
+}

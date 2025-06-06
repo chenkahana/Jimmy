@@ -1,0 +1,32 @@
+{
+  "source": "/Users/chenk/Jimmy/Jimmy/Views/QueueEpisodeCardView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "• %@",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 77
+        }
+      },
+      {
+        "comment": "",
+        "key": "Move",
+        "location": {
+          "startingColumn": 27,
+          "startingLine": 112
+        }
+      },
+      {
+        "comment": "",
+        "key": "Remove",
+        "location": {
+          "startingColumn": 27,
+          "startingLine": 119
+        }
+      }
+    ]
+  },
+  "version": 1
+}

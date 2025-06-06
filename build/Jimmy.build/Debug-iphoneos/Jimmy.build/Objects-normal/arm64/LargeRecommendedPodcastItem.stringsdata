@@ -1,0 +1,24 @@
+{
+  "source": "/Users/chenk/Jimmy/Jimmy/Views/LargeRecommendedPodcastItem.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Subscribed",
+        "location": {
+          "startingColumn": 37,
+          "startingLine": 58
+        }
+      },
+      {
+        "comment": "",
+        "key": "Subscribe",
+        "location": {
+          "startingColumn": 52,
+          "startingLine": 58
+        }
+      }
+    ]
+  },
+  "version": 1
+}

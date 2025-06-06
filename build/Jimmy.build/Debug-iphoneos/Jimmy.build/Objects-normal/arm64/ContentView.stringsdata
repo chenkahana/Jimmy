@@ -1,0 +1,16 @@
+{
+  "source": "/Users/chenk/Jimmy/Jimmy/ContentView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 260
+        }
+      }
+    ]
+  },
+  "version": 1
+}

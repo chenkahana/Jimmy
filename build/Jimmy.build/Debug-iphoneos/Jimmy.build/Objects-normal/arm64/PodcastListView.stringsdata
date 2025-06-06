@@ -1,0 +1,88 @@
+{
+  "source": "/Users/chenk/Jimmy/Jimmy/Views/PodcastListView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Library",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 157
+        }
+      },
+      {
+        "comment": "",
+        "key": "Remove Subscription",
+        "location": {
+          "startingColumn": 16,
+          "startingLine": 173
+        }
+      },
+      {
+        "comment": "",
+        "key": "Search podcasts...",
+        "location": {
+          "startingColumn": 27,
+          "startingLine": 34
+        }
+      },
+      {
+        "comment": "",
+        "key": "No Subscriptions",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 108
+        }
+      },
+      {
+        "comment": "",
+        "key": "Your subscribed podcasts will appear here",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 112
+        }
+      },
+      {
+        "comment": "",
+        "key": "Done",
+        "location": {
+          "startingColumn": 41,
+          "startingLine": 162
+        }
+      },
+      {
+        "comment": "",
+        "key": "Edit",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 162
+        }
+      },
+      {
+        "comment": "",
+        "key": "Cancel",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 174
+        }
+      },
+      {
+        "comment": "",
+        "key": "Remove",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 177
+        }
+      },
+      {
+        "comment": "",
+        "key": "Are you sure you want to remove \"%@\" from your subscriptions?",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 184
+        }
+      }
+    ]
+  },
+  "version": 1
+}

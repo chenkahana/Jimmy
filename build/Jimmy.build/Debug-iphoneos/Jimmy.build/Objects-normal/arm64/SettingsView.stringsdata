@@ -1,0 +1,736 @@
+{
+  "source": "/Users/chenk/Jimmy/Jimmy/Views/SettingsView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Settings",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 241
+        }
+      },
+      {
+        "comment": "",
+        "key": "Playback",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 43
+        }
+      },
+      {
+        "comment": "",
+        "key": "Appearance",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 60
+        }
+      },
+      {
+        "comment": "",
+        "key": "Swipe Actions",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 68
+        }
+      },
+      {
+        "comment": "",
+        "key": "Data & Sync",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 80
+        }
+      },
+      {
+        "comment": "",
+        "key": "Backup & Restore",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 85
+        }
+      },
+      {
+        "comment": "",
+        "key": "Import from Apple Podcasts",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 91
+        }
+      },
+      {
+        "comment": "",
+        "key": "Other Import Options",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 157
+        }
+      },
+      {
+        "comment": "",
+        "key": "Guides & Documentation",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 194
+        }
+      },
+      {
+        "comment": "",
+        "key": "Feedback",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 208
+        }
+      },
+      {
+        "comment": "",
+        "key": "Debug/Developer Mode",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 214
+        }
+      },
+      {
+        "comment": "",
+        "key": "Speed",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 45
+        }
+      },
+      {
+        "comment": "",
+        "key": "",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 47
+        }
+      },
+      {
+        "comment": "",
+        "key": "0.75x",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 48
+        }
+      },
+      {
+        "comment": "",
+        "key": "1x",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 49
+        }
+      },
+      {
+        "comment": "",
+        "key": "1.25x",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 50
+        }
+      },
+      {
+        "comment": "",
+        "key": "1.5x",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 51
+        }
+      },
+      {
+        "comment": "",
+        "key": "2x",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 52
+        }
+      },
+      {
+        "comment": "",
+        "key": "Dark Mode",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 62
+        }
+      },
+      {
+        "comment": "",
+        "key": "High Contrast Mode",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 65
+        }
+      },
+      {
+        "comment": "",
+        "key": "Episode List Swipe",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 69
+        }
+      },
+      {
+        "comment": "",
+        "key": "Queue Swipe",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 74
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add to Queue",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 70
+        }
+      },
+      {
+        "comment": "",
+        "key": "Download",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 71
+        }
+      },
+      {
+        "comment": "",
+        "key": "Mark as Played",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 72
+        }
+      },
+      {
+        "comment": "",
+        "key": "Mark as Played",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 75
+        }
+      },
+      {
+        "comment": "",
+        "key": "Download",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 76
+        }
+      },
+      {
+        "comment": "",
+        "key": "Remove",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 77
+        }
+      },
+      {
+        "comment": "",
+        "key": "Enable iCloud Sync",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 82
+        }
+      },
+      {
+        "comment": "",
+        "key": "Export App Data",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 86
+        }
+      },
+      {
+        "comment": "",
+        "key": "Get All My Subscriptions",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 102
+        }
+      },
+      {
+        "comment": "",
+        "key": "Import all podcasts from Apple Podcasts",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 105
+        }
+      },
+      {
+        "comment": "",
+        "key": "How to Import All Subscriptions",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 128
+        }
+      },
+      {
+        "comment": "",
+        "key": "Import from Extractor File",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 144
+        }
+      },
+      {
+        "comment": "",
+        "key": "Import Podcast From URL",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 158
+        }
+      },
+      {
+        "comment": "",
+        "key": "Import OPML File",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 162
+        }
+      },
+      {
+        "comment": "",
+        "key": "Import Apple JSON File",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 166
+        }
+      },
+      {
+        "comment": "",
+        "key": "Import Spotify File",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 170
+        }
+      },
+      {
+        "comment": "",
+        "key": "Spotify Import Guide",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 174
+        }
+      },
+      {
+        "comment": "",
+        "key": "Import from Subscription File",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 178
+        }
+      },
+      {
+        "comment": "",
+        "key": "Importing subscriptions...",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 187
+        }
+      },
+      {
+        "comment": "",
+        "key": "Browse Documentation",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 199
+        }
+      },
+      {
+        "comment": "",
+        "key": "Submit a Request or Bug",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 209
+        }
+      },
+      {
+        "comment": "",
+        "key": "View Analytics",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 215
+        }
+      },
+      {
+        "comment": "",
+        "key": "Clear Episode Cache",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 218
+        }
+      },
+      {
+        "comment": "",
+        "key": "Force Fetch Episodes",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 221
+        }
+      },
+      {
+        "comment": "",
+        "key": "Diagnose Podcast Artwork",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 224
+        }
+      },
+      {
+        "comment": "",
+        "key": "Fix Podcast Artwork",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 227
+        }
+      },
+      {
+        "comment": "",
+        "key": "Reset All Data",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 230
+        }
+      },
+      {
+        "comment": "",
+        "key": "Delete All Local Storage",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 233
+        }
+      },
+      {
+        "comment": "",
+        "key": "Test Notification",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 236
+        }
+      },
+      {
+        "comment": "",
+        "key": "OK",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 713
+        }
+      },
+      {
+        "comment": "",
+        "key": "This will delete all subscriptions, queue, and settings. This action cannot be undone.",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 723
+        }
+      },
+      {
+        "comment": "",
+        "key": "",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 735
+        }
+      },
+      {
+        "comment": "",
+        "key": "Delete All Local Storage",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 321
+        }
+      },
+      {
+        "comment": "",
+        "key": "Are you sure you want to delete all subscriptions and listening history? This action cannot be undone.",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 322
+        }
+      },
+      {
+        "comment": "",
+        "key": "Delete",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 323
+        }
+      },
+      {
+        "comment": "",
+        "key": "Cancel",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 702
+        }
+      },
+      {
+        "comment": "",
+        "key": "Reset",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 705
+        }
+      },
+      {
+        "comment": "",
+        "key": "Import Guide",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 822
+        }
+      },
+      {
+        "comment": "",
+        "key": "🎧 Import All Your Apple Podcasts",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 750
+        }
+      },
+      {
+        "comment": "",
+        "key": "Due to iOS limitations, Apple Podcasts only shares downloaded episodes with other apps. Here's how to get ALL your subscriptions:",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 754
+        }
+      },
+      {
+        "comment": "",
+        "key": "💡 Pro Tips",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 794
+        }
+      },
+      {
+        "comment": "",
+        "key": "🔍 Why This Limitation Exists",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 807
+        }
+      },
+      {
+        "comment": "",
+        "key": "For privacy and security, iOS only allows apps to access media that's actually downloaded to your device. Your subscription list is considered private data that Apple Podcasts doesn't share with third-party apps.",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 811
+        }
+      },
+      {
+        "comment": "",
+        "key": "Done",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 826
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add Podcast from URL",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 910
+        }
+      },
+      {
+        "comment": "",
+        "key": "https://...",
+        "location": {
+          "startingColumn": 27,
+          "startingLine": 935
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add Podcast",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 949
+        }
+      },
+      {
+        "comment": "",
+        "key": "Paste URL",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 915
+        }
+      },
+      {
+        "comment": "",
+        "key": "Supports:",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 918
+        }
+      },
+      {
+        "comment": "",
+        "key": "• RSS feed URLs",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 923
+        }
+      },
+      {
+        "comment": "",
+        "key": "• Apple Podcasts URLs (podcasts.apple.com)",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 926
+        }
+      },
+      {
+        "comment": "",
+        "key": "• Most podcast platform URLs",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 929
+        }
+      },
+      {
+        "comment": "",
+        "key": "Adding podcast...",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 958
+        }
+      },
+      {
+        "comment": "",
+        "key": "Cancel",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 968
+        }
+      },
+      {
+        "comment": "",
+        "key": "Shortcuts Guide",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1111
+        }
+      },
+      {
+        "comment": "",
+        "key": "📱 Setup Siri Shortcuts for Jimmy",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1025
+        }
+      },
+      {
+        "comment": "",
+        "key": "Import podcasts easily using voice commands and automation",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1029
+        }
+      },
+      {
+        "comment": "",
+        "key": "How to Use",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1069
+        }
+      },
+      {
+        "comment": "",
+        "key": "💡 URL Scheme",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1082
+        }
+      },
+      {
+        "comment": "",
+        "key": "Jimmy supports the URL scheme: jimmy://import?url=[PODCAST_URL]",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1086
+        }
+      },
+      {
+        "comment": "",
+        "key": "🔗 Share Extension",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1096
+        }
+      },
+      {
+        "comment": "",
+        "key": "You can also share podcast URLs directly to Jimmy from Safari, Apple Podcasts, or any app using the system share sheet.",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1100
+        }
+      },
+      {
+        "comment": "",
+        "key": "Done",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 1115
+        }
+      },
+      {
+        "comment": "",
+        "key": "Apple JSON Import",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1223
+        }
+      },
+      {
+        "comment": "",
+        "key": "Bulk Import Using Web Extractor",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1197
+        }
+      },
+      {
+        "comment": "",
+        "key": "Done",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 1227
+        }
+      },
+      {
+        "comment": "",
+        "key": "Spotify Import",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1269
+        }
+      },
+      {
+        "comment": "",
+        "key": "Import Subscriptions from Spotify",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1243
+        }
+      },
+      {
+        "comment": "",
+        "key": "Done",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 1273
+        }
+      }
+    ]
+  },
+  "version": 1
+}

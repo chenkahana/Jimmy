@@ -1,0 +1,48 @@
+{
+  "source": "/Users/chenk/Jimmy/Jimmy/Views/Components/ExampleCachedImageUsage.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Cached Image Examples",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 77
+        }
+      },
+      {
+        "comment": "",
+        "key": "Basic Cached Image",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 12
+        }
+      },
+      {
+        "comment": "",
+        "key": "Specialized Podcast Artwork",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 26
+        }
+      },
+      {
+        "comment": "",
+        "key": "Grid Artwork",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 36
+        }
+      },
+      {
+        "comment": "",
+        "key": "Phase-based Usage",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 45
+        }
+      }
+    ]
+  },
+  "version": 1
+}

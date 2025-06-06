@@ -1,0 +1,104 @@
+{
+  "source": "/Users/chenk/Jimmy/Jimmy/Views/PodcastSearchView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Search",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 153
+        }
+      },
+      {
+        "comment": "",
+        "key": "Subscription",
+        "location": {
+          "startingColumn": 16,
+          "startingLine": 159
+        }
+      },
+      {
+        "comment": "",
+        "key": "Search Scope",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 76
+        }
+      },
+      {
+        "comment": "",
+        "key": "Search podcasts...",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 51
+        }
+      },
+      {
+        "comment": "",
+        "key": "Finding podcasts on Apple Podcasts...",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 91
+        }
+      },
+      {
+        "comment": "",
+        "key": "Searching...",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 90
+        }
+      },
+      {
+        "comment": "",
+        "key": "Your Subscriptions",
+        "location": {
+          "startingColumn": 37,
+          "startingLine": 100
+        }
+      },
+      {
+        "comment": "",
+        "key": "Discover New Podcasts",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 114
+        }
+      },
+      {
+        "comment": "",
+        "key": "Search for Podcasts",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 137
+        }
+      },
+      {
+        "comment": "",
+        "key": "Find your favorite shows from Apple Podcasts or search through your subscriptions",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 141
+        }
+      },
+      {
+        "comment": "",
+        "key": "OK",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 160
+        }
+      },
+      {
+        "comment": "",
+        "key": "Subscribed",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 252
+        }
+      }
+    ]
+  },
+  "version": 1
+}
