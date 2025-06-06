@@ -20,6 +20,12 @@ class QueueViewModel: ObservableObject {
         guard !queue.contains(where: { $0.id == episode.id }) else { return }
         queue.append(episode)
         saveQueue()
+        
+        // Record this operation for undo
+        ShakeUndoManager.shared.recordOperation(
+            .episodeAddedToQueue(episode: episode),
+            description: "Added \"\(episode.title)\" to queue"
+        )
     }
     
     func addToTopOfQueue(_ episode: Episode) {
@@ -33,15 +39,36 @@ class QueueViewModel: ObservableObject {
         let insertIndex = (queue.isEmpty || AudioPlayerService.shared.currentEpisode == nil) ? 0 : 1
         queue.insert(episode, at: insertIndex)
         saveQueue()
+        
+        // Record this operation for undo
+        ShakeUndoManager.shared.recordOperation(
+            .episodeAddedToQueue(episode: episode),
+            description: "Added \"\(episode.title)\" to top of queue"
+        )
     }
     
     func removeFromQueue(at offsets: IndexSet) {
+        // Record episodes being removed for undo (only record the first one for simplicity)
+        if let firstIndex = offsets.first, firstIndex < queue.count {
+            let episode = queue[firstIndex]
+            ShakeUndoManager.shared.recordOperation(
+                .episodeRemovedFromQueue(episode: episode, atIndex: firstIndex),
+                description: "Removed \"\(episode.title)\" from queue"
+            )
+        }
+        
         queue.remove(atOffsets: offsets)
         saveQueue()
     }
     
     func removeFromQueue(_ episode: Episode) {
         if let index = queue.firstIndex(where: { $0.id == episode.id }) {
+            // Record this operation for undo
+            ShakeUndoManager.shared.recordOperation(
+                .episodeRemovedFromQueue(episode: episode, atIndex: index),
+                description: "Removed \"\(episode.title)\" from queue"
+            )
+            
             queue.remove(at: index)
         }
         saveQueue()
@@ -62,8 +89,17 @@ class QueueViewModel: ObservableObject {
     }
     
     func moveQueue(from source: IndexSet, to destination: Int) {
+        // Record the current queue state for undo
+        let previousQueue = queue
+        
         queue.move(fromOffsets: source, toOffset: destination)
         saveQueue()
+        
+        // Record this operation for undo
+        ShakeUndoManager.shared.recordOperation(
+            .queueReordered(previousQueue: previousQueue),
+            description: "Reordered queue"
+        )
     }
     
     // MARK: - Advanced Queue Logic

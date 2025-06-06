@@ -46,8 +46,10 @@ struct CachedAsyncImage<Content: View, Placeholder: View>: View {
         }
         .animation(.easeInOut(duration: 0.2), value: image)
         .onChange(of: url) { _, newURL in
-            // Reset state when URL changes
-            image = nil
+            // Only reset image if the new URL is different and not cached
+            if let newURL = newURL, !imageCache.isImageCached(url: newURL) {
+                image = nil
+            }
             loadImage()
         }
     }
@@ -55,15 +57,29 @@ struct CachedAsyncImage<Content: View, Placeholder: View>: View {
     private func loadImage() {
         guard let url = url else { return }
         
-        isLoading = true
-        
-        imageCache.loadImage(from: url) { [url] loadedImage in
-            // Only update if the URL hasn't changed while loading
-            if self.url == url {
-                withAnimation(.easeInOut(duration: 0.2)) {
+        // Check if image is already cached to avoid showing loading state
+        let isCached = imageCache.isImageCached(url: url)
+        if isCached {
+            // Image is cached, load it directly
+            imageCache.loadImage(from: url) { [url] loadedImage in
+                // Only update if the URL hasn't changed while loading
+                if self.url == url {
                     self.image = loadedImage
+                    self.isLoading = false
                 }
-                self.isLoading = false
+            }
+        } else {
+            // Image not cached, show loading state
+            isLoading = true
+            
+            imageCache.loadImage(from: url) { [url] loadedImage in
+                // Only update if the URL hasn't changed while loading
+                if self.url == url {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        self.image = loadedImage
+                    }
+                    self.isLoading = false
+                }
             }
         }
     }
@@ -146,7 +162,10 @@ struct CachedAsyncImagePhase<Content: View>: View {
                 loadImage()
             }
             .onChange(of: url) { _, newURL in
-                phase = .empty
+                // Only reset to empty if the new URL is different and not cached
+                if let newURL = newURL, !imageCache.isImageCached(url: newURL) {
+                    phase = .empty
+                }
                 loadImage()
             }
     }
@@ -157,16 +176,33 @@ struct CachedAsyncImagePhase<Content: View>: View {
             return
         }
         
-        phase = .empty
-        
-        imageCache.loadImage(from: url) { [url] loadedImage in
-            // Only update if the URL hasn't changed while loading
-            if self.url == url {
-                withAnimation(.easeInOut(duration: 0.2)) {
+        // Check if image is already cached before showing loading state
+        let isCached = imageCache.isImageCached(url: url)
+        if isCached {
+            // Image is cached, load it directly without showing empty state first
+            imageCache.loadImage(from: url) { [url] loadedImage in
+                // Only update if the URL hasn't changed while loading
+                if self.url == url {
                     if let loadedImage = loadedImage {
                         self.phase = .success(Image(uiImage: loadedImage))
                     } else {
                         self.phase = .failure(ImageLoadError("Failed to load image"))
+                    }
+                }
+            }
+        } else {
+            // Image not cached, show loading state first
+            phase = .empty
+            
+            imageCache.loadImage(from: url) { [url] loadedImage in
+                // Only update if the URL hasn't changed while loading
+                if self.url == url {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        if let loadedImage = loadedImage {
+                            self.phase = .success(Image(uiImage: loadedImage))
+                        } else {
+                            self.phase = .failure(ImageLoadError("Failed to load image"))
+                        }
                     }
                 }
             }

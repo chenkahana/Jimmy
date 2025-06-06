@@ -191,6 +191,12 @@ struct PodcastListView: View {
     }
     
     private func removePodcast(_ podcast: Podcast) {
+        // Record this operation for undo
+        ShakeUndoManager.shared.recordOperation(
+            .subscriptionRemoved(podcast: podcast),
+            description: "Unsubscribed from \"\(podcast.title)\""
+        )
+        
         subscribedPodcasts.removeAll { $0.id == podcast.id }
         PodcastService.shared.savePodcasts(subscribedPodcasts)
         

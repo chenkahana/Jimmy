@@ -167,6 +167,53 @@ class ImageCache: ObservableObject {
         return (memoryCount, diskSize / (1024 * 1024))
     }
     
+    /// Check if image is cached (in memory or disk)
+    func isImageCached(url: URL) -> Bool {
+        // First check memory cache - this is fast and doesn't involve file system operations
+        if getFromMemoryCache(url: url) != nil {
+            return true
+        }
+        
+        // For episode artwork that scrolls frequently, prioritize memory cache hits
+        // Only check disk cache occasionally to avoid blocking the UI
+        return false
+        
+        // TODO: Consider implementing async disk cache check if needed:
+        // checkDiskCacheAsync(url: url, completion: { isCached in ... })
+    }
+    
+    /// Check if image is cached (in memory or disk) - synchronous version for cases where we need to know immediately
+    func isImageCachedIncludingDisk(url: URL) -> Bool {
+        // First check memory cache
+        if getFromMemoryCache(url: url) != nil {
+            return true
+        }
+        
+        // Check disk cache synchronously
+        let filename = cacheFilename(for: url)
+        let imagePath = cacheDirectory.appendingPathComponent(filename)
+        let metadataPath = cacheDirectory.appendingPathComponent(filename + ".meta")
+        
+        guard FileManager.default.fileExists(atPath: imagePath.path),
+              FileManager.default.fileExists(atPath: metadataPath.path) else {
+            return false
+        }
+        
+        // Verify metadata is not expired
+        do {
+            let metadataData = try Data(contentsOf: metadataPath)
+            let metadata = try JSONDecoder().decode(DiskCacheMetadata.self, from: metadataData)
+            return !metadata.isExpired
+        } catch {
+            return false
+        }
+    }
+    
+    /// Check if multiple images are cached
+    func areImagesCached(urls: [URL]) -> Bool {
+        return urls.allSatisfy { isImageCached(url: $0) }
+    }
+    
     // MARK: - Private Methods
     
     private func getFromMemoryCache(url: URL) -> CachedImage? {

@@ -1,6 +1,6 @@
 import Foundation
 
-struct Episode: Identifiable, Codable {
+struct Episode: Identifiable, Codable, Equatable {
     let id: UUID
     var title: String
     var artworkURL: URL?

@@ -12,7 +12,8 @@ struct ContentView: View {
     @AppStorage("highContrastMode") private var highContrastMode: Bool = false
     @State private var selectedTab: Int = 3
     @ObservedObject private var updateService = EpisodeUpdateService.shared
-    @State private var showLoadingScreen: Bool = true
+    @ObservedObject private var undoManager = ShakeUndoManager.shared
+
     
     var body: some View {
         ZStack {
@@ -71,48 +72,22 @@ struct ContentView: View {
             }
             .preferredColorScheme(darkMode ? .dark : .light)
             
-            if showLoadingScreen {
-                AppLoadingView(progress: $updateService.updateProgress)
-                    .transition(.opacity)
-            }
-        }
-        .onAppear {
-            // Show loading screen as branded startup experience
-            showLoadingScreen = true
+
             
-            // Auto-hide loading screen if no podcasts exist (new user)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                let podcasts = PodcastService.shared.loadPodcasts()
-                if podcasts.isEmpty {
-                    withAnimation(.easeInOut) {
-                        showLoadingScreen = false
-                    }
-                }
-            }
-            
-            // Fallback: Always hide loading screen after maximum 3 seconds
-            DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
-                if showLoadingScreen {
-                    withAnimation(.easeInOut) {
-                        showLoadingScreen = false
-                    }
-                }
+            // Undo toast notification
+            if undoManager.showUndoToast {
+                UndoToastView(
+                    message: undoManager.undoToastMessage,
+                    isShowing: $undoManager.showUndoToast
+                )
+                .zIndex(1000) // Ensure it appears above everything
             }
         }
-        .onChange(of: updateService.isUpdating) { updating in
-            withAnimation(.easeInOut) {
-                showLoadingScreen = updating
-            }
-        }
-        .onChange(of: updateService.updateProgress) { progress in
-            // Hide the loading screen as soon as some progress is made
-            if progress > 0 {
-                withAnimation(.easeInOut) {
-                    showLoadingScreen = false
-                }
-            }
-        }
+
     }
+    
+    
+
     
     struct CustomTabBar: View {
         @Binding var selectedTab: Int

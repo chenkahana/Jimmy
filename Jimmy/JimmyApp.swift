@@ -12,6 +12,8 @@ import UniformTypeIdentifiers
 struct JimmyApp: App {
     // Initialize the update service
     private let updateService = EpisodeUpdateService.shared
+    // Initialize the undo manager for shake-to-undo functionality
+    private let undoManager = ShakeUndoManager.shared
     @State private var showFileImportSheet = false
     @State private var pendingAudioURL: URL?
     

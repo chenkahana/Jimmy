@@ -299,6 +299,12 @@ class PodcastService: ObservableObject {
             podcasts.append(podcast)
             self.savePodcasts(podcasts)
             
+            // Record this operation for undo
+            ShakeUndoManager.shared.recordOperation(
+                .podcastSubscribed(podcast: podcast),
+                description: "Subscribed to \"\(podcast.title)\""
+            )
+            
             DispatchQueue.main.async {
                 completion(podcast, nil)
             }

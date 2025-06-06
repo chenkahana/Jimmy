@@ -4,7 +4,7 @@ struct LibraryView: View {
     @State private var searchText: String = ""
     @State private var subscribedPodcasts: [Podcast] = []
     @State private var isEditMode: Bool = false
-    @State private var selectedViewType: LibraryViewType = .shows
+    @State private var selectedViewType: LibraryViewType = .episodes
     @ObservedObject private var audioPlayer = AudioPlayerService.shared
     @ObservedObject private var episodeViewModel = EpisodeViewModel.shared
     @ObservedObject private var updateService = EpisodeUpdateService.shared
@@ -445,6 +445,12 @@ struct LibraryView: View {
     }
     
     private func deletePodcast(_ podcast: Podcast) {
+        // Record this operation for undo
+        ShakeUndoManager.shared.recordOperation(
+            .subscriptionRemoved(podcast: podcast),
+            description: "Unsubscribed from \"\(podcast.title)\""
+        )
+        
         // Haptic feedback
         let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
         impactFeedback.impactOccurred()
@@ -807,6 +813,7 @@ struct EpisodesListView: View {
                             )
                             .listRowSeparator(.hidden)
                             .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+                            .id(episode.id)
                         }
                     }
                 }
@@ -855,6 +862,7 @@ struct EpisodeLibraryRowView: View {
                 .frame(width: 60, height: 60)
                 .clipShape(RoundedRectangle(cornerRadius: 8))
                 .blur(radius: episode.played ? 2 : 0)
+                .id("\(episode.id.uuidString)_\(episode.artworkURL?.absoluteString ?? podcast.artworkURL?.absoluteString ?? "")")
                 .onTapGesture {
                     // Play episode when artwork is tapped
                     queueViewModel.playEpisodeFromLibrary(episode)
