@@ -10,6 +10,7 @@ class AudioPlayerService: NSObject, ObservableObject {
     @Published var currentEpisode: Episode?
     @Published var playbackPosition: TimeInterval = 0
     @Published var duration: TimeInterval = 0
+    @Published var playbackSpeed: Double
     
     private var player: AVPlayer?
     private var timeObserver: Any?
@@ -19,6 +20,8 @@ class AudioPlayerService: NSObject, ObservableObject {
     private let cacheQueue = DispatchQueue(label: "AudioPlayerCacheQueue", qos: .utility)
     
     private override init() {
+        let storedSpeed = UserDefaults.standard.double(forKey: "playbackSpeed")
+        self.playbackSpeed = storedSpeed == 0 ? 1.0 : storedSpeed
         super.init()
         setupAudioSession()
         setupRemoteTransportControls()
@@ -292,9 +295,10 @@ class AudioPlayerService: NSObject, ObservableObject {
     private func setupPlayerForEpisode(_ episode: Episode, playerItem: AVPlayerItem) {
         // Observe player item status for loading completion
         playerItem.addObserver(self, forKeyPath: "status", options: [.new], context: nil)
-        
+
         // Set up time observer for the new player
         setupTimeObserver()
+        applyPlaybackSpeed()
         
         // Set up end-of-playback notification for this specific player item
         NotificationCenter.default.addObserver(
@@ -440,7 +444,7 @@ class AudioPlayerService: NSObject, ObservableObject {
         
         nowPlayingInfo[MPMediaItemPropertyPlaybackDuration] = duration
         nowPlayingInfo[MPNowPlayingInfoPropertyElapsedPlaybackTime] = playbackPosition
-        nowPlayingInfo[MPNowPlayingInfoPropertyPlaybackRate] = isPlaying ? 1.0 : 0.0
+        nowPlayingInfo[MPNowPlayingInfoPropertyPlaybackRate] = isPlaying ? playbackSpeed : 0.0
         
         // Try episode artwork first, then podcast artwork, then placeholder
         let artworkURL = episode.artworkURL ?? getPodcast(for: episode)?.artworkURL
@@ -543,8 +547,9 @@ class AudioPlayerService: NSObject, ObservableObject {
                 print("⚠️ Failed to activate audio session: \(error)")
             }
         }
-        
+
         player?.play()
+        applyPlaybackSpeed()
         isPlaying = true
         updateNowPlayingInfo()
     }
@@ -590,6 +595,17 @@ class AudioPlayerService: NSObject, ObservableObject {
         let clampedTime = max(0, min(duration, time))
         let seekTime = CMTime(seconds: clampedTime, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
         player.seek(to: seekTime)
+    }
+
+    func updatePlaybackSpeed(_ speed: Double) {
+        playbackSpeed = speed
+        UserDefaults.standard.set(speed, forKey: "playbackSpeed")
+        applyPlaybackSpeed()
+    }
+
+    private func applyPlaybackSpeed() {
+        guard let player = player else { return }
+        player.rate = Float(playbackSpeed)
     }
     
     func stop() {
