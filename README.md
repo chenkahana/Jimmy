@@ -156,6 +156,15 @@ Jimmy/
 - **Build Issues**: All resolved, main app builds successfully
 - **Repository**: Published and updated on GitHub
 
+## 🔧 Troubleshooting
+
+If you encounter issues:
+
+1. Ensure your device has an active internet connection. Jimmy retries network requests up to three times before failing.
+2. When offline, Jimmy shows the most recently cached episodes and indicates that new data can't be loaded until you reconnect.
+3. Review the log file `JimmyErrors.log` located in the app's caches directory. You can share this file when reporting bugs.
+4. If problems persist, reinstalling the app clears cached data that might be corrupted.
+
 ## 🤝 Collaboration & Project Rules
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md) for:
