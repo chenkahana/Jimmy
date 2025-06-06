@@ -3,9 +3,24 @@ import SwiftUI
 struct PodcastDetailView: View {
     let podcast: Podcast
     @State private var episodes: [Episode] = []
+    @State private var selectedTab: EpisodeTab = .unplayed
     @ObservedObject private var audioPlayer = AudioPlayerService.shared
     @ObservedObject private var episodeCacheService = EpisodeCacheService.shared
     @Environment(\.dismiss) private var dismiss
+
+    private enum EpisodeTab: String, CaseIterable, Identifiable {
+        case unplayed = "Unplayed"
+        case played = "Played"
+        var id: Self { self }
+    }
+
+    private var unplayedEpisodes: [Episode] {
+        episodes.filter { !$0.played }
+    }
+
+    private var playedEpisodes: [Episode] {
+        episodes.filter { $0.played }
+    }
     
     var currentPlayingEpisode: Episode? {
         return audioPlayer.currentEpisode
@@ -26,6 +41,14 @@ struct PodcastDetailView: View {
                 .listRowInsets(EdgeInsets())
                 .listRowSeparator(.hidden)
 
+            Picker("Episodes", selection: $selectedTab) {
+                ForEach(EpisodeTab.allCases) { tab in
+                    Text(tab.rawValue).tag(tab)
+                }
+            }
+            .pickerStyle(.segmented)
+            .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+
             // Episodes List
             if episodes.isEmpty && !isLoading {
                 EmptyEpisodesStateView(loadingError: loadingError) {
@@ -33,7 +56,22 @@ struct PodcastDetailView: View {
                 }
                 .listRowInsets(EdgeInsets())
             } else {
-                ForEach(episodes) { episode in
+                let displayedEpisodes = selectedTab == .unplayed ? unplayedEpisodes : playedEpisodes
+
+                if displayedEpisodes.isEmpty {
+                    VStack(spacing: 16) {
+                        Image(systemName: "waveform.circle")
+                            .font(.system(size: 48))
+                            .foregroundColor(.gray)
+                        Text(selectedTab == .unplayed ? "No Unplayed Episodes" : "No Played Episodes")
+                            .font(.headline)
+                            .foregroundColor(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .listRowInsets(EdgeInsets(top: 40, leading: 16, bottom: 40, trailing: 16))
+                }
+
+                ForEach(displayedEpisodes) { episode in
                     EpisodeRowView(
                         episode: episode,
                         podcast: podcast,
@@ -47,6 +85,9 @@ struct PodcastDetailView: View {
                         },
                         onMarkAsPlayed: { episode, played in
                             EpisodeViewModel.shared.markEpisodeAsPlayed(episode, played: played)
+                            if let index = episodes.firstIndex(where: { $0.id == episode.id }) {
+                                episodes[index].played = played
+                            }
                         }
                     )
                     .listRowSeparator(.hidden)
