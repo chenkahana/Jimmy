@@ -185,7 +185,6 @@ class PodcastURLResolver {
     private func testRSSFeed(url: URL, completion: @escaping (URL?) -> Void) {
         // Test if the URL is actually a valid RSS feed
         var request = URLRequest(url: url)
-        request.setValue("Jimmy Podcast Player/1.0", forHTTPHeaderField: "User-Agent")
         request.timeoutInterval = 15.0
         
         URLSession.shared.dataTask(with: request) { data, response, error in
