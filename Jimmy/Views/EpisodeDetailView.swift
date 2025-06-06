@@ -189,7 +189,6 @@ struct EpisodeDetailView: View {
                     Spacer()
                         .frame(height: 100)
                 }
-            }
             .navigationTitle("Episode Details")
             .navigationBarTitleDisplayMode(.inline)
             .navigationBarBackButtonHidden(true)
