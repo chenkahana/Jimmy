@@ -38,7 +38,8 @@ class EpisodeUpdateService: ObservableObject {
         }
         
         // Schedule recurring updates
-        updateTimer = Timer.scheduledTimer(withTimeInterval: updateInterval, repeats: true) { _ in
+        updateTimer = Timer.scheduledTimer(withTimeInterval: updateInterval, repeats: true) { [weak self] _ in
+            guard let self = self else { return }
             Task {
                 await self.updateAllEpisodes()
             }

@@ -93,6 +93,8 @@ The lock-screen widget is fully implemented but requires Xcode project setup:
 - ✅ **Fixed widget TimelineProvider implementation**
 - ✅ **Separated widget files from main app target**
 - ✅ **Prepared App Groups configuration**
+- 🆕 **Added file corruption recovery and low disk space handling**
+- 🆕 **Fixed memory leaks identified with Instruments**
 
 ### Build Status:
 - **Main App**: ✅ Builds successfully 

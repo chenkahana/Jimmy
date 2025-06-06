@@ -21,12 +21,20 @@ class FileStorage {
     
     // MARK: - Public Interface
     
-    /// Save Codable object to file
+    /// Save Codable object to file. If disk space is critically low the save
+    /// is skipped and `false` is returned.
     func save<T: Codable>(_ object: T, to filename: String) -> Bool {
         let url = getFileURL(for: filename)
-        
+
         do {
             let data = try JSONEncoder().encode(object)
+
+            // Ensure we have at least 5MB free before attempting to write.
+            if !hasEnoughDiskSpace(for: data.count) {
+                print("⚠️ Not enough disk space to save \(filename). Skipping write")
+                return false
+            }
+
             try data.write(to: url)
             print("💾 Saved \(filename) (\(data.count) bytes)")
             return true
@@ -35,22 +43,25 @@ class FileStorage {
             return false
         }
     }
-    
+
     /// Load Codable object from file
     func load<T: Codable>(_ type: T.Type, from filename: String) -> T? {
         let url = getFileURL(for: filename)
-        
+
         guard fileManager.fileExists(atPath: url.path) else {
             return nil
         }
-        
+
         do {
             let data = try Data(contentsOf: url)
             let object = try JSONDecoder().decode(type, from: data)
             print("📱 Loaded \(filename) (\(data.count) bytes)")
             return object
         } catch {
-            print("❌ Failed to load \(filename): \(error.localizedDescription)")
+            // Move the corrupted file aside so future loads don't keep failing
+            let corruptURL = url.appendingPathExtension("corrupt")
+            try? fileManager.moveItem(at: url, to: corruptURL)
+            print("❌ Failed to load \(filename): \(error.localizedDescription). Moved to \(corruptURL.lastPathComponent)")
             return nil
         }
     }
@@ -145,6 +156,24 @@ class FileStorage {
         return documentsDirectory
             .appendingPathComponent("AppData")
             .appendingPathComponent(filename)
+    }
+
+    /// Returns available disk space in bytes for the documents volume.
+    private func getAvailableDiskSpace() -> Int64 {
+        do {
+            let values = try documentsDirectory.resourceValues(forKeys: [.volumeAvailableCapacityKey])
+            return Int64(values.volumeAvailableCapacity ?? 0)
+        } catch {
+            return 0
+        }
+    }
+
+    /// Check whether there is enough free disk space to write data of the given size
+    /// and keep at least 5MB free.
+    private func hasEnoughDiskSpace(for dataLength: Int) -> Bool {
+        let available = getAvailableDiskSpace()
+        let minimumFree: Int64 = 5 * 1024 * 1024
+        return available - Int64(dataLength) > minimumFree
     }
     
     // MARK: - Storage Statistics
