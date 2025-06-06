@@ -1,88 +1,143 @@
-//
-//  JimmyWidgetExtension.swift
-//  JimmyWidgetExtension
-//
-//  Created by Chen Kahana on 06/06/2025.
-//
-
 import WidgetKit
 import SwiftUI
 
-struct Provider: AppIntentTimelineProvider {
-    func placeholder(in context: Context) -> SimpleEntry {
-        SimpleEntry(date: Date(), configuration: ConfigurationAppIntent())
-    }
+struct JimmyWidgetExtension: Widget {
+    let kind: String = "JimmyWidgetExtension"
 
-    func snapshot(for configuration: ConfigurationAppIntent, in context: Context) async -> SimpleEntry {
-        SimpleEntry(date: Date(), configuration: configuration)
-    }
-    
-    func timeline(for configuration: ConfigurationAppIntent, in context: Context) async -> Timeline<SimpleEntry> {
-        var entries: [SimpleEntry] = []
-
-        // Generate a timeline consisting of five entries an hour apart, starting from the current date.
-        let currentDate = Date()
-        for hourOffset in 0 ..< 5 {
-            let entryDate = Calendar.current.date(byAdding: .hour, value: hourOffset, to: currentDate)!
-            let entry = SimpleEntry(date: entryDate, configuration: configuration)
-            entries.append(entry)
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: kind, provider: Provider()) { entry in
+            JimmyWidgetExtensionEntryView(entry: entry)
         }
+        .configurationDisplayName("Jimmy Player")
+        .description("Control your podcast playback from the lock screen.")
+        .supportedFamilies([.accessoryRectangular])
+    }
+}
 
-        return Timeline(entries: entries, policy: .atEnd)
+struct Provider: TimelineProvider {
+    func placeholder(in context: Context) -> SimpleEntry {
+        SimpleEntry(date: Date(), currentEpisode: nil, isPlaying: false, playbackPosition: 0, duration: 0)
     }
 
-//    func relevances() async -> WidgetRelevances<ConfigurationAppIntent> {
-//        // Generate a list containing the contexts this widget is relevant in.
-//    }
+    func getSnapshot(in context: Context, completion: @escaping (SimpleEntry) -> ()) {
+        let entry = SimpleEntry(date: Date(), currentEpisode: nil, isPlaying: false, playbackPosition: 0, duration: 0)
+        completion(entry)
+    }
+
+    func getTimeline(in context: Context, completion: @escaping (Timeline<Entry>) -> ()) {
+        let widgetData = WidgetDataService.shared
+        let currentDate = Date()
+        
+        let currentEpisode = widgetData.getCurrentEpisode()
+        let playbackState = widgetData.getPlaybackState()
+        
+        let entry = SimpleEntry(
+            date: currentDate,
+            currentEpisode: currentEpisode,
+            isPlaying: playbackState.isPlaying,
+            playbackPosition: playbackState.position,
+            duration: playbackState.duration
+        )
+        
+        // Update every 30 seconds when playing, every 5 minutes when paused
+        let nextUpdate = playbackState.isPlaying ? 
+            currentDate.addingTimeInterval(30) : 
+            currentDate.addingTimeInterval(300)
+        
+        let timeline = Timeline(entries: [entry], policy: .after(nextUpdate))
+        completion(timeline)
+    }
 }
 
 struct SimpleEntry: TimelineEntry {
     let date: Date
-    let configuration: ConfigurationAppIntent
+    let currentEpisode: Episode?
+    let isPlaying: Bool
+    let playbackPosition: TimeInterval
+    let duration: TimeInterval
 }
 
 struct JimmyWidgetExtensionEntryView : View {
     var entry: Provider.Entry
 
     var body: some View {
-        VStack {
-            Text("Time:")
-            Text(entry.date, style: .time)
-
-            Text("Favorite Emoji:")
-            Text(entry.configuration.favoriteEmoji)
+        HStack(spacing: 8) {
+            // Episode artwork
+            AsyncImage(url: entry.currentEpisode?.artworkURL) { image in
+                image
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+            } placeholder: {
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(.gray.opacity(0.3))
+                    .overlay {
+                        Image(systemName: "music.note")
+                            .foregroundColor(.gray)
+                            .font(.caption)
+                    }
+            }
+            .frame(width: 40, height: 40)
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+            
+            VStack(alignment: .leading, spacing: 4) {
+                // Episode name
+                Text(entry.currentEpisode?.title ?? "No Episode")
+                    .font(.caption)
+                    .fontWeight(.medium)
+                    .lineLimit(1)
+                    .foregroundColor(.primary)
+                
+                // Timeline (progress bar)
+                ProgressView(value: entry.duration > 0 ? entry.playbackPosition / entry.duration : 0)
+                    .progressViewStyle(LinearProgressViewStyle(tint: .accentColor))
+                    .scaleEffect(y: 0.8)
+                
+                // Controls (backward, play/pause, forward)
+                HStack(spacing: 12) {
+                    Button(intent: SeekBackwardIntent()) {
+                        Image(systemName: "gobackward.15")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    
+                    Button(intent: PlayPauseIntent()) {
+                        Image(systemName: entry.isPlaying ? "pause.fill" : "play.fill")
+                            .font(.caption)
+                            .foregroundColor(.primary)
+                    }
+                    .buttonStyle(.plain)
+                    
+                    Button(intent: SeekForwardIntent()) {
+                        Image(systemName: "goforward.15")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    
+                    Spacer()
+                }
+            }
+            
+            Spacer()
         }
+        .padding(8)
     }
 }
 
-struct JimmyWidgetExtension: Widget {
-    let kind: String = "JimmyWidgetExtension"
-
-    var body: some WidgetConfiguration {
-        AppIntentConfiguration(kind: kind, intent: ConfigurationAppIntent.self, provider: Provider()) { entry in
-            JimmyWidgetExtensionEntryView(entry: entry)
-                .containerBackground(.fill.tertiary, for: .widget)
-        }
-    }
-}
-
-extension ConfigurationAppIntent {
-    fileprivate static var smiley: ConfigurationAppIntent {
-        let intent = ConfigurationAppIntent()
-        intent.favoriteEmoji = "😀"
-        return intent
-    }
-    
-    fileprivate static var starEyes: ConfigurationAppIntent {
-        let intent = ConfigurationAppIntent()
-        intent.favoriteEmoji = "🤩"
-        return intent
-    }
-}
-
-#Preview(as: .systemSmall) {
-    JimmyWidgetExtension()
-} timeline: {
-    SimpleEntry(date: .now, configuration: .smiley)
-    SimpleEntry(date: .now, configuration: .starEyes)
-}
+#Preview {
+    JimmyWidgetExtensionEntryView(entry: SimpleEntry(
+        date: Date(),
+        currentEpisode: Episode(
+            id: UUID(),
+            title: "Sample Episode Title",
+            artworkURL: nil,
+            audioURL: nil,
+            description: "Sample description"
+        ),
+        isPlaying: true,
+        playbackPosition: 120,
+        duration: 300
+    ))
+    .previewContext(WidgetPreviewContext(family: .accessoryRectangular))
+} 

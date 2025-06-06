@@ -121,7 +121,7 @@ The app now provides a comprehensive podcast discovery and management experience
 
 ### 📂 File Organization:
 - **Main app files**: All in `Jimmy/` directory, builds successfully
-- **Widget files**: Temporarily in `WidgetFiles/` directory 
+- **Widget files**: Located in `JimmyWidgetExtension/` target
 - **Shared components**: `WidgetDataService.swift` and `Episode.swift` ready for both targets
 
 ---
@@ -259,9 +259,9 @@ The app now provides a comprehensive podcast discovery and management experience
 - ✅ **Build configuration** - main app builds successfully
 
 ### Setup Required
-- ⚠️ **Widget Extension target** - needs Xcode project configuration
-- ⚠️ **App Groups setup** - requires Apple Developer Account configuration  
-- ⚠️ **Widget files organization** - move from WidgetFiles/ to extension target
+- ✅ **Widget Extension target** configured in Xcode
+- ✅ **App Groups setup** for both targets
+- ✅ **Widget files organized** in `JimmyWidgetExtension/`
 
 ### Documentation Available
 - 📋 **Complete setup guide**: `WIDGET_README.md`

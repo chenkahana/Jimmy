@@ -207,7 +207,12 @@ class EpisodeCacheService: ObservableObject {
             }
         }
     }
-    
+
+    /// Manually trigger migration from legacy UserDefaults storage
+    func migrateLegacyCacheIfNeeded() {
+        _ = migrateLegacyCache()
+    }
+
     // MARK: - Private Methods
     
     private func fetchAndCacheEpisodes(
@@ -243,10 +248,10 @@ class EpisodeCacheService: ObservableObject {
     // MARK: - Persistence
     
     private func saveCacheToDisk() {
-        guard !episodeCache.isEmpty else { 
+        guard !episodeCache.isEmpty else {
             // Delete cache file if cache is empty
             _ = FileStorage.shared.delete("episodeCache.json")
-            return 
+            return
         }
         
         // Convert cache to Codable format
@@ -269,46 +274,50 @@ class EpisodeCacheService: ObservableObject {
             print("⚠️ Episode cache not saved due to storage issue")
         }
     }
+
+    /// Migrate cache from legacy UserDefaults storage if present
+    @discardableResult
+    func migrateLegacyCache() -> CacheContainer? {
+        guard let oldData = UserDefaults.standard.object(forKey: persistenceKey) as? [String: [String: Any]] else {
+            return nil
+        }
+
+        print("📦 Migrating cache from UserDefaults to file storage...")
+
+        var entries: [String: CacheData] = [:]
+
+        for (uuidString, entryData) in oldData {
+            guard let episodesBase64 = entryData["episodes"] as? String,
+                  let episodesData = Data(base64Encoded: episodesBase64),
+                  let episodes = try? JSONDecoder().decode([Episode].self, from: episodesData),
+                  let timestampInterval = entryData["timestamp"] as? TimeInterval else {
+                continue
+            }
+
+            let lastModified = entryData["lastModified"] as? String
+
+            let cacheData = CacheData(
+                episodes: episodes,
+                timestamp: timestampInterval,
+                lastModified: lastModified
+            )
+            entries[uuidString] = cacheData
+        }
+
+        let container = CacheContainer(entries: entries)
+
+        if !entries.isEmpty {
+            _ = FileStorage.shared.save(container, to: "episodeCache.json")
+            print("📦 Successfully migrated \(entries.count) cache entries")
+        }
+        UserDefaults.standard.removeObject(forKey: persistenceKey)
+
+        return entries.isEmpty ? nil : container
+    }
     
     private func loadCacheFromDisk() {
         // Try to migrate from UserDefaults first, then load from file
-        var container: CacheContainer?
-        
-        // First try to migrate old format from UserDefaults
-        if UserDefaults.standard.object(forKey: persistenceKey) != nil {
-            print("📦 Migrating cache from UserDefaults to file storage...")
-            if let oldData = UserDefaults.standard.object(forKey: persistenceKey) as? [String: [String: Any]] {
-                // Convert old format to new format
-                var entries: [String: CacheData] = [:]
-                
-                for (uuidString, entryData) in oldData {
-                    guard let episodesBase64 = entryData["episodes"] as? String,
-                          let episodesData = Data(base64Encoded: episodesBase64),
-                          let episodes = try? JSONDecoder().decode([Episode].self, from: episodesData),
-                          let timestampInterval = entryData["timestamp"] as? TimeInterval else {
-                        continue
-                    }
-                    
-                    let lastModified = entryData["lastModified"] as? String
-                    
-                    let cacheData = CacheData(
-                        episodes: episodes,
-                        timestamp: timestampInterval,
-                        lastModified: lastModified
-                    )
-                    entries[uuidString] = cacheData
-                }
-                
-                container = CacheContainer(entries: entries)
-                
-                // Save to new format and clear UserDefaults
-                if !entries.isEmpty {
-                    _ = FileStorage.shared.save(container!, to: "episodeCache.json")
-                    print("📦 Successfully migrated \(entries.count) cache entries")
-                }
-                UserDefaults.standard.removeObject(forKey: persistenceKey)
-            }
-        }
+        var container: CacheContainer? = migrateLegacyCache()
         
         // If no migration happened, load from file
         if container == nil {
