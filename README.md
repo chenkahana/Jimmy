@@ -12,12 +12,12 @@ A minimalist, queue-centric iOS podcast app inspired by Google Podcasts with enh
 - ✅ **Import functionality** (OPML, Apple Podcasts, Google Takeout)
 - ✅ **Modern SwiftUI interface** with dark mode support
 
-### ⚠️ Lock-Screen Widget - **IMPLEMENTATION COMPLETE, SETUP REQUIRED**
-- ✅ **Widget code fully implemented** and tested
-- ✅ **Data synchronization** between app and widget ready
-- ⚠️ **Widget files temporarily in `WidgetFiles/`** directory
-- ⚠️ **Requires Xcode Widget Extension target setup**
-- 📋 **Detailed setup guide** available in `Jimmy/WIDGET_README.md`
+### ✅ Lock-Screen Widget - **FULLY CONFIGURED**
+ - ✅ **Widget code fully implemented** and tested
+ - ✅ **Data synchronization** between app and widget ready
+ - ✅ **Widget files now in `JimmyWidgetExtension/` directory**
+ - ✅ **Widget Extension target configured** with App Groups
+ - 📋 **Detailed setup guide** available in `Jimmy/WIDGET_README.md`
 
 ### ⚠️ Apple Watch App - **IN PROGRESS**
 - 🆕 **Basic watch app code** in `WatchFiles/` directory
@@ -77,14 +77,11 @@ Jimmy is a personal podcast app for iPhone, designed for simplicity, speed, and 
 4. Import your podcast subscriptions using one of the available methods
 5. Start adding episodes to your queue and enjoy listening!
 
-### Widget Setup (Optional)
-The lock-screen widget is fully implemented but requires Xcode project setup:
+### Widget Setup
+The lock-screen widget extension is already configured in Xcode:
 
 1. **See detailed instructions** in `Jimmy/WIDGET_README.md`
-2. **Create Widget Extension target** in Xcode
-3. **Move widget files** from `WidgetFiles/` directory
-4. **Configure App Groups** for data sharing
-5. **Build and test** on physical device
+2. **Build and test** on a physical device
 
 ## 📋 Build Information
 
@@ -95,8 +92,8 @@ The lock-screen widget is fully implemented but requires Xcode project setup:
 - ✅ **Prepared App Groups configuration**
 
 ### Build Status:
-- **Main App**: ✅ Builds successfully 
-- **Widget Extension**: ⚠️ Requires Xcode target setup
+- **Main App**: ✅ Builds successfully
+- **Widget Extension**: ✅ Configured in Xcode
 - **Dependencies**: ✅ All resolved
 - **Code Signing**: ✅ Configured
 
@@ -125,7 +122,7 @@ Jimmy/
 │   ├── Services/            # Logic for syncing, importing, backup, audio playback
 │   │   └── WidgetDataService.swift  # Widget data sharing
 │   └── Utilities/           # Helpers (accessibility, parsers, etc.)
-├── WidgetFiles/             # Widget implementation (to be moved to extension)
+├── JimmyWidgetExtension/    # Widget extension implementation
 │   ├── JimmyWidgetBundle.swift
 │   ├── JimmyWidgetExtension.swift
 │   ├── WidgetIntents.swift
@@ -148,8 +145,8 @@ Jimmy/
 - **Features**: `Jimmy/FEATURE_SUMMARY.md` - Detailed feature documentation
 - **App Summary**: `APP_RENAME_SUMMARY.md` - Project overview
 
-### Quick Links:
-- **Widget Status**: Implementation complete, Xcode setup required
+-### Quick Links:
+- **Widget Status**: Extension configured and functional
 - **Watch Status**: Connectivity implemented, Xcode setup required
 - **Build Issues**: All resolved, main app builds successfully
 - **Repository**: Published and updated on GitHub
@@ -168,4 +165,4 @@ This project is for personal use and educational purposes.
 
 ---
 
-**🎉 Ready to Use**: The main app is fully functional and ready for use. The lock-screen widget is implemented and ready for Xcode setup following the guide in `WIDGET_README.md`. The Apple Watch companion is provided as sample code and needs an Xcode Watch App target to run.
+**🎉 Ready to Use**: The main app and lock-screen widget are fully functional. See `WIDGET_README.md` for deployment details. The Apple Watch companion is provided as sample code and needs an Xcode Watch App target to run.

@@ -10,10 +10,10 @@ This document explains the lock screen widget implementation for the Jimmy podca
 - **Widget data service** integrated and ready
 - **Repository published** and updated on GitHub
 
-### ⚠️ Widget Status
-- **Widget implementation completed** but requires Xcode project setup
-- **Widget files temporarily moved** to `WidgetFiles/` directory to fix build conflicts
-- **Ready for Widget Extension target creation**
+### ✅ Widget Status
+- **Widget implementation completed** and extension target configured
+ - **Widget files now located** in `../JimmyWidgetExtension/` directory
+- **App Groups enabled for data sharing**
 
 ## 🎯 Features
 
@@ -35,7 +35,7 @@ The lock screen widget displays:
 4. **App Groups configuration** - Prepared for proper data sharing
 
 ### Files Status:
-- **Widget files location**: Currently in `WidgetFiles/` directory
+ - **Widget files location**: `../JimmyWidgetExtension/` directory
 - **Shared files**: `WidgetDataService.swift` and `Episode.swift` remain in main app
 - **Main app**: Builds and runs successfully
 
@@ -51,15 +51,15 @@ The lock screen widget displays:
 5. **DO NOT** check "Include Configuration Intent" (we use StaticConfiguration)
 6. Click `Finish`
 
-### Step 2: Move Widget Files to Extension
+### Step 2: Verify Widget Files in Extension
 
-**Copy these files from `WidgetFiles/` to the widget extension target:**
+**Ensure these files are included in the widget extension target:**
 ```
-WidgetFiles/JimmyWidgetBundle.swift → JimmyWidgetExtension target
-WidgetFiles/JimmyWidgetExtension.swift → JimmyWidgetExtension target  
-WidgetFiles/WidgetIntents.swift → JimmyWidgetExtension target
-WidgetFiles/JimmyWidgetExtension-Info.plist → JimmyWidgetExtension target
-WidgetFiles/JimmyWidgetExtension.entitlements → JimmyWidgetExtension target
+JimmyWidgetExtension/JimmyWidgetBundle.swift
+JimmyWidgetExtension/JimmyWidgetExtension.swift
+JimmyWidgetExtension/WidgetIntents.swift
+JimmyWidgetExtension/JimmyWidgetExtension-Info.plist
+JimmyWidgetExtension/JimmyWidgetExtension.entitlements
 ```
 
 ### Step 3: Add Shared Files to Both Targets
@@ -193,16 +193,12 @@ Jimmy/
 │   ├── WidgetIntents.swift
 │   ├── Info.plist
 │   └── Entitlements.plist
-└── WidgetFiles/                     # Temporary storage (can be deleted after setup)
-    └── ... (widget files to be moved)
+└── (no temporary widget directory)
 ```
 
 ## 🚀 Next Steps
 
-1. **Create Widget Extension target** in Xcode
-2. **Move widget files** from WidgetFiles/ directory
-3. **Configure App Groups** for both targets
-4. **Build and test** on physical device
-5. **Delete WidgetFiles/** directory after successful setup
+1. **Build and test** on a physical device
+2. **Review App Groups or target settings** if issues occur
 
-The widget implementation is **complete and ready** - it just needs proper Xcode project organization!
+The widget implementation is **complete and configured**. Build on a device to verify everything works as expected.

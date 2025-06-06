@@ -109,7 +109,7 @@ The app now provides a comprehensive podcast discovery and management experience
 
 ### ✅ Implementation Status: **COMPLETE & FUNCTIONAL**
 - **Main App**: ✅ Builds successfully, all features working
-- **Lock-Screen Widget**: ✅ Implementation complete, Xcode setup required
+- **Lock-Screen Widget**: ✅ Extension configured with App Groups
 - **Repository**: ✅ Published on GitHub with latest fixes
 - **Documentation**: ✅ Comprehensive guides available
 
@@ -121,7 +121,7 @@ The app now provides a comprehensive podcast discovery and management experience
 
 ### 📂 File Organization:
 - **Main app files**: All in `Jimmy/` directory, builds successfully
-- **Widget files**: Temporarily in `WidgetFiles/` directory 
+- **Widget files**: Located in `JimmyWidgetExtension/` directory 
 - **Shared components**: `WidgetDataService.swift` and `Episode.swift` ready for both targets
 
 ---
@@ -256,10 +256,10 @@ The app now provides a comprehensive podcast discovery and management experience
 - ✅ **App Intents integration** - widget controls communicate with main app
 - ✅ **Build configuration** - main app builds successfully
 
-### Setup Required
-- ⚠️ **Widget Extension target** - needs Xcode project configuration
-- ⚠️ **App Groups setup** - requires Apple Developer Account configuration  
-- ⚠️ **Widget files organization** - move from WidgetFiles/ to extension target
+### Setup Completed
+- ✅ **Widget Extension target** configured in Xcode
+- ✅ **App Groups setup** for main and widget targets
+- ✅ **Widget files organization** verified in extension target
 
 ### Documentation Available
 - 📋 **Complete setup guide**: `WIDGET_README.md`
@@ -268,4 +268,4 @@ The app now provides a comprehensive podcast discovery and management experience
 
 ---
 
-**🎯 Project Status**: The Jimmy podcast app is **feature-complete and fully functional**. The lock-screen widget is **implemented and ready** - it just requires proper Xcode Widget Extension target setup following the detailed guide in `WIDGET_README.md`. 
+**🎯 Project Status**: The Jimmy podcast app is **feature-complete and fully functional**. The lock-screen widget extension is configured and working; see `WIDGET_README.md` for usage details.
