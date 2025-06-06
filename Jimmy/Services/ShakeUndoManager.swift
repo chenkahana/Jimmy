@@ -10,6 +10,7 @@ enum UndoableOperation {
     case episodeAddedToQueue(episode: Episode)
     case episodeMovedInQueue(episode: Episode, fromIndex: Int, toIndex: Int)
     case podcastSubscribed(podcast: Podcast)
+    case bulkEpisodesRemovedFromQueue(episodes: [Episode], removedFromIndex: Int, targetEpisode: Episode)
 }
 
 // Structure to hold operation details with timestamp
@@ -39,11 +40,13 @@ class ShakeUndoManager: ObservableObject {
     // MARK: - Operation Tracking
     
     func recordOperation(_ operation: UndoableOperation, description: String) {
-        lastAction = UndoableAction(
-            operation: operation,
-            timestamp: Date(),
-            description: description
-        )
+        DispatchQueue.main.async {
+            self.lastAction = UndoableAction(
+                operation: operation,
+                timestamp: Date(),
+                description: description
+            )
+        }
         
         print("🔄 Recorded undoable operation: \(description)")
     }
@@ -80,10 +83,15 @@ class ShakeUndoManager: ObservableObject {
             
         case .podcastSubscribed(let podcast):
             undoPodcastSubscription(podcast)
+            
+        case .bulkEpisodesRemovedFromQueue(let episodes, let removedFromIndex, let targetEpisode):
+            undoBulkEpisodeRemovalFromQueue(episodes, removedFromIndex: removedFromIndex, targetEpisode: targetEpisode)
         }
         
         // Clear the last action after undo
-        lastAction = nil
+        DispatchQueue.main.async {
+            self.lastAction = nil
+        }
     }
     
     // MARK: - Undo Implementations
@@ -140,6 +148,38 @@ class ShakeUndoManager: ObservableObject {
         podcasts.removeAll { $0.id == podcast.id }
         PodcastService.shared.savePodcasts(podcasts)
         print("✅ Removed subscription to: \(podcast.title)")
+    }
+    
+    private func undoBulkEpisodeRemovalFromQueue(_ removedEpisodes: [Episode], removedFromIndex: Int, targetEpisode: Episode) {
+        let queue = QueueViewModel.shared
+        
+        // Stop current playback to properly restore the queue state
+        AudioPlayerService.shared.stop()
+        
+        // Remove the target episode from its current position (should be at index 0)
+        queue.queue.removeAll { $0.id == targetEpisode.id }
+        
+        // Restore all the removed episodes at their original positions
+        for (index, episode) in removedEpisodes.enumerated() {
+            let insertIndex = removedFromIndex + index
+            if insertIndex <= queue.queue.count {
+                queue.queue.insert(episode, at: insertIndex)
+            }
+        }
+        
+        // Re-add the target episode at its original position
+        let originalTargetIndex = removedEpisodes.count + removedFromIndex
+        if originalTargetIndex <= queue.queue.count {
+            queue.queue.insert(targetEpisode, at: originalTargetIndex)
+        } else {
+            queue.queue.append(targetEpisode)
+        }
+        
+        // Update the episode IDs set to match the restored queue
+        queue.updateEpisodeIDs()
+        
+        queue.saveQueue()
+        print("✅ Restored \(removedEpisodes.count) episodes to queue before \"\(targetEpisode.title)\"")
     }
     
     // MARK: - Shake Detection

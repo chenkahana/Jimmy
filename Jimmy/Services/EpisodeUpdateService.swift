@@ -62,16 +62,19 @@ class EpisodeUpdateService: ObservableObject {
     
     // MARK: - Background Update Logic
     
-    @MainActor
     private func updateAllEpisodes() async {
-        guard !isUpdating else { return }
-        
-        isUpdating = true
-        updateProgress = 0.0
+        // Ensure UI updates happen on main thread
+        await MainActor.run {
+            guard !isUpdating else { return }
+            isUpdating = true
+            updateProgress = 0.0
+        }
         
         let podcasts = PodcastService.shared.loadPodcasts()
         guard !podcasts.isEmpty else {
-            isUpdating = false
+            await MainActor.run {
+                isUpdating = false
+            }
             return
         }
         
@@ -113,8 +116,10 @@ class EpisodeUpdateService: ObservableObject {
             await processNewEpisodes(allNewEpisodes, updatedPodcasts: updatedPodcasts)
         }
         
-        isUpdating = false
-        lastUpdateTime = Date()
+        await MainActor.run {
+            isUpdating = false
+            lastUpdateTime = Date()
+        }
         print("✅ Background episode update completed")
     }
     

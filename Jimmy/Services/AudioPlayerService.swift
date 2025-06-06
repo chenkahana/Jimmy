@@ -1,6 +1,7 @@
 import Foundation
 import AVFoundation
 import MediaPlayer
+import Combine
 
 class AudioPlayerService: NSObject, ObservableObject {
     static let shared = AudioPlayerService()
@@ -10,22 +11,28 @@ class AudioPlayerService: NSObject, ObservableObject {
     @Published var currentEpisode: Episode?
     @Published var playbackPosition: TimeInterval = 0
     @Published var duration: TimeInterval = 0
-    @Published var playbackSpeed: Double
+    @Published var playbackSpeed: Float = 1.0
+    @Published var canSeekForward = true
+    @Published var canSeekBackward = true
     
     private var player: AVPlayer?
     private var timeObserver: Any?
     
     // Cache for prepared AVPlayerItems to reduce loading time
-    private var playerItemCache: [UUID: AVPlayerItem] = [:]
-    private let cacheQueue = DispatchQueue(label: "AudioPlayerCacheQueue", qos: .utility)
+    private var playerItemCache: [String: AVPlayerItem] = [:]
+    private let cacheQueue = DispatchQueue(label: "player.cache", qos: .utility)
     
     private override init() {
-        let storedSpeed = UserDefaults.standard.double(forKey: "playbackSpeed")
-        self.playbackSpeed = storedSpeed == 0 ? 1.0 : storedSpeed
         super.init()
+        
+        // Initialize playback speed from saved value
+        let storedSpeed = UserDefaults.standard.float(forKey: "playbackSpeed")
+        playbackSpeed = storedSpeed == 0 ? 1.0 : storedSpeed
+        
         setupAudioSession()
         setupRemoteTransportControls()
         setupNotificationObservers()
+        restoreLastPlayingEpisode()
     }
     
     deinit {
@@ -245,9 +252,10 @@ class AudioPlayerService: NSObject, ObservableObject {
     }
     
     @objc private func appWillTerminate() {
-        // Save current playback position before app terminates
+        // Save current playback position and episode ID before app terminates
         if let currentEpisode = currentEpisode {
             EpisodeViewModel.shared.updatePlaybackPosition(for: currentEpisode, position: playbackPosition)
+            saveLastPlayingEpisodeId(currentEpisode.id.uuidString)
         }
     }
     
@@ -269,8 +277,11 @@ class AudioPlayerService: NSObject, ObservableObject {
         // Update current episode
         currentEpisode = episode
         
+        // Save the episode ID for restoration on app relaunch
+        saveLastPlayingEpisodeId(episode.id.uuidString)
+        
         // Check if we have a cached player item first
-        if let cachedPlayerItem = playerItemCache[episode.id] {
+        if let cachedPlayerItem = playerItemCache[episode.id.uuidString] {
             // Use cached item for faster loading
             player = AVPlayer(playerItem: cachedPlayerItem)
             setupPlayerForEpisode(episode, playerItem: cachedPlayerItem)
@@ -281,7 +292,7 @@ class AudioPlayerService: NSObject, ObservableObject {
             
             // Cache the item for future use
             cacheQueue.async { [weak self] in
-                self?.playerItemCache[episode.id] = playerItem
+                self?.playerItemCache[episode.id.uuidString] = playerItem
                 // Clean cache if it gets too large
                 if self?.playerItemCache.count ?? 0 > 5 {
                     self?.cleanupOldCacheItems()
@@ -314,6 +325,11 @@ class AudioPlayerService: NSObject, ObservableObject {
                 let duration = asset.duration
                 if !duration.isIndefinite {
                     self.duration = CMTimeGetSeconds(duration)
+                    
+                    // Save duration to episode if it's not already set
+                    if episode.episodeDuration == 0 {
+                        EpisodeViewModel.shared.updateEpisodeDuration(episode, duration: self.duration)
+                    }
                 }
             }
             
@@ -322,17 +338,22 @@ class AudioPlayerService: NSObject, ObservableObject {
                 let seekTime = CMTime(seconds: episode.playbackPosition, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
                 self.player?.seek(to: seekTime) { [weak self] _ in
                     DispatchQueue.main.async {
+                        // Set the playback position property after seek completes to ensure UI shows correct position
+                        self?.playbackPosition = episode.playbackPosition
                         self?.isLoading = false
                         LoadingStateManager.shared.setEpisodeLoading(episode.id, isLoading: false)
+                        // Update now playing info after seeking to show correct position
+                        self?.updateNowPlayingInfo()
                     }
                 }
             } else {
+                // Set playback position to 0 for new episodes
+                self.playbackPosition = 0
                 self.isLoading = false
                 LoadingStateManager.shared.setEpisodeLoading(episode.id, isLoading: false)
+                // Update now playing info immediately since no seeking needed
+                self.updateNowPlayingInfo()
             }
-            
-            // Update now playing info (this will load artwork)
-            self.updateNowPlayingInfo()
         }
     }
     
@@ -348,6 +369,11 @@ class AudioPlayerService: NSObject, ObservableObject {
                     let duration = playerItem.asset.duration
                     if !duration.isIndefinite {
                         self.duration = CMTimeGetSeconds(duration)
+                        
+                        // Save duration to episode if it's not already set
+                        if let currentEpisode = self.currentEpisode, currentEpisode.episodeDuration == 0 {
+                            EpisodeViewModel.shared.updateEpisodeDuration(currentEpisode, duration: self.duration)
+                        }
                     }
                 case .failed:
                     self.isLoading = false
@@ -380,10 +406,10 @@ class AudioPlayerService: NSObject, ObservableObject {
         cacheQueue.async { [weak self] in
             for episode in episodes.prefix(3) { // Only preload first 3
                 guard let audioURL = episode.audioURL,
-                      self?.playerItemCache[episode.id] == nil else { continue }
+                      self?.playerItemCache[episode.id.uuidString] == nil else { continue }
                 
                 let playerItem = AVPlayerItem(url: audioURL)
-                self?.playerItemCache[episode.id] = playerItem
+                self?.playerItemCache[episode.id.uuidString] = playerItem
             }
         }
     }
@@ -526,11 +552,13 @@ class AudioPlayerService: NSObject, ObservableObject {
             currentEpisode?.played = true
         }
         
-        // Update episode in queue
-        if let queueViewModel = QueueViewModel.shared as QueueViewModel?,
-           let index = queueViewModel.queue.firstIndex(where: { $0.id == episode.id }) {
-            queueViewModel.queue[index].playbackPosition = playbackPosition
-            queueViewModel.saveQueue()
+        // Update episode in queue - ensure this happens on main thread since we're updating @Published properties
+        DispatchQueue.main.async {
+            if let queueViewModel = QueueViewModel.shared as QueueViewModel?,
+               let index = queueViewModel.queue.firstIndex(where: { $0.id == episode.id }) {
+                queueViewModel.queue[index].playbackPosition = self.playbackPosition
+                queueViewModel.saveQueue()
+            }
         }
         
         // Update now playing info
@@ -597,7 +625,7 @@ class AudioPlayerService: NSObject, ObservableObject {
         player.seek(to: seekTime)
     }
 
-    func updatePlaybackSpeed(_ speed: Double) {
+    func updatePlaybackSpeed(_ speed: Float) {
         playbackSpeed = speed
         UserDefaults.standard.set(speed, forKey: "playbackSpeed")
         applyPlaybackSpeed()
@@ -605,7 +633,7 @@ class AudioPlayerService: NSObject, ObservableObject {
 
     private func applyPlaybackSpeed() {
         guard let player = player else { return }
-        player.rate = Float(playbackSpeed)
+        player.rate = playbackSpeed
     }
     
     func stop() {
@@ -633,5 +661,28 @@ class AudioPlayerService: NSObject, ObservableObject {
         
         // Clear now playing info
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
+    }
+    
+    // MARK: - Episode Persistence
+    
+    private func saveLastPlayingEpisodeId(_ episodeId: String) {
+        UserDefaults.standard.set(episodeId, forKey: "lastPlayingEpisodeId")
+    }
+    
+    private func getLastPlayingEpisodeId() -> String? {
+        return UserDefaults.standard.string(forKey: "lastPlayingEpisodeId")
+    }
+    
+    private func restoreLastPlayingEpisode() {
+        guard let lastEpisodeId = getLastPlayingEpisodeId(),
+              let episode = EpisodeViewModel.shared.findEpisode(by: lastEpisodeId) else {
+            return
+        }
+        
+        // Only restore if there was a saved playback position (meaning it was actually being played)
+        if episode.playbackPosition > 0 {
+            // Load the episode but don't start playing
+            loadEpisode(episode)
+        }
     }
 } 

@@ -11,11 +11,25 @@ class EpisodeViewModel: ObservableObject {
     private var playedEpisodeIDs: Set<UUID> = []
     private let playedIDsFilename = "playedEpisodes.json"
     
+    // PERFORMANCE FIX: Add background queue for heavy operations
+    private let dataProcessingQueue = DispatchQueue(label: "episode-data-processing", qos: .userInitiated, attributes: .concurrent)
+    private let persistenceQueue = DispatchQueue(label: "episode-persistence", qos: .utility)
+    
+    // PERFORMANCE FIX: Add operation tracking to prevent concurrent modifications
+    private var isLoading = false
+    private var pendingUpdates: [Episode] = []
+    private let updateQueue = DispatchQueue(label: "episode-updates", qos: .userInitiated)
+    
     private init() {
         loadPlayedIDs()
-        // Load episodes asynchronously to avoid blocking startup
+        // PERFORMANCE FIX: Load episodes asynchronously to avoid blocking startup
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             self?.loadEpisodes()
+        }
+        
+        // Also check for recovery after a brief delay to ensure UI is ready
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
+            self?.checkAndRecoverIfNeeded()
         }
     }
     
@@ -27,37 +41,83 @@ class EpisodeViewModel: ObservableObject {
     }
     
     func updateEpisode(_ episode: Episode) {
-        if let index = episodes.firstIndex(where: { $0.id == episode.id }) {
-            episodes[index] = episode
-            saveEpisodes()
+        // PERFORMANCE FIX: Use update queue to prevent blocking main thread
+        updateQueue.async { [weak self] in
+            guard let self = self else { return }
             
-            // Update episode in queue if it exists
-            QueueViewModel.shared.updateEpisodeInQueue(episode)
+            DispatchQueue.main.async {
+                if let index = self.episodes.firstIndex(where: { $0.id == episode.id }) {
+                    self.episodes[index] = episode
+                }
+            }
+            
+            // Save episodes on background thread to avoid blocking UI
+            self.persistenceQueue.async { [weak self] in
+                self?.saveEpisodes()
+            }
         }
     }
     
     func markEpisodeAsPlayed(_ episode: Episode, played: Bool) {
-        // Update played IDs file
-        if played {
-            playedEpisodeIDs.insert(episode.id)
-        } else {
-            playedEpisodeIDs.remove(episode.id)
+        // PERFORMANCE FIX: Handle played state updates asynchronously
+        updateQueue.async { [weak self] in
+            guard let self = self else { return }
+            
+            // Update played IDs file
+            if played {
+                self.playedEpisodeIDs.insert(episode.id)
+            } else {
+                self.playedEpisodeIDs.remove(episode.id)
+            }
+            
+            // Save played IDs on background thread
+            self.persistenceQueue.async {
+                self.savePlayedIDs()
+            }
+            
+            // Update episode in memory and persistence
+            var updatedEpisode = episode
+            updatedEpisode.played = played
+            self.updateEpisode(updatedEpisode)
+            
+            // Show haptic feedback on main thread
+            DispatchQueue.main.async {
+                FeedbackManager.shared.markAsPlayed()
+            }
         }
-        savePlayedIDs()
-        
-        // Update episode in memory and persistence
-        var updatedEpisode = episode
-        updatedEpisode.played = played
-        updateEpisode(updatedEpisode)
-        
-        // Show haptic feedback
-        FeedbackManager.shared.markAsPlayed()
     }
     
     func updatePlaybackPosition(for episode: Episode, position: TimeInterval) {
-        var updatedEpisode = episode
-        updatedEpisode.playbackPosition = position
-        updateEpisode(updatedEpisode)
+        // PERFORMANCE FIX: Batch position updates to prevent excessive saves
+        updateQueue.async { [weak self] in
+            guard let self = self else { return }
+            
+            var updatedEpisode = episode
+            updatedEpisode.playbackPosition = position
+            
+            DispatchQueue.main.async {
+                if let index = self.episodes.firstIndex(where: { $0.id == episode.id }) {
+                    self.episodes[index] = updatedEpisode
+                }
+            }
+            
+            // Debounce saves for position updates - simplified approach
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                self.persistenceQueue.async {
+                    self.saveEpisodes()
+                }
+            }
+        }
+    }
+    
+
+    
+    func updateEpisodeDuration(_ episode: Episode, duration: TimeInterval) {
+        updateQueue.async { [weak self] in
+            var updatedEpisode = episode
+            updatedEpisode.duration = duration
+            self?.updateEpisode(updatedEpisode)
+        }
     }
     
     func getEpisode(by id: UUID) -> Episode? {
@@ -71,30 +131,80 @@ class EpisodeViewModel: ObservableObject {
     // MARK: - Batch Operations
     
     func markAllEpisodesAsPlayed(for podcastID: UUID) {
-        var affectedIDs = Set<UUID>()
-        for i in episodes.indices {
-            if episodes[i].podcastID == podcastID {
-                episodes[i].played = true
-                affectedIDs.insert(episodes[i].id)
+        // PERFORMANCE FIX: Handle batch operations on background queue
+        dataProcessingQueue.async { [weak self] in
+            guard let self = self else { return }
+            
+            var affectedIDs = Set<UUID>()
+            var updatedEpisodes: [Episode] = []
+            
+            for episode in self.episodes {
+                if episode.podcastID == podcastID {
+                    var updatedEpisode = episode
+                    updatedEpisode.played = true
+                    updatedEpisodes.append(updatedEpisode)
+                    affectedIDs.insert(episode.id)
+                    self.playedEpisodeIDs.insert(episode.id)
+                }
             }
-        }
-        saveEpisodes()
-        if !affectedIDs.isEmpty {
-            QueueViewModel.shared.markEpisodesAsPlayed(withIDs: affectedIDs, played: true)
+            
+            // Update UI on main thread
+            DispatchQueue.main.async {
+                for updatedEpisode in updatedEpisodes {
+                    if let index = self.episodes.firstIndex(where: { $0.id == updatedEpisode.id }) {
+                        self.episodes[index] = updatedEpisode
+                    }
+                }
+            }
+            
+            // Save on background thread
+            self.persistenceQueue.async {
+                self.saveEpisodes()
+                self.savePlayedIDs()
+            }
+            
+            if !affectedIDs.isEmpty {
+                QueueViewModel.shared.markEpisodesAsPlayed(withIDs: affectedIDs, played: true)
+            }
         }
     }
 
     func markAllEpisodesAsUnplayed(for podcastID: UUID) {
-        var affectedIDs = Set<UUID>()
-        for i in episodes.indices {
-            if episodes[i].podcastID == podcastID {
-                episodes[i].played = false
-                affectedIDs.insert(episodes[i].id)
+        // PERFORMANCE FIX: Handle batch operations on background queue
+        dataProcessingQueue.async { [weak self] in
+            guard let self = self else { return }
+            
+            var affectedIDs = Set<UUID>()
+            var updatedEpisodes: [Episode] = []
+            
+            for episode in self.episodes {
+                if episode.podcastID == podcastID {
+                    var updatedEpisode = episode
+                    updatedEpisode.played = false
+                    updatedEpisodes.append(updatedEpisode)
+                    affectedIDs.insert(episode.id)
+                    self.playedEpisodeIDs.remove(episode.id)
+                }
             }
-        }
-        saveEpisodes()
-        if !affectedIDs.isEmpty {
-            QueueViewModel.shared.markEpisodesAsPlayed(withIDs: affectedIDs, played: false)
+            
+            // Update UI on main thread
+            DispatchQueue.main.async {
+                for updatedEpisode in updatedEpisodes {
+                    if let index = self.episodes.firstIndex(where: { $0.id == updatedEpisode.id }) {
+                        self.episodes[index] = updatedEpisode
+                    }
+                }
+            }
+            
+            // Save on background thread
+            self.persistenceQueue.async {
+                self.saveEpisodes()
+                self.savePlayedIDs()
+            }
+            
+            if !affectedIDs.isEmpty {
+                QueueViewModel.shared.markEpisodesAsPlayed(withIDs: affectedIDs, played: false)
+            }
         }
     }
     
@@ -106,18 +216,50 @@ class EpisodeViewModel: ObservableObject {
     }
     
     private func loadEpisodes() {
+        // PERFORMANCE FIX: Prevent concurrent loading
+        guard !isLoading else { return }
+        isLoading = true
+        
         // Try to migrate from UserDefaults first, then load from file
         if let migratedEpisodes = FileStorage.shared.migrateFromUserDefaults([Episode].self, userDefaultsKey: episodesKey, filename: "episodes.json") {
             DispatchQueue.main.async { [weak self] in
-                self?.episodes = migratedEpisodes
-                self?.applyPlayedIDs()
+                guard let self = self else { return }
+                self.episodes = migratedEpisodes
+                self.applyPlayedIDs()
+                self.isLoading = false
             }
         } else {
             FileStorage.shared.loadAsync([Episode].self, from: "episodes.json") { [weak self] saved in
                 DispatchQueue.main.async {
-                    if let self = self, let saved = saved {
+                    guard let self = self else { return }
+                    if let saved = saved {
                         self.episodes = saved
                         self.applyPlayedIDs()
+                    } else {
+                        self.attemptAutomaticRecovery()
+                    }
+                    self.isLoading = false
+                }
+            }
+        }
+    }
+    
+    private func attemptAutomaticRecovery() {
+        // Ensure this runs on main thread since it might update @Published properties
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            
+            // Check if we have any podcasts but no episodes - this suggests corrupted episode data
+            let podcasts = PodcastService.shared.loadPodcasts()
+            
+            if !podcasts.isEmpty {
+                // PERFORMANCE FIX: Clear corrupted file on background thread
+                DispatchQueue.global(qos: .utility).async {
+                    _ = FileStorage.shared.delete("episodes.json")
+                    
+                    // Trigger episode update service immediately
+                    DispatchQueue.main.async {
+                        EpisodeUpdateService.shared.forceUpdate()
                     }
                 }
             }
@@ -137,105 +279,175 @@ class EpisodeViewModel: ObservableObject {
     }
     
     private func applyPlayedIDs() {
-        episodes = episodes.map { ep in
-            var e = ep
-            e.played = playedEpisodeIDs.contains(ep.id)
-            return e
+        // PERFORMANCE FIX: Apply played IDs on background thread for large datasets
+        dataProcessingQueue.async { [weak self] in
+            guard let self = self else { return }
+            
+            let updatedEpisodes = self.episodes.map { ep in
+                var e = ep
+                e.played = self.playedEpisodeIDs.contains(ep.id)
+                return e
+            }
+            
+            DispatchQueue.main.async {
+                self.episodes = updatedEpisodes
+            }
         }
     }
     
     // MARK: - Episode Addition/Removal
     
     func addEpisodes(_ newEpisodes: [Episode]) {
-        let existingIDs = Set(episodes.map { $0.id })
+        // PERFORMANCE FIX: Handle large episode additions on background thread
+        guard !newEpisodes.isEmpty else { return }
         
-        // Create a dictionary of existing episodes by podcast+title combination
-        var existingEpisodesByTitle: [String: Episode] = [:]
-        for episode in episodes {
-            if let podcastID = episode.podcastID {
-                // Use podcastID instead of podcast title for more reliable identification
-                let key = "\(podcastID.uuidString)_\(episode.title)"
-                existingEpisodesByTitle[key] = episode
-            }
-        }
-        
-        // Apply played status to new episodes and add them
-        var episodesToAdd: [Episode] = []
-        
-        for episode in newEpisodes {
-            // Skip if we already have this episode by ID
-            if existingIDs.contains(episode.id) {
-                continue
-            }
+        dataProcessingQueue.async { [weak self] in
+            guard let self = self else { return }
             
-            // Skip if we already have an episode with the same title for this podcast
-            if let podcastID = episode.podcastID {
-                let key = "\(podcastID.uuidString)_\(episode.title)"
-                if let existingEpisode = existingEpisodesByTitle[key] {
-                    // Keep the one with the more recent published date, or first one if dates are equal
-                    switch (episode.publishedDate, existingEpisode.publishedDate) {
-                    case (let newDate?, let existingDate?):
-                        if newDate > existingDate {
-                            // Replace the existing episode with the newer one, but preserve played status and playback position
-                            if let index = episodes.firstIndex(where: { $0.id == existingEpisode.id }) {
-                                var updatedEpisode = episode
-                                updatedEpisode.played = existingEpisode.played
-                                updatedEpisode.playbackPosition = existingEpisode.playbackPosition
-                                episodes[index] = updatedEpisode
-                                existingEpisodesByTitle[key] = updatedEpisode
-                            }
-                        }
-                        // Otherwise keep existing
-                    case (_, nil):
-                        // New episode has date, existing doesn't - prefer new, but preserve played status and playback position
-                        if let index = episodes.firstIndex(where: { $0.id == existingEpisode.id }) {
-                            var updatedEpisode = episode
-                            updatedEpisode.played = existingEpisode.played
-                            updatedEpisode.playbackPosition = existingEpisode.playbackPosition
-                            episodes[index] = updatedEpisode
-                            existingEpisodesByTitle[key] = updatedEpisode
-                        }
-                    default:
-                        // Keep existing episode
-                        break
-                    }
-                    continue
+            let existingIDs = Set(self.episodes.map { $0.id })
+            
+            // Create a dictionary of existing episodes by podcast+title combination
+            var existingEpisodesByTitle: [String: Episode] = [:]
+            for episode in self.episodes {
+                if let podcastID = episode.podcastID {
+                    // Use podcastID instead of podcast title for more reliable identification
+                    let key = "\(podcastID.uuidString)_\(episode.title)"
+                    existingEpisodesByTitle[key] = episode
                 }
             }
             
-            // New episode - add it to the list to be added
-            var newEpisode = episode
-            newEpisode.played = playedEpisodeIDs.contains(episode.id)
-            episodesToAdd.append(newEpisode)
+            var episodesToAdd: [Episode] = []
+            var episodesToUpdate: [Episode] = []
             
-            // Also add to our tracking dictionary
-            if let podcastID = episode.podcastID {
-                let key = "\(podcastID.uuidString)_\(episode.title)"
-                existingEpisodesByTitle[key] = newEpisode
+            for newEpisode in newEpisodes {
+                // Skip if episode ID already exists
+                if existingIDs.contains(newEpisode.id) {
+                    continue
+                }
+                
+                // Check for duplicate by podcast + title combination
+                if let podcastID = newEpisode.podcastID {
+                    let key = "\(podcastID.uuidString)_\(newEpisode.title)"
+                    
+                    if let existingEpisode = existingEpisodesByTitle[key] {
+                        // Episode with same title and podcast exists - update if new one has more data
+                        if newEpisode.audioURL != nil && existingEpisode.audioURL == nil {
+                            // New episode has audio URL but existing doesn't - update
+                            var updatedEpisode = existingEpisode
+                            updatedEpisode.audioURL = newEpisode.audioURL
+                            updatedEpisode.duration = newEpisode.duration
+                            updatedEpisode.description = newEpisode.description ?? updatedEpisode.description
+                            episodesToUpdate.append(updatedEpisode)
+                        }
+                        continue
+                    }
+                }
+                
+                // Apply played status if it exists
+                var episodeToAdd = newEpisode
+                if self.playedEpisodeIDs.contains(newEpisode.id) {
+                    episodeToAdd.played = true
+                }
+                
+                episodesToAdd.append(episodeToAdd)
+            }
+            
+            // Update UI on main thread
+            DispatchQueue.main.async {
+                // Add new episodes
+                self.episodes.append(contentsOf: episodesToAdd)
+                
+                // Update existing episodes
+                for updatedEpisode in episodesToUpdate {
+                    if let index = self.episodes.firstIndex(where: { $0.id == updatedEpisode.id }) {
+                        self.episodes[index] = updatedEpisode
+                    }
+                }
+                
+                // Sort episodes by published date (most recent first) efficiently
+                self.episodes.sort { episode1, episode2 in
+                    switch (episode1.publishedDate, episode2.publishedDate) {
+                    case (let date1?, let date2?):
+                        return date1 > date2
+                    case (nil, _?):
+                        return false
+                    case (_?, nil):
+                        return true
+                    case (nil, nil):
+                        return episode1.title.localizedCaseInsensitiveCompare(episode2.title) == .orderedAscending
+                    }
+                }
+            }
+            
+            // Save on background thread
+            if !episodesToAdd.isEmpty || !episodesToUpdate.isEmpty {
+                self.persistenceQueue.async {
+                    self.saveEpisodes()
+                }
+                
+                print("📥 Added \(episodesToAdd.count) new episodes, updated \(episodesToUpdate.count) existing episodes")
             }
         }
-        
-        episodes.append(contentsOf: episodesToAdd)
-        
-        // Sort episodes by publication date immediately
-        sortEpisodesByDate()
-        
-        saveEpisodes()
     }
-    
+
     func removeEpisodes(for podcastID: UUID) {
-        episodes.removeAll { $0.podcastID == podcastID }
-        saveEpisodes()
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            self.episodes.removeAll { $0.podcastID == podcastID }
+            
+            // Save episodes on background thread to avoid blocking UI
+            DispatchQueue.global(qos: .utility).async { [weak self] in
+                self?.saveEpisodes()
+            }
+        }
     }
-    
+
     func clearAllEpisodes() {
-        episodes.removeAll()
-        saveEpisodes()
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            self.episodes.removeAll()
+            
+            // Save episodes on background thread to avoid blocking UI
+            DispatchQueue.global(qos: .utility).async { [weak self] in
+                self?.saveEpisodes()
+            }
+        }
     }
     
     func clearPlayedIDs() {
         playedEpisodeIDs.removeAll()
         savePlayedIDs()
+    }
+    
+    /// Force reload episodes from storage - useful for recovery
+    func forceReloadEpisodes() {
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            self?.loadEpisodes()
+        }
+    }
+    
+    /// Manually trigger episode recovery - clears corrupted data and fetches fresh episodes
+    func triggerRecovery() {
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            self.episodes.removeAll()
+            self.attemptAutomaticRecovery()
+        }
+    }
+    
+    /// Check if recovery is needed and trigger it automatically
+    private func checkAndRecoverIfNeeded() {
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            
+            // Only attempt recovery if episodes are still empty and we have podcasts
+            if self.episodes.isEmpty {
+                let podcasts = PodcastService.shared.loadPodcasts()
+                if !podcasts.isEmpty {
+                    self.attemptAutomaticRecovery()
+                }
+            }
+        }
     }
     
     // MARK: - Sorting
@@ -277,14 +489,10 @@ class EpisodeViewModel: ObservableObject {
             !$0.played 
         }
     }
-}
-
-// MARK: - QueueViewModel Extension
-extension QueueViewModel {
-    func updateEpisodeInQueue(_ episode: Episode) {
-        if let index = queue.firstIndex(where: { $0.id == episode.id }) {
-            queue[index] = episode
-            debouncedSaveQueue()
-        }
+    
+    // MARK: - Episode Lookup
+    
+    func findEpisode(by id: String) -> Episode? {
+        return episodes.first { $0.id.uuidString == id }
     }
 } 

@@ -15,6 +15,9 @@ struct ContentView: View {
     @ObservedObject private var updateService = EpisodeUpdateService.shared
     @ObservedObject private var undoManager = ShakeUndoManager.shared
 
+    // PERFORMANCE FIX: Track which tabs have been loaded to prevent unnecessary reloads
+    @State private var loadedTabs: Set<Int> = []
+    @State private var isTabSwitching = false
     
     var body: some View {
         ZStack {
@@ -58,45 +61,59 @@ struct ContentView: View {
             ZStack(alignment: .bottom) {
                 // Main content area with tab bar
                 VStack(spacing: 0) {
+                    // PERFORMANCE FIX: Lazy tab loading with background queue preparation
                     // Main content area - Custom tab switching without intermediate glimpses
                     ZStack {
-                        // Show only the selected tab content
+                        // Show only the selected tab content with lazy loading
                         if selectedTab == 0 {
-                            NavigationView {
-                                DiscoverView()
+                            LazyTabContentView(tabIndex: 0, isSelected: selectedTab == 0, loadedTabs: $loadedTabs) {
+                                NavigationView {
+                                    DiscoverView()
+                                }
                             }
-                            .transition(.opacity.combined(with: .scale(scale: 0.95)))
+                            .transition(.opacity)
                         } else if selectedTab == 1 {
-                            NavigationView {
-                                QueueView()
+                            LazyTabContentView(tabIndex: 1, isSelected: selectedTab == 1, loadedTabs: $loadedTabs) {
+                                NavigationView {
+                                    QueueView()
+                                }
                             }
-                            .transition(.opacity.combined(with: .scale(scale: 0.95)))
+                            .transition(.opacity)
                         } else if selectedTab == 2 {
-                            CurrentPlayView()
-                                .transition(.opacity.combined(with: .scale(scale: 0.95)))
-                        } else if selectedTab == 3 {
-                            LibraryView()
-                                .transition(.opacity.combined(with: .scale(scale: 0.95)))
-                        } else if selectedTab == 4 {
-                            NavigationView {
-                                SettingsView()
+                            LazyTabContentView(tabIndex: 2, isSelected: selectedTab == 2, loadedTabs: $loadedTabs) {
+                                CurrentPlayView()
                             }
-                            .transition(.opacity.combined(with: .scale(scale: 0.95)))
+                            .transition(.opacity)
+                        } else if selectedTab == 3 {
+                            LazyTabContentView(tabIndex: 3, isSelected: selectedTab == 3, loadedTabs: $loadedTabs) {
+                                LibraryView()
+                            }
+                            .transition(.opacity)
+                        } else if selectedTab == 4 {
+                            LazyTabContentView(tabIndex: 4, isSelected: selectedTab == 4, loadedTabs: $loadedTabs) {
+                                NavigationView {
+                                    SettingsView()
+                                }
+                            }
+                            .transition(.opacity)
                         }
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .clipped() // Ensure no content leaks outside bounds
                     
-                                    // Custom Tab Bar with Enhanced 3D
-                CustomTabBar(selectedTab: $selectedTab)
-            }
-            .ignoresSafeArea(.keyboard, edges: .bottom)
-                
+                    // Custom Tab Bar with Enhanced 3D
+                    CustomTabBar(selectedTab: $selectedTab, isTabSwitching: $isTabSwitching)
+                }
+                .ignoresSafeArea(.keyboard, edges: .bottom)
+                    
                 // Floating Mini Player - Above tab bar with enhanced 3D effect
                 VStack {
                     Spacer()
                     FloatingMiniPlayerView(
                         onTap: {
+                            // PERFORMANCE FIX: Prevent rapid tab switching
+                            guard !isTabSwitching else { return }
+                            
                             // Switch to "Now Playing" tab when mini player is tapped
                             withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                                 selectedTab = 2
@@ -120,11 +137,11 @@ struct ContentView: View {
         }
     }
     
-    
 
     
     struct CustomTabBar: View {
         @Binding var selectedTab: Int
+        @Binding var isTabSwitching: Bool
         
         let tabs = [
             TabItem(title: "Discover", icon: "globe", selectedIcon: "globe"),
@@ -146,9 +163,21 @@ struct ContentView: View {
                         TabBarButton(
                             tab: tabs[index],
                             isSelected: selectedTab == index,
+                            isTabSwitching: isTabSwitching,
                             onTap: {
-                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7, blendDuration: 0)) {
+                                // PERFORMANCE FIX: Simple debounce without blocking UI
+                                guard selectedTab != index else { return }
+                                
+                                isTabSwitching = true
+                                
+                                // Fast, smooth tab switching
+                                withAnimation(.easeInOut(duration: 0.15)) {
                                     selectedTab = index
+                                }
+                                
+                                // Quick reset to allow next tab switch
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                    isTabSwitching = false
                                 }
                             }
                         )
@@ -199,6 +228,7 @@ struct ContentView: View {
     struct TabBarButton: View {
         let tab: TabItem
         let isSelected: Bool
+        let isTabSwitching: Bool
         let onTap: () -> Void
         
         var body: some View {
@@ -226,10 +256,10 @@ struct ContentView: View {
                                 RoundedRectangle(cornerRadius: 16)
                                     .stroke(
                                         LinearGradient(
-                                            colors: [
+                                            gradient: Gradient(colors: [
                                                 Color.accentColor.opacity(0.4),
-                                                Color.clear
-                                            ],
+                                                Color.accentColor.opacity(0.1)
+                                            ]),
                                             startPoint: .top,
                                             endPoint: .bottom
                                         ),
@@ -239,14 +269,15 @@ struct ContentView: View {
                             }
                             .shadow(color: Color.accentColor.opacity(0.2), radius: 4, x: 0, y: 2)
                             .transition(.asymmetric(
-                                insertion: .scale(scale: 0.8).combined(with: .opacity),
-                                removal: .scale(scale: 0.8).combined(with: .opacity)
+                                insertion: .opacity.combined(with: .scale(scale: 0.8)),
+                                removal: .opacity.combined(with: .scale(scale: 0.8))
                             ))
+                            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
                         }
                         
-                        // Icon
+                        // Tab icon
                         Image(systemName: isSelected ? tab.selectedIcon : tab.icon)
-                            .font(.system(size: 18, weight: isSelected ? .semibold : .medium))
+                            .font(.system(size: 20, weight: isSelected ? .semibold : .medium))
                             .foregroundStyle(
                                 isSelected ?
                                 LinearGradient(
@@ -257,20 +288,20 @@ struct ContentView: View {
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
                                 ) :
-                                    LinearGradient(
-                                        gradient: Gradient(colors: [
-                                            Color.secondary,
-                                            Color.secondary
-                                        ]),
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
+                                LinearGradient(
+                                    gradient: Gradient(colors: [
+                                        Color(.systemGray2),
+                                        Color(.systemGray3)
+                                    ]),
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
                             )
                             .scaleEffect(isSelected ? 1.1 : 1.0)
-                            .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isSelected)
+                            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
                     }
                     
-                    // Text label
+                    // Tab title (only show for selected tab)
                     if isSelected {
                         Text(tab.title)
                             .font(.caption2)
@@ -326,4 +357,30 @@ struct ContentView: View {
         }
     }
     
+}
+
+// PERFORMANCE FIX: Optimized lazy tab content view for fast switching
+struct LazyTabContentView<Content: View>: View {
+    let tabIndex: Int
+    let isSelected: Bool
+    @Binding var loadedTabs: Set<Int>
+    let content: () -> Content
+    
+    var body: some View {
+        Group {
+            if isSelected || loadedTabs.contains(tabIndex) {
+                content()
+                    .opacity(isSelected ? 1 : 0)
+                    .onAppear {
+                        // Mark this tab as loaded once
+                        if !loadedTabs.contains(tabIndex) {
+                            loadedTabs.insert(tabIndex)
+                        }
+                    }
+            } else {
+                // Minimal placeholder for unloaded tabs
+                Color.clear
+            }
+        }
+    }
 }

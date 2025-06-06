@@ -53,7 +53,7 @@ struct SettingsView: View {
                     }
                     .pickerStyle(MenuPickerStyle())
                     .onChange(of: playbackSpeed) { newValue in
-                        AudioPlayerService.shared.updatePlaybackSpeed(newValue)
+                        AudioPlayerService.shared.updatePlaybackSpeed(Float(newValue))
                     }
                 }
             }
@@ -221,6 +221,9 @@ struct SettingsView: View {
                 Button("Force Fetch Episodes") {
                     forceFetchAllEpisodes()
                 }
+                Button("Recover Episodes & Queue", role: .destructive) {
+                    recoverEpisodesAndQueue()
+                }
                 Button("Diagnose Podcast Artwork") {
                     diagnosePodcastArtwork()
                 }
@@ -240,7 +243,7 @@ struct SettingsView: View {
         }
         .navigationTitle("Settings")
         .onAppear {
-            AudioPlayerService.shared.updatePlaybackSpeed(playbackSpeed)
+            AudioPlayerService.shared.updatePlaybackSpeed(Float(playbackSpeed))
         }
         .fileExporter(isPresented: $isExporting, document: AppDataDocument(), contentType: .json, defaultFilename: "JimmyBackup") { result in
             if case .failure(let error) = result {
@@ -598,6 +601,33 @@ struct SettingsView: View {
         EpisodeUpdateService.shared.forceUpdate()
         
         activeAlert = .subscriptionImport("🔄 Force fetching episodes for \(podcasts.count) podcasts. This may take a few moments. Check the Episodes tab to see progress.")
+    }
+    
+    private func recoverEpisodesAndQueue() {
+        print("🔧 Starting Episodes & Queue Recovery...")
+        
+        // 1. Clear corrupted episode data
+        EpisodeViewModel.shared.clearAllEpisodes()
+        
+        // 2. Clear corrupted queue data
+        UserDefaults.standard.removeObject(forKey: "queueKey")
+        QueueViewModel.shared.queue.removeAll()
+        
+        // 3. Clear episode cache to force fresh data
+        EpisodeCacheService.shared.clearAllCache()
+        
+        // 4. Force reload episodes from podcasts
+        let podcasts = PodcastService.shared.loadPodcasts()
+        
+        if podcasts.isEmpty {
+            activeAlert = .subscriptionImport("⚠️ No podcasts found. Please add some podcasts first.")
+            return
+        }
+        
+        // 5. Trigger episode update service to fetch all episodes
+        EpisodeUpdateService.shared.forceUpdate()
+        
+        activeAlert = .subscriptionImport("🔧 Recovery started! Clearing corrupted data and re-fetching episodes for \(podcasts.count) podcasts. Your episodes and queue will be restored shortly. Check the Episodes tab to see progress.")
     }
     
     private func diagnosePodcastArtwork() {

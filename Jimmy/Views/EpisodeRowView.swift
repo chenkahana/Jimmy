@@ -139,10 +139,20 @@ struct EpisodeRowView: View {
                                     Image(systemName: "clock.fill")
                                         .font(.caption2)
                                         .foregroundColor(.orange)
-                                    Text(formatTime(episode.playbackPosition))
-                                        .font(.caption2)
-                                        .foregroundColor(.orange)
-                                        .fontWeight(.medium)
+                                    
+                                    // Show remaining time if we have duration info, otherwise show elapsed time
+                                    if episode.episodeDuration > 0 {
+                                        let remainingTime = episode.episodeDuration - episode.playbackPosition
+                                        Text("\(formatRemainingTime(remainingTime)) left")
+                                            .font(.caption2)
+                                            .foregroundColor(.orange)
+                                            .fontWeight(.medium)
+                                    } else {
+                                        Text(formatTime(episode.playbackPosition))
+                                            .font(.caption2)
+                                            .foregroundColor(.orange)
+                                            .fontWeight(.medium)
+                                    }
                                 }
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
@@ -150,16 +160,33 @@ struct EpisodeRowView: View {
                                 .cornerRadius(4)
                             }
                             
-                            // Played status badge
+                            // Played status badge with remaining time for partially completed episodes
                             if episode.played {
                                 HStack(spacing: 4) {
                                     Image(systemName: "checkmark.circle.fill")
                                         .font(.caption2)
                                         .foregroundColor(.green)
-                                    Text("Played")
-                                        .font(.caption2)
-                                        .foregroundColor(.green)
-                                        .fontWeight(.medium)
+                                    
+                                    // Show completion info for played episodes that might have some time left
+                                    if episode.episodeDuration > 0 {
+                                        let remainingTime = episode.episodeDuration - episode.playbackPosition
+                                        if remainingTime > 60 { // More than 1 minute left
+                                            Text("\(formatRemainingTime(remainingTime)) left")
+                                                .font(.caption2)
+                                                .foregroundColor(.green)
+                                                .fontWeight(.medium)
+                                        } else {
+                                            Text("Played")
+                                                .font(.caption2)
+                                                .foregroundColor(.green)
+                                                .fontWeight(.medium)
+                                        }
+                                    } else {
+                                        Text("Played")
+                                            .font(.caption2)
+                                            .foregroundColor(.green)
+                                            .fontWeight(.medium)
+                                    }
                                 }
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
@@ -339,6 +366,18 @@ struct EpisodeRowView: View {
             return String(format: "%d:%02d", minutes, seconds)
         }
     }
+    
+    private func formatRemainingTime(_ timeInterval: TimeInterval) -> String {
+        let totalMinutes = Int(timeInterval) / 60
+        let hours = totalMinutes / 60
+        let minutes = totalMinutes % 60
+        
+        if hours > 0 {
+            return "\(hours)h \(minutes)m"
+        } else {
+            return "\(minutes) min"
+        }
+    }
 }
 
 #Preview {
@@ -361,7 +400,8 @@ struct EpisodeRowView: View {
         podcastID: samplePodcast.id,
         publishedDate: Date(),
         localFileURL: nil,
-        playbackPosition: 0
+        playbackPosition: 0,
+        duration: 2700 // 45 minute episode
     )
     
     VStack {
@@ -382,11 +422,12 @@ struct EpisodeRowView: View {
                 artworkURL: nil,
                 audioURL: nil,
                 description: "Deep dive into advanced SwiftUI concepts including state management and animations.",
-                played: true,
+                played: false,
                 podcastID: samplePodcast.id,
                 publishedDate: Date().addingTimeInterval(-86400),
                 localFileURL: nil,
-                playbackPosition: 1245
+                playbackPosition: 1245,
+                duration: 3600 // 1 hour episode
             ),
             podcast: samplePodcast,
             isCurrentlyPlaying: true,

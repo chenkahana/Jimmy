@@ -197,7 +197,9 @@ class QueueViewModel: ObservableObject {
         let audioPlayer = AudioPlayerService.shared
 
         // Set loading state immediately for UI feedback
-        loadingEpisodeID = episode.id
+        DispatchQueue.main.async {
+            self.loadingEpisodeID = episode.id
+        }
 
         // Remove any existing instance of this episode to keep the queue unique
         queue.removeAll { $0.id == episode.id }
@@ -242,7 +244,9 @@ class QueueViewModel: ObservableObject {
         guard let episodeIndex = queue.firstIndex(where: { $0.id == episode.id }) else { return }
 
         // Set loading state immediately for UI feedback
-        loadingEpisodeID = episode.id
+        DispatchQueue.main.async {
+            self.loadingEpisodeID = episode.id
+        }
 
         // If it's already at position 0, just play it
         if episodeIndex == 0 {
@@ -257,6 +261,16 @@ class QueueViewModel: ObservableObject {
         queue.removeFirst(episodeIndex)
         for removedEpisode in removedEpisodes {
             queueEpisodeIDs.remove(removedEpisode.id)
+        }
+
+        // Record undo operation for bulk removal before continuing
+        if !removedEpisodes.isEmpty {
+            DispatchQueue.global(qos: .utility).async {
+                ShakeUndoManager.shared.recordOperation(
+                    .bulkEpisodesRemovedFromQueue(episodes: removedEpisodes, removedFromIndex: 0, targetEpisode: episode),
+                    description: "Removed \(removedEpisodes.count) episodes from queue to play \"\(episode.title)\""
+                )
+            }
         }
 
         // Remove any remaining duplicates of this episode
@@ -286,7 +300,9 @@ class QueueViewModel: ObservableObject {
         let episode = queue[index]
 
         // Set loading state immediately for UI feedback
-        loadingEpisodeID = episode.id
+        DispatchQueue.main.async {
+            self.loadingEpisodeID = episode.id
+        }
 
         // If it's already at position 0, just play it
         if index == 0 {
@@ -301,6 +317,16 @@ class QueueViewModel: ObservableObject {
         queue.removeFirst(index)
         for removedEpisode in removedEpisodes {
             queueEpisodeIDs.remove(removedEpisode.id)
+        }
+
+        // Record undo operation for bulk removal before continuing
+        if !removedEpisodes.isEmpty {
+            DispatchQueue.global(qos: .utility).async {
+                ShakeUndoManager.shared.recordOperation(
+                    .bulkEpisodesRemovedFromQueue(episodes: removedEpisodes, removedFromIndex: 0, targetEpisode: episode),
+                    description: "Removed \(removedEpisodes.count) episodes from queue to play \"\(episode.title)\""
+                )
+            }
         }
 
         // Remove any remaining duplicates of this episode
@@ -365,6 +391,11 @@ class QueueViewModel: ObservableObject {
             queueEpisodeIDs = actualIDs // Fix it
         }
         #endif
+    }
+    
+    /// Update the queueEpisodeIDs set - used by ShakeUndoManager for bulk operations
+    func updateEpisodeIDs() {
+        queueEpisodeIDs = Set(queue.map { $0.id })
     }
     
     func autoAddNewEpisodesFromSubscribedPodcasts() {
@@ -444,9 +475,15 @@ class QueueViewModel: ObservableObject {
             
             var loadedQueue: [Episode] = []
             
-            if let data = UserDefaults.standard.data(forKey: self.queueKey),
-               let savedQueue = try? JSONDecoder().decode([Episode].self, from: data) {
-                loadedQueue = savedQueue
+            if let data = UserDefaults.standard.data(forKey: self.queueKey) {
+                do {
+                    let savedQueue = try JSONDecoder().decode([Episode].self, from: data)
+                    loadedQueue = savedQueue
+                } catch {
+                    print("⚠️ Failed to decode queue: \(error)")
+                    // Remove corrupted data
+                    UserDefaults.standard.removeObject(forKey: self.queueKey)
+                }
             }
             
             // Update the queue on main thread
@@ -462,7 +499,9 @@ class QueueViewModel: ObservableObject {
     // MARK: - Loading State Management
     
     private func clearLoadingState() {
-        loadingEpisodeID = nil
+        DispatchQueue.main.async {
+            self.loadingEpisodeID = nil
+        }
     }
     
     private func preloadUpcomingEpisodes() {
@@ -488,5 +527,10 @@ class QueueViewModel: ObservableObject {
         if let workItem = saveQueueWorkItem {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.2, execute: workItem)
         }
+    }
+    
+    /// Force reload queue from storage - useful for recovery
+    func forceReloadQueue() {
+        loadQueue()
     }
 }

@@ -6,11 +6,7 @@ struct AudioPlayerView: View {
     let startPosition: TimeInterval
     let onProgressUpdate: (TimeInterval) -> Void
 
-    @State private var player: AVPlayer?
-    @State private var timeObserver: Any?
-    @State private var isPlaying = false
-    @State private var playbackPosition: Double = 0
-    @State private var totalDuration: Double = 0
+    @ObservedObject private var audioService = AudioPlayerService.shared
     @Environment(\.dismiss) var dismiss
 
     var body: some View {
@@ -19,35 +15,42 @@ struct AudioPlayerView: View {
                 .font(.title2)
                 .padding()
 
-            if player != nil {
+            if audioService.currentEpisode != nil {
                 VStack {
-                    Slider(value: $playbackPosition, in: 0...totalDuration, onEditingChanged: sliderEditingChanged)
+                    Slider(value: Binding(
+                        get: { 
+                            let position = audioService.playbackPosition
+                            onProgressUpdate(position) // Update progress as user views
+                            return position
+                        },
+                        set: { audioService.seek(to: $0) }
+                    ), in: 0...audioService.duration)
                         .padding()
 
                     HStack {
-                        Text(formatTime(playbackPosition))
+                        Text(formatTime(audioService.playbackPosition))
                         Spacer()
-                        Text(formatTime(totalDuration))
+                        Text(formatTime(audioService.duration))
                     }
                     .padding([.leading, .trailing, .bottom])
 
                     HStack(spacing: 40) {
-                        Button(action: seekBackward) {
+                        Button(action: { audioService.seekBackward() }) {
                             Image(systemName: "gobackward.15")
                                 .font(.title)
                         }
-                        Button(action: togglePlayPause) {
-                            Image(systemName: isPlaying ? "pause.fill" : "play.fill")
+                        Button(action: { audioService.togglePlayPause() }) {
+                            Image(systemName: audioService.isPlaying ? "pause.fill" : "play.fill")
                                 .font(.largeTitle)
                         }
-                        Button(action: seekForward) {
+                        Button(action: { audioService.seekForward() }) {
                             Image(systemName: "goforward.15")
                                 .font(.title)
                         }
                     }
                     .padding()
                 }
-            } else {
+            } else if audioService.isLoading {
                 ProgressView("Loading player...")
                     .padding()
             }
@@ -59,86 +62,25 @@ struct AudioPlayerView: View {
                        }
                        .padding()
         }
-        .onAppear(perform: setupPlayer)
-        .onDisappear(perform: stopPlayer)
-    }
-
-    private func setupPlayer() {
-        let playerItem = AVPlayerItem(url: url)
-        player = AVPlayer(playerItem: playerItem)
-        player?.seek(to: CMTime(seconds: startPosition, preferredTimescale: CMTimeScale(NSEC_PER_SEC)))
-        
-        timeObserver = player?.addPeriodicTimeObserver(forInterval: CMTime(seconds: 1, preferredTimescale: CMTimeScale(NSEC_PER_SEC)), queue: .main) { time in
-            let currentPosition = CMTimeGetSeconds(time)
-            playbackPosition = currentPosition
-            onProgressUpdate(currentPosition)
+        .onAppear {
+            // Create a temporary episode for the URL and load it
+            let tempEpisode = Episode(
+                id: UUID(),
+                title: "Audio Player",
+                artworkURL: nil,
+                audioURL: url,
+                description: "",
+                played: false,
+                podcastID: UUID(),
+                publishedDate: Date(),
+                localFileURL: nil,
+                playbackPosition: startPosition
+            )
+            audioService.loadEpisode(tempEpisode)
         }
-        
-        if let duration = player?.currentItem?.asset.duration {
-            totalDuration = CMTimeGetSeconds(duration)
-        }
-        
-        // Autoplay if startPosition is 0 or if desired
-        if startPosition == 0 {
-             player?.play()
-             isPlaying = true
-        } else {
-            // If resuming, you might want to decide if it should autoplay or wait for user action
-            // For now, let's not autoplay if there's a startPosition > 0
-             isPlaying = false 
-        }
-    }
-
-    private func stopPlayer() {
-        player?.pause()
-        // Update final playback position before dismissing if needed
-        if let currentTime = player?.currentTime() {
-            onProgressUpdate(CMTimeGetSeconds(currentTime))
-        }
-        if let observer = timeObserver {
-            player?.removeTimeObserver(observer)
-            timeObserver = nil
-        }
-        player = nil
-    }
-
-    private func togglePlayPause() {
-        guard let player = player else { return }
-        isPlaying.toggle()
-        if isPlaying {
-            player.play()
-        } else {
-            player.pause()
-        }
-    }
-
-    private func seekForward() {
-        guard let player = player else { return }
-        let currentTime = CMTimeGetSeconds(player.currentTime())
-        let newTime = min(totalDuration, currentTime + 15.0)
-        player.seek(to: CMTime(seconds: newTime, preferredTimescale: CMTimeScale(NSEC_PER_SEC)))
-    }
-
-    private func seekBackward() {
-        guard let player = player else { return }
-        let currentTime = CMTimeGetSeconds(player.currentTime())
-        let newTime = max(0, currentTime - 15.0)
-        player.seek(to: CMTime(seconds: newTime, preferredTimescale: CMTimeScale(NSEC_PER_SEC)))
-    }
-    
-    private func sliderEditingChanged(editingStarted: Bool) {
-        guard let player = player else { return }
-        if editingStarted {
-            if isPlaying { // Pause only if it was playing
-                player.pause()
-            }
-        } else {
-            player.seek(to: CMTime(seconds: playbackPosition, preferredTimescale: CMTimeScale(NSEC_PER_SEC))) {
-                [weak player, self] _ in // Capture weakly to avoid retain cycles
-                if self.isPlaying == true { // Resume playback only if it was playing before scrub
-                    player?.play()
-                }
-            }
+        .onDisappear {
+            // Report final progress when leaving
+            onProgressUpdate(audioService.playbackPosition)
         }
     }
 

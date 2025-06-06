@@ -11,6 +11,19 @@ struct LibraryView: View {
     @ObservedObject private var episodeCacheService = EpisodeCacheService.shared
     @State private var episodesUpdatedObserver: NSObjectProtocol?
     
+    // PERFORMANCE FIX: Memory caching system for instant tab switching
+    @State private var cachedFilteredPodcasts: [Podcast] = []
+    @State private var cachedAllEpisodes: [Episode] = []
+    @State private var lastSearchText: String = ""
+    @State private var lastSubscribedPodcastsHash: Int = 0
+    @State private var lastEpisodesHash: Int = 0
+    @State private var isInitialLoad = true
+    @State private var isCacheReady = false
+    
+    // INSTANT DISPLAY: Pre-computed data ready for immediate display
+    @State private var displayEpisodes: [Episode] = []
+    @State private var displayPodcasts: [Podcast] = []
+    
     enum LibraryViewType: String, CaseIterable {
         case shows = "Shows"
         case episodes = "Episodes"
@@ -22,7 +35,27 @@ struct LibraryView: View {
         GridItem(.flexible(), spacing: 16)
     ]
     
+    // INSTANT DISPLAY: Always return cached data immediately for fast tab switching
     var filteredPodcasts: [Podcast] {
+        // Return cached display data immediately, update in background if needed
+        if isCacheReady && (searchText != lastSearchText || subscribedPodcasts.count != lastSubscribedPodcastsHash) {
+            updateCachedFilteredPodcastsAsync()
+        }
+        return displayPodcasts
+    }
+    
+    var allEpisodes: [Episode] {
+        // Return cached display data immediately, update in background if needed
+        if isCacheReady && (searchText != lastSearchText || 
+           episodeViewModel.episodes.count != lastEpisodesHash || 
+           subscribedPodcasts.count != lastSubscribedPodcastsHash) {
+            updateCachedAllEpisodesAsync()
+        }
+        return displayEpisodes
+    }
+    
+    // INSTANT CACHE: Synchronous update for immediate initial loading
+    private func updateCachedFilteredPodcastsSync() {
         let podcastsToFilter: [Podcast]
         
         if searchText.isEmpty {
@@ -35,7 +68,7 @@ struct LibraryView: View {
         }
         
         // Sort by lastEpisodeDate (most recent first), with fallback to title for podcasts without dates
-        return podcastsToFilter.sorted { podcast1, podcast2 in
+        let sortedPodcasts = podcastsToFilter.sorted { podcast1, podcast2 in
             switch (podcast1.lastEpisodeDate, podcast2.lastEpisodeDate) {
             case (let date1?, let date2?):
                 return date1 > date2 // Most recent first
@@ -47,9 +80,54 @@ struct LibraryView: View {
                 return podcast1.title.localizedCaseInsensitiveCompare(podcast2.title) == .orderedAscending // Alphabetical fallback
             }
         }
+        
+        // Update both cache and display data
+        cachedFilteredPodcasts = sortedPodcasts
+        displayPodcasts = sortedPodcasts
+        lastSearchText = searchText
+        lastSubscribedPodcastsHash = subscribedPodcasts.count
     }
     
-    var allEpisodes: [Episode] {
+    // BACKGROUND UPDATE: Async update for subsequent changes
+    private func updateCachedFilteredPodcastsAsync() {
+        DispatchQueue.global(qos: .userInitiated).async {
+            let podcastsToFilter: [Podcast]
+            
+            if self.searchText.isEmpty {
+                podcastsToFilter = self.subscribedPodcasts
+            } else {
+                podcastsToFilter = self.subscribedPodcasts.filter { 
+                    $0.title.localizedCaseInsensitiveContains(self.searchText) || 
+                    $0.author.localizedCaseInsensitiveContains(self.searchText) 
+                }
+            }
+            
+            // Sort by lastEpisodeDate (most recent first), with fallback to title for podcasts without dates
+            let sortedPodcasts = podcastsToFilter.sorted { podcast1, podcast2 in
+                switch (podcast1.lastEpisodeDate, podcast2.lastEpisodeDate) {
+                case (let date1?, let date2?):
+                    return date1 > date2 // Most recent first
+                case (nil, _?):
+                    return false // Podcasts without dates go to the end
+                case (_?, nil):
+                    return true // Podcasts with dates come before those without
+                case (nil, nil):
+                    return podcast1.title.localizedCaseInsensitiveCompare(podcast2.title) == .orderedAscending // Alphabetical fallback
+                }
+            }
+            
+            // Update display data on main thread
+            DispatchQueue.main.async {
+                self.cachedFilteredPodcasts = sortedPodcasts
+                self.displayPodcasts = sortedPodcasts
+                self.lastSearchText = self.searchText
+                self.lastSubscribedPodcastsHash = self.subscribedPodcasts.count
+            }
+        }
+    }
+    
+    // INSTANT CACHE: Synchronous update for immediate initial loading
+    private func updateCachedAllEpisodesSync() {
         let subscribedPodcastIDs = Set(subscribedPodcasts.map { $0.id })
         let episodes = episodeViewModel.episodes.filter { episode in
             guard let podcastID = episode.podcastID else { return false }
@@ -66,7 +144,7 @@ struct LibraryView: View {
         }
         
         // Sort by publication date (most recent first)
-        return filteredEpisodes.sorted { episode1, episode2 in
+        let sortedEpisodes = filteredEpisodes.sorted { episode1, episode2 in
             switch (episode1.publishedDate, episode2.publishedDate) {
             case (let date1?, let date2?):
                 return date1 > date2 // Most recent first
@@ -78,8 +156,58 @@ struct LibraryView: View {
                 return episode1.title.localizedCaseInsensitiveCompare(episode2.title) == .orderedAscending // Alphabetical fallback
             }
         }
+        
+        // Update both cache and display data
+        cachedAllEpisodes = sortedEpisodes
+        displayEpisodes = sortedEpisodes
+        lastSearchText = searchText
+        lastEpisodesHash = episodeViewModel.episodes.count
+        lastSubscribedPodcastsHash = subscribedPodcasts.count
     }
     
+    // BACKGROUND UPDATE: Async update for subsequent changes
+    private func updateCachedAllEpisodesAsync() {
+        DispatchQueue.global(qos: .userInitiated).async {
+            let subscribedPodcastIDs = Set(self.subscribedPodcasts.map { $0.id })
+            let episodes = self.episodeViewModel.episodes.filter { episode in
+                guard let podcastID = episode.podcastID else { return false }
+                return subscribedPodcastIDs.contains(podcastID)
+            }
+            
+            // Filter by search text if provided
+            let filteredEpisodes = self.searchText.isEmpty ? episodes : episodes.filter { episode in
+                let podcast = self.getPodcast(for: episode)
+                return episode.title.localizedCaseInsensitiveContains(self.searchText) ||
+                       episode.description?.localizedCaseInsensitiveContains(self.searchText) == true ||
+                       podcast?.title.localizedCaseInsensitiveContains(self.searchText) == true ||
+                       podcast?.author.localizedCaseInsensitiveContains(self.searchText) == true
+            }
+            
+            // Sort by publication date (most recent first)
+            let sortedEpisodes = filteredEpisodes.sorted { episode1, episode2 in
+                switch (episode1.publishedDate, episode2.publishedDate) {
+                case (let date1?, let date2?):
+                    return date1 > date2 // Most recent first
+                case (nil, _?):
+                    return false // Episodes without dates go to the end
+                case (_?, nil):
+                    return true // Episodes with dates come before those without
+                case (nil, nil):
+                    return episode1.title.localizedCaseInsensitiveCompare(episode2.title) == .orderedAscending // Alphabetical fallback
+                }
+            }
+            
+            // Update display data on main thread
+            DispatchQueue.main.async {
+                self.cachedAllEpisodes = sortedEpisodes
+                self.displayEpisodes = sortedEpisodes
+                self.lastSearchText = self.searchText
+                self.lastEpisodesHash = self.episodeViewModel.episodes.count
+                self.lastSubscribedPodcastsHash = self.subscribedPodcasts.count
+            }
+        }
+    }
+
     private func getPodcast(for episode: Episode) -> Podcast? {
         guard let podcastID = episode.podcastID else { return nil }
         return subscribedPodcasts.first { $0.id == podcastID }
@@ -103,10 +231,10 @@ struct LibraryView: View {
                     .padding(.horizontal, 16)
                     .padding(.top, 8)
                 
-                // Main Content Area
+                // Main Content Area - Use lazy loading to prevent UI freezes
                 if selectedViewType == .shows {
                     ScrollView {
-                        VStack(spacing: 24) {
+                        LazyVStack(spacing: 24) {
                             // Subscribed Shows Section
                             SubscribedShowsGridView(
                                 podcasts: filteredPodcasts,
@@ -161,34 +289,47 @@ struct LibraryView: View {
             }
         }
         .onAppear {
-            // Load basic data first (lightweight)
-            loadSubscribedPodcasts()
-            
-            // Defer heavy operations to avoid blocking UI
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                // Load episodes in background
-                DispatchQueue.global(qos: .userInitiated).async {
-                    self.loadAllEpisodesForPodcasts()
+            // INSTANT CACHE: Load everything synchronously for immediate display
+            if isInitialLoad {
+                isInitialLoad = false
+                
+                // 1. Load basic data first (podcasts) - synchronous for immediate display
+                loadSubscribedPodcasts()
+                
+                // 2. Build initial cache synchronously - essential for instant tab switching
+                updateCachedFilteredPodcastsSync()
+                updateCachedAllEpisodesSync()
+                
+                // 3. Mark cache as ready for instant display
+                isCacheReady = true
+                
+                // 4. Setup background operations (non-blocking)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    // Setup notification observer
+                    setupEpisodesUpdatedObserver()
+                    
+                    // Load additional episodes in background if needed
+                    DispatchQueue.global(qos: .userInitiated).async {
+                        self.loadAllEpisodesForPodcasts()
+                    }
                 }
                 
-                // Setup notification observer
-                setupEpisodesUpdatedObserver()
-            }
-            
-            // Defer cleanup and maintenance operations even further
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                DispatchQueue.global(qos: .utility).async {
-                    // Clean up large UserDefaults data that has been migrated to file storage
-                    UserDefaultsCleanup.shared.performCleanup()
-                    
-                    // Fix artwork URLs for sample podcasts and refresh real ones
-                    if UserDefaults.standard.bool(forKey: "artworkFixApplied") == false {
-                        print("🎨 Applying one-time artwork fix...")
-                        self.fixPodcastArtwork()
-                        UserDefaults.standard.set(true, forKey: "artworkFixApplied")
+                // 5. Defer cleanup and maintenance operations
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                    DispatchQueue.global(qos: .utility).async {
+                        // Clean up large UserDefaults data that has been migrated to file storage
+                        UserDefaultsCleanup.shared.performCleanup()
+                        
+                        // Fix artwork URLs for sample podcasts and refresh real ones
+                        if UserDefaults.standard.bool(forKey: "artworkFixApplied") == false {
+                            print("🎨 Applying one-time artwork fix...")
+                            self.fixPodcastArtwork()
+                            UserDefaults.standard.set(true, forKey: "artworkFixApplied")
+                        }
                     }
                 }
             }
+            // INSTANT DISPLAY: Cache is ready, no additional work needed on subsequent appearances
         }
         .onDisappear {
             if let observer = episodesUpdatedObserver {
@@ -200,8 +341,17 @@ struct LibraryView: View {
             // Reset edit mode when switching views
             isEditMode = false
         }
+        .onChange(of: searchText) {
+            // INSTANT UPDATE: Update display data immediately for search
+            if isCacheReady {
+                updateCachedFilteredPodcastsAsync()
+                updateCachedAllEpisodesAsync()
+            }
+        }
         .keyboardDismissToolbar()
     }
+    
+
     
     private func loadSubscribedPodcasts() {
         subscribedPodcasts = PodcastService.shared.loadPodcasts()
@@ -215,7 +365,27 @@ struct LibraryView: View {
     
     private func loadAllEpisodesForPodcasts() {
         // If we already have episodes, don't reload unless forced
-        guard episodeViewModel.episodes.isEmpty else { return }
+        guard episodeViewModel.episodes.isEmpty else { 
+            // Update cached episodes if we have data
+            DispatchQueue.main.async {
+                self.updateCachedAllEpisodesAsync()
+            }
+            return 
+        }
+        
+        // If we have real podcasts but no episodes, trigger episode fetch immediately
+        let realPodcasts = subscribedPodcasts.filter { podcast in
+            let feedURLString = podcast.feedURL.absoluteString
+            let artworkURLString = podcast.artworkURL?.absoluteString ?? ""
+            return !feedURLString.contains("example.com") && 
+                   !artworkURLString.contains("picsum.photos")
+        }
+        
+        if !realPodcasts.isEmpty {
+            DispatchQueue.main.async {
+                EpisodeUpdateService.shared.forceUpdate()
+            }
+        }
         
         // Clean up any sample episodes that might have been incorrectly added to real podcasts
         cleanupSampleEpisodesFromRealPodcasts()
@@ -543,8 +713,14 @@ struct LibraryView: View {
             object: nil,
             queue: .main
         ) { _ in
-            // Refresh podcast data when episodes are updated
+            // Refresh podcast data and cache when episodes are updated
             loadSubscribedPodcasts()
+            
+            // Update cache with new episode data
+            if isCacheReady {
+                updateCachedFilteredPodcastsAsync()
+                updateCachedAllEpisodesAsync()
+            }
         }
     }
 }
@@ -910,16 +1086,45 @@ struct EpisodeLibraryRowView: View {
                                 .foregroundColor(.secondary)
                         }
                         
-                        // Played indicator (only show checkmark for played episodes)
-                        if episode.played {
-                            Image(systemName: "checkmark.circle.fill")
-                                .font(.system(size: 11))
-                                .foregroundColor(.green)
-                        } else if episode.playbackPosition > 0 && !episode.played {
-                            // Only show play indicator for unplayed episodes with progress
-                            Image(systemName: "play.circle.fill")
-                                .font(.system(size: 11))
-                                .foregroundColor(.accentColor)
+                        // Progress and status indicators
+                        if episode.playbackPosition > 0 && !episode.played {
+                            // Show remaining time for partially played episodes
+                            if episode.episodeDuration > 0 {
+                                let remainingTime = episode.episodeDuration - episode.playbackPosition
+                                Text("\(formatRemainingTime(remainingTime)) left")
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundColor(.orange)
+                                    .padding(.horizontal, 4)
+                                    .padding(.vertical, 1)
+                                    .background(Color.orange.opacity(0.1))
+                                    .cornerRadius(3)
+                            } else {
+                                Image(systemName: "play.circle.fill")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.accentColor)
+                            }
+                        } else if episode.played {
+                            // Show completion status for played episodes
+                            if episode.episodeDuration > 0 {
+                                let remainingTime = episode.episodeDuration - episode.playbackPosition
+                                if remainingTime > 60 { // More than 1 minute left
+                                    Text("\(formatRemainingTime(remainingTime)) left")
+                                        .font(.system(size: 11, weight: .medium))
+                                        .foregroundColor(.green)
+                                        .padding(.horizontal, 4)
+                                        .padding(.vertical, 1)
+                                        .background(Color.green.opacity(0.1))
+                                        .cornerRadius(3)
+                                } else {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .font(.system(size: 11))
+                                        .foregroundColor(.green)
+                                }
+                            } else {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.green)
+                            }
                         }
                         
                         // Currently playing indicator
@@ -1001,6 +1206,18 @@ struct EpisodeLibraryRowView: View {
         let formatter = RelativeDateTimeFormatter()
         formatter.dateTimeStyle = .named
         return formatter.localizedString(for: date, relativeTo: Date())
+    }
+    
+    private func formatRemainingTime(_ timeInterval: TimeInterval) -> String {
+        let totalMinutes = Int(timeInterval) / 60
+        let hours = totalMinutes / 60
+        let minutes = totalMinutes % 60
+        
+        if hours > 0 {
+            return "\(hours)h \(minutes)m"
+        } else {
+            return "\(minutes) min"
+        }
     }
 }
 

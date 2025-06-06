@@ -11,5 +11,12 @@ struct Episode: Identifiable, Codable, Equatable {
     var publishedDate: Date?
     var localFileURL: URL?
     var playbackPosition: TimeInterval = 0
+    var duration: TimeInterval? // Duration of the episode in seconds - optional for backward compatibility
+    
+    // Computed property for easy access with default value
+    var episodeDuration: TimeInterval {
+        return duration ?? 0
+    }
+    
     // Add other necessary properties here
 } 

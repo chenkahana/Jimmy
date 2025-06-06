@@ -1,6 +1,7 @@
 import Foundation
 import SwiftUI
 import UIKit
+import CryptoKit
 
 /// A comprehensive image caching solution for podcast artwork
 /// Handles both memory and disk caching with proper cache expiration
@@ -360,9 +361,19 @@ class ImageCache: ObservableObject {
     }
     
     private func cacheFilename(for url: URL) -> String {
-        return url.absoluteString.data(using: .utf8)?.base64EncodedString()
-            .replacingOccurrences(of: "/", with: "_")
-            .replacingOccurrences(of: "+", with: "-") ?? UUID().uuidString
+        // Use SHA256 hash to create a short, consistent filename
+        // This avoids filesystem filename length limits while ensuring uniqueness
+        guard let data = url.absoluteString.data(using: .utf8) else {
+            return UUID().uuidString
+        }
+        
+        let hash = data.withUnsafeBytes { bytes in
+            var hasher = SHA256()
+            hasher.update(data: data)
+            return hasher.finalize()
+        }
+        
+        return hash.compactMap { String(format: "%02x", $0) }.joined()
     }
     
     private func createCacheDirectoryIfNeeded() {
