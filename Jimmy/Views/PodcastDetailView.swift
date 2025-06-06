@@ -86,6 +86,8 @@ struct PodcastDetailView: View {
                         },
                         onMarkAsPlayed: { episode, played in
                             EpisodeViewModel.shared.markEpisodeAsPlayed(episode, played: played)
+                            // The EpisodeViewModel will handle the persistence and state updates
+                            // Update local state to reflect the change immediately in the UI
                             if let index = episodes.firstIndex(where: { $0.id == episode.id }) {
                                 episodes[index].played = played
                             }
@@ -141,7 +143,16 @@ struct PodcastDetailView: View {
         
         // Try to load from cache immediately if available and not force refreshing
         if !forceRefresh, let cachedEpisodes = episodeCacheService.getCachedEpisodes(for: podcast.id) {
-            episodes = cachedEpisodes
+            // Merge saved played status and playback position
+            let mergedEpisodes = cachedEpisodes.map { ep in
+                var e = ep
+                e.played = EpisodeViewModel.shared.isEpisodePlayed(ep.id)
+                if let saved = EpisodeViewModel.shared.getEpisode(by: ep.id) {
+                    e.playbackPosition = saved.playbackPosition
+                }
+                return e
+            }
+            episodes = mergedEpisodes
             
             // Debug logging for cached episodes
             print("📱 Loaded \(cachedEpisodes.count) cached episodes for \(podcast.title)")
@@ -233,14 +244,22 @@ struct PodcastDetailView: View {
                     }
                 }
                 
-                // Update episodes on main thread
+                // Merge saved played status and playback position into fetched episodes
+                let mergedEpisodes = sortedEpisodes.map { ep in
+                    var e = ep
+                    e.played = EpisodeViewModel.shared.isEpisodePlayed(ep.id)
+                    if let saved = EpisodeViewModel.shared.getEpisode(by: ep.id) {
+                        e.playbackPosition = saved.playbackPosition
+                    }
+                    return e
+                }
+                // Update episodes on main thread with merged data
                 DispatchQueue.main.async {
-                    episodes = sortedEpisodes
+                    episodes = mergedEpisodes
                 }
                 
-                // Only sync with global episode view model when we fetch fresh data
-                // This prevents duplication while ensuring new episodes are added to the library
-                episodeCacheService.syncWithEpisodeViewModel(episodes: sortedEpisodes)
+                // Sync merged episodes with global view model
+                episodeCacheService.syncWithEpisodeViewModel(episodes: mergedEpisodes)
                 
                 print("📱 Final result: \(sortedEpisodes.count) unique episodes for \(podcast.title) (deduped from \(fetchedEpisodes.count))")
                 print("📱 Final first 3 episode titles:")
@@ -526,7 +545,16 @@ struct SearchResultDetailView: View {
         
         // Try to load from cache immediately if available and not force refreshing
         if !forceRefresh, let cachedEpisodes = episodeCacheService.getCachedEpisodes(for: podcast.id) {
-            episodes = cachedEpisodes
+            // Merge saved played status and playback position
+            let mergedEpisodes = cachedEpisodes.map { ep in
+                var e = ep
+                e.played = EpisodeViewModel.shared.isEpisodePlayed(ep.id)
+                if let saved = EpisodeViewModel.shared.getEpisode(by: ep.id) {
+                    e.playbackPosition = saved.playbackPosition
+                }
+                return e
+            }
+            episodes = mergedEpisodes
             
             // Debug logging for cached episodes
             print("📱 Search: Loaded \(cachedEpisodes.count) cached episodes for \(podcast.title)")
@@ -598,7 +626,7 @@ struct SearchResultDetailView: View {
                 }
             }
             
-            episodes = Array(episodeDict.values).sorted { episode1, episode2 in
+            let sortedEpisodes = Array(episodeDict.values).sorted { episode1, episode2 in
                 switch (episode1.publishedDate, episode2.publishedDate) {
                 case (let date1?, let date2?):
                     return date1 > date2 // Most recent first
@@ -611,13 +639,24 @@ struct SearchResultDetailView: View {
                 }
             }
             
+            // Merge saved played status and playback position into fetched episodes
+            let mergedEpisodes = sortedEpisodes.map { ep in
+                var e = ep
+                e.played = EpisodeViewModel.shared.isEpisodePlayed(ep.id)
+                if let saved = EpisodeViewModel.shared.getEpisode(by: ep.id) {
+                    e.playbackPosition = saved.playbackPosition
+                }
+                return e
+            }
+            episodes = mergedEpisodes
+            
             // Only sync with global episode view model when we fetch fresh data
             // This prevents duplication while ensuring new episodes are added to the library
-            episodeCacheService.syncWithEpisodeViewModel(episodes: episodes)
+            episodeCacheService.syncWithEpisodeViewModel(episodes: mergedEpisodes)
             
-            print("📱 Search: Final result: \(episodes.count) unique episodes for \(podcast.title) (deduped from \(fetchedEpisodes.count))")
+            print("📱 Search: Final result: \(mergedEpisodes.count) unique episodes for \(podcast.title) (deduped from \(fetchedEpisodes.count))")
             print("📱 Search: Final first 3 episode titles:")
-            for (index, episode) in episodes.prefix(3).enumerated() {
+            for (index, episode) in mergedEpisodes.prefix(3).enumerated() {
                 print("   \(index + 1). \(episode.title) (ID: \(episode.id))")
             }
         }

@@ -7,17 +7,39 @@
 		<key>Jimmy.xcscheme_^#shared#^_</key>
 		<dict>
 			<key>orderHint</key>
-			<integer>0</integer>
+			<integer>2</integer>
 		</dict>
 		<key>JimmyTests.xcscheme_^#shared#^_</key>
 		<dict>
+			<key>isShown</key>
+			<false/>
 			<key>orderHint</key>
 			<integer>1</integer>
 		</dict>
 		<key>JimmyWidgetExtensionExtension.xcscheme_^#shared#^_</key>
 		<dict>
+			<key>isShown</key>
+			<false/>
 			<key>orderHint</key>
-			<integer>2</integer>
+			<integer>0</integer>
+		</dict>
+	</dict>
+	<key>SuppressBuildableAutocreation</key>
+	<dict>
+		<key>D411ADBC2DE078AE00E1779D</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>D498662F2DF2CE81003AEEE7</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>D51100052DE078AF00E1779D</key>
+		<dict>
+			<key>primary</key>
+			<true/>
 		</dict>
 	</dict>
 </dict>

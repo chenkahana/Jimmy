@@ -1,7 +1,6 @@
 import Foundation
 import AVFoundation
 import MediaPlayer
-import WidgetKit
 
 class AudioPlayerService: ObservableObject {
     static let shared = AudioPlayerService()
@@ -126,6 +125,14 @@ class AudioPlayerService: ObservableObject {
             name: UIApplication.didBecomeActiveNotification,
             object: nil
         )
+        
+        // Handle app termination to save any pending data
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(appWillTerminate),
+            name: UIApplication.willTerminateNotification,
+            object: nil
+        )
     }
     
     @objc private func handleAudioSessionInterruption(_ notification: Notification) {
@@ -177,19 +184,20 @@ class AudioPlayerService: ObservableObject {
         if let playerItem = notification.object as? AVPlayerItem,
            playerItem == player?.currentItem {
             
-            // Mark current episode as played
+            // Mark current episode as played and reset playback position
             if let currentEpisode = currentEpisode {
-                var updatedEpisode = currentEpisode
-                updatedEpisode.played = true
+                // Use EpisodeViewModel to properly persist the played status
+                EpisodeViewModel.shared.markEpisodeAsPlayed(currentEpisode, played: true)
                 
-                // Update episode in queue
-                if let queueViewModel = QueueViewModel.shared as QueueViewModel?,
-                   let index = queueViewModel.queue.firstIndex(where: { $0.id == updatedEpisode.id }) {
-                    queueViewModel.queue[index] = updatedEpisode
-                }
+                // Also reset the playback position to 0 for completed episodes
+                EpisodeViewModel.shared.updatePlaybackPosition(for: currentEpisode, position: 0)
+                
+                // Update the local reference
+                self.currentEpisode?.played = true
+                self.currentEpisode?.playbackPosition = 0
             }
             
-            // Reset playback position to 0 for the finished episode
+            // Reset local playback position to 0 for the finished episode
             playbackPosition = 0
             
             // Play next episode in queue
@@ -198,6 +206,11 @@ class AudioPlayerService: ObservableObject {
     }
     
     @objc private func appDidEnterBackground() {
+        // Save current playback position before going to background
+        if let currentEpisode = currentEpisode {
+            EpisodeViewModel.shared.updatePlaybackPosition(for: currentEpisode, position: playbackPosition)
+        }
+        
         // Only keep audio session active if we're actually playing
         if isPlaying {
             do {
@@ -220,7 +233,13 @@ class AudioPlayerService: ObservableObject {
         
         // Update UI with current playback state
         updateNowPlayingInfo()
-        updateWidgetData()
+    }
+    
+    @objc private func appWillTerminate() {
+        // Save current playback position before app terminates
+        if let currentEpisode = currentEpisode {
+            EpisodeViewModel.shared.updatePlaybackPosition(for: currentEpisode, position: playbackPosition)
+        }
     }
     
     func loadEpisode(_ episode: Episode) {
@@ -263,9 +282,6 @@ class AudioPlayerService: ObservableObject {
         
         // Update now playing info (this will load artwork)
         updateNowPlayingInfo()
-        
-        // Update widget data
-        updateWidgetData()
     }
     
     private func cleanupPlayer() {
@@ -412,9 +428,6 @@ class AudioPlayerService: ObservableObject {
         
         // Update now playing info
         updateNowPlayingInfo()
-        
-        // Update widget data
-        updateWidgetData()
     }
     
     func play() {
@@ -428,14 +441,18 @@ class AudioPlayerService: ObservableObject {
         player?.play()
         isPlaying = true
         updateNowPlayingInfo()
-        updateWidgetData()
     }
     
     func pause() {
         player?.pause()
         isPlaying = false
+        
+        // Save current playback position when pausing
+        if let currentEpisode = currentEpisode {
+            EpisodeViewModel.shared.updatePlaybackPosition(for: currentEpisode, position: playbackPosition)
+        }
+        
         updateNowPlayingInfo()
-        updateWidgetData()
     }
     
     func togglePlayPause() {
@@ -452,7 +469,6 @@ class AudioPlayerService: ObservableObject {
         let newTime = min(duration, currentTime + 15.0)
         let seekTime = CMTime(seconds: newTime, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
         player.seek(to: seekTime)
-        updateWidgetData()
     }
     
     func seekBackward() {
@@ -461,7 +477,6 @@ class AudioPlayerService: ObservableObject {
         let newTime = max(0, currentTime - 15.0)
         let seekTime = CMTime(seconds: newTime, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
         player.seek(to: seekTime)
-        updateWidgetData()
     }
     
     func seek(to time: TimeInterval) {
@@ -469,10 +484,14 @@ class AudioPlayerService: ObservableObject {
         let clampedTime = max(0, min(duration, time))
         let seekTime = CMTime(seconds: clampedTime, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
         player.seek(to: seekTime)
-        updateWidgetData()
     }
     
     func stop() {
+        // Save current playback position before stopping
+        if let currentEpisode = currentEpisode {
+            EpisodeViewModel.shared.updatePlaybackPosition(for: currentEpisode, position: playbackPosition)
+        }
+        
         player?.pause()
         
         // Clean up player and time observer
@@ -492,27 +511,5 @@ class AudioPlayerService: ObservableObject {
         
         // Clear now playing info
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
-        
-        // Update widget data
-        updateWidgetData()
-    }
-    
-    // MARK: - Widget Data Updates
-    private func updateWidgetData() {
-        let widgetData = WidgetDataService.shared
-        widgetData.saveCurrentEpisode(currentEpisode)
-        widgetData.savePlaybackState(isPlaying: isPlaying, position: playbackPosition, duration: duration)
-        widgetData.notifyWidgetUpdate()
-
-        // Send playback info to Apple Watch
-        WatchConnectivityService.shared.sendPlaybackUpdate(
-            episode: currentEpisode,
-            isPlaying: isPlaying,
-            position: playbackPosition,
-            duration: duration
-        )
-        
-        // Reload widget timelines
-        WidgetCenter.shared.reloadTimelines(ofKind: "JimmyWidgetExtension")
     }
 } 

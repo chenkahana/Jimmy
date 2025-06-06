@@ -320,7 +320,7 @@ class EpisodeCacheService: ObservableObject {
 
     /// Migrate cache from legacy UserDefaults storage if present
     @discardableResult
-    func migrateLegacyCache() -> CacheContainer? {
+    private func migrateLegacyCache() -> CacheContainer? {
         guard let oldData = UserDefaults.standard.object(forKey: persistenceKey) as? [String: [String: Any]] else {
             return nil
         }

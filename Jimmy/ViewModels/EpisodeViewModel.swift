@@ -7,11 +7,21 @@ class EpisodeViewModel: ObservableObject {
     @Published var episodes: [Episode] = []
     private let episodesKey = "episodesKey"
     
+    // Persisted list of played episode IDs
+    private var playedEpisodeIDs: Set<UUID> = []
+    private let playedIDsFilename = "playedEpisodes.json"
+    
     private init() {
+        loadPlayedIDs()
         loadEpisodes()
     }
     
     // MARK: - Episode Management
+    
+    /// Check if an episode ID is marked as played
+    func isEpisodePlayed(_ episodeID: UUID) -> Bool {
+        return playedEpisodeIDs.contains(episodeID)
+    }
     
     func updateEpisode(_ episode: Episode) {
         if let index = episodes.firstIndex(where: { $0.id == episode.id }) {
@@ -24,6 +34,15 @@ class EpisodeViewModel: ObservableObject {
     }
     
     func markEpisodeAsPlayed(_ episode: Episode, played: Bool) {
+        // Update played IDs file
+        if played {
+            playedEpisodeIDs.insert(episode.id)
+        } else {
+            playedEpisodeIDs.remove(episode.id)
+        }
+        savePlayedIDs()
+        
+        // Update episode in memory and persistence
         var updatedEpisode = episode
         updatedEpisode.played = played
         updateEpisode(updatedEpisode)
@@ -79,21 +98,42 @@ class EpisodeViewModel: ObservableObject {
     // MARK: - Persistence
     
     private func saveEpisodes() {
-        FileStorage.shared.saveAsync(episodes, to: "episodes.json") { _ in
-            AppDataDocument.saveToICloudIfEnabled()
-        }
+        _ = FileStorage.shared.save(episodes, to: "episodes.json")
+        AppDataDocument.saveToICloudIfEnabled()
     }
     
     private func loadEpisodes() {
         // Try to migrate from UserDefaults first, then load from file
         if let migratedEpisodes = FileStorage.shared.migrateFromUserDefaults([Episode].self, userDefaultsKey: episodesKey, filename: "episodes.json") {
             episodes = migratedEpisodes
+            applyPlayedIDs()
         } else {
             FileStorage.shared.loadAsync([Episode].self, from: "episodes.json") { [weak self] saved in
-                if let saved = saved {
-                    self?.episodes = saved
+                if let self = self, let saved = saved {
+                    self.episodes = saved
+                    self.applyPlayedIDs()
                 }
             }
+        }
+    }
+    
+    // MARK: - Played Episodes Persistence
+    private func loadPlayedIDs() {
+        if let ids: [UUID] = FileStorage.shared.load([UUID].self, from: playedIDsFilename) {
+            playedEpisodeIDs = Set(ids)
+        }
+    }
+    
+    private func savePlayedIDs() {
+        let idsArray = Array(playedEpisodeIDs)
+        _ = FileStorage.shared.save(idsArray, to: playedIDsFilename)
+    }
+    
+    private func applyPlayedIDs() {
+        episodes = episodes.map { ep in
+            var e = ep
+            e.played = playedEpisodeIDs.contains(ep.id)
+            return e
         }
     }
     
@@ -112,6 +152,7 @@ class EpisodeViewModel: ObservableObject {
             }
         }
         
+        // Apply played status to new episodes and add them
         var episodesToAdd: [Episode] = []
         
         for episode in newEpisodes {
@@ -128,18 +169,24 @@ class EpisodeViewModel: ObservableObject {
                     switch (episode.publishedDate, existingEpisode.publishedDate) {
                     case (let newDate?, let existingDate?):
                         if newDate > existingDate {
-                            // Replace the existing episode with the newer one
+                            // Replace the existing episode with the newer one, but preserve played status and playback position
                             if let index = episodes.firstIndex(where: { $0.id == existingEpisode.id }) {
-                                episodes[index] = episode
-                                existingEpisodesByTitle[key] = episode
+                                var updatedEpisode = episode
+                                updatedEpisode.played = existingEpisode.played
+                                updatedEpisode.playbackPosition = existingEpisode.playbackPosition
+                                episodes[index] = updatedEpisode
+                                existingEpisodesByTitle[key] = updatedEpisode
                             }
                         }
                         // Otherwise keep existing
                     case (_, nil):
-                        // New episode has date, existing doesn't - prefer new
+                        // New episode has date, existing doesn't - prefer new, but preserve played status and playback position
                         if let index = episodes.firstIndex(where: { $0.id == existingEpisode.id }) {
-                            episodes[index] = episode
-                            existingEpisodesByTitle[key] = episode
+                            var updatedEpisode = episode
+                            updatedEpisode.played = existingEpisode.played
+                            updatedEpisode.playbackPosition = existingEpisode.playbackPosition
+                            episodes[index] = updatedEpisode
+                            existingEpisodesByTitle[key] = updatedEpisode
                         }
                     default:
                         // Keep existing episode
@@ -150,12 +197,14 @@ class EpisodeViewModel: ObservableObject {
             }
             
             // New episode - add it to the list to be added
-            episodesToAdd.append(episode)
+            var newEpisode = episode
+            newEpisode.played = playedEpisodeIDs.contains(episode.id)
+            episodesToAdd.append(newEpisode)
             
             // Also add to our tracking dictionary
             if let podcastID = episode.podcastID {
                 let key = "\(podcastID.uuidString)_\(episode.title)"
-                existingEpisodesByTitle[key] = episode
+                existingEpisodesByTitle[key] = newEpisode
             }
         }
         
