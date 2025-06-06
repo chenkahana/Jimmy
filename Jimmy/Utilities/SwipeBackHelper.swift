@@ -1,21 +1,21 @@
 import SwiftUI
 
 /// Enables the interactive swipe gesture when using a custom back button.
+/// This helper ensures the gesture is re-enabled whenever the view appears.
 struct SwipeBackHelper: UIViewControllerRepresentable {
-    func makeUIViewController(context: Context) -> UIViewController {
-        let controller = UIViewController()
-        controller.view.backgroundColor = .clear
-        DispatchQueue.main.async {
-            controller.navigationController?.interactivePopGestureRecognizer?.delegate = nil
-            controller.navigationController?.interactivePopGestureRecognizer?.isEnabled = true
+    final class HelperViewController: UIViewController {
+        override func viewDidAppear(_ animated: Bool) {
+            super.viewDidAppear(animated)
+            navigationController?.interactivePopGestureRecognizer?.delegate = nil
+            navigationController?.interactivePopGestureRecognizer?.isEnabled = true
         }
-        return controller
+    }
+
+    func makeUIViewController(context: Context) -> UIViewController {
+        HelperViewController()
     }
 
     func updateUIViewController(_ uiViewController: UIViewController, context: Context) {
-        DispatchQueue.main.async {
-            uiViewController.navigationController?.interactivePopGestureRecognizer?.delegate = nil
-            uiViewController.navigationController?.interactivePopGestureRecognizer?.isEnabled = true
-        }
+        // No update needed
     }
 }
