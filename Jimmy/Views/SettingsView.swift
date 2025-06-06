@@ -27,6 +27,7 @@ struct SettingsView: View {
     @State private var activeAlert: SettingsAlert?
     @State private var isSubscriptionImporting = false
     @State private var subscriptionImportMessage: String?
+    @State private var showDeleteConfirmation = false
 
     enum SettingsAlert {
         case resetData
@@ -112,6 +113,7 @@ struct SettingsView: View {
                         .padding(.vertical, 8)
                     }
                     .disabled(isImportingFromApplePodcasts)
+                    .buttonStyle(PlainButtonStyle())
                     
                     // Guidance button
                     Button(action: {
@@ -128,6 +130,7 @@ struct SettingsView: View {
                                 .font(.caption)
                         }
                     }
+                    .buttonStyle(PlainButtonStyle())
 
                     Button(action: {
                         showingAppleBulkGuide = true
@@ -143,6 +146,7 @@ struct SettingsView: View {
                                 .font(.caption)
                         }
                     }
+                    .buttonStyle(PlainButtonStyle())
                 }
                 .padding(.vertical, 4)
             }
@@ -208,6 +212,9 @@ struct SettingsView: View {
                 }
                 Button("Reset All Data", role: .destructive) {
                     activeAlert = .resetData
+                }
+                Button("Delete All Local Storage", role: .destructive) {
+                    showDeleteConfirmation = true
                 }
                 Button("Test Notification") {
                     DebugHelper.shared.sendTestNotification()
@@ -289,9 +296,22 @@ struct SettingsView: View {
         .sheet(isPresented: $showingFeedbackForm) {
             FeedbackFormView()
         }
+        .alert(isPresented: $showDeleteConfirmation) {
+            Alert(
+                title: Text("Delete All Local Storage"),
+                message: Text("Are you sure you want to delete all subscriptions and listening history? This action cannot be undone."),
+                primaryButton: .destructive(Text("Delete")) {
+                    deleteAllLocalStorage()
+                },
+                secondaryButton: .cancel()
+            )
+        }
     }
     
     private func performComprehensiveApplePodcastsImport() {
+        // Prevent multiple simultaneous imports
+        guard !isImportingFromApplePodcasts else { return }
+        
         // Clear any existing alerts
         activeAlert = nil
         isImportingFromApplePodcasts = true
@@ -593,6 +613,48 @@ struct SettingsView: View {
                 }
             }
         }
+    }
+    
+    private func deleteAllLocalStorage() {
+        // 1. Delete Subscriptions
+        UserDefaults.standard.removeObject(forKey: "podcastsKey")
+        if let bundleID = Bundle.main.bundleIdentifier {
+            UserDefaults.standard.removePersistentDomain(forName: bundleID)
+        }
+        PodcastDataManager.shared.podcasts.removeAll()
+
+        // 2. Delete All Episodes and History
+        EpisodeViewModel.shared.clearAllEpisodes()
+        EpisodeViewModel.shared.clearPlayedIDs()
+
+        // 3. Delete Episode Cache
+        EpisodeCacheService.shared.clearAllCache()
+
+        // 4. Delete Play Queue
+        QueueViewModel.shared.queue.removeAll()
+        UserDefaults.standard.removeObject(forKey: "queueKey")
+
+
+        // 5. Delete Downloaded Files
+        let fileManager = FileManager.default
+        let documentsUrl = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first
+        if let documentsUrl = documentsUrl {
+            do {
+                let fileUrls = try fileManager.contentsOfDirectory(at: documentsUrl,
+                                                                    includingPropertiesForKeys: nil,
+                                                                    options: .skipsHiddenFiles)
+                for fileUrl in fileUrls {
+                    try fileManager.removeItem(at: fileUrl)
+                }
+            } catch {
+                print("Error deleting downloaded files: \(error)")
+            }
+        }
+        
+        // 6. Reload data in view models to reflect changes in UI
+        PodcastDataManager.shared.loadPodcasts()
+        EpisodeViewModel.shared.loadEpisodes()
+        QueueViewModel.shared.loadQueue()
     }
     
     private func alertTitle() -> String {

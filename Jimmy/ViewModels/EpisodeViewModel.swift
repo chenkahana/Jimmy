@@ -226,6 +226,11 @@ class EpisodeViewModel: ObservableObject {
         saveEpisodes()
     }
     
+    func clearPlayedIDs() {
+        playedEpisodeIDs.removeAll()
+        savePlayedIDs()
+    }
+    
     // MARK: - Sorting
     
     private func sortEpisodesByDate() {
