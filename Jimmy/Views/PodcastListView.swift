@@ -170,9 +170,6 @@ struct PodcastListView: View {
         .onAppear {
             loadSubscribedPodcasts()
         }
-        .refreshable {
-            loadSubscribedPodcasts()
-        }
         .alert("Remove Subscription", isPresented: $showingDeleteAlert) {
             Button("Cancel", role: .cancel) {
                 podcastToDelete = nil

@@ -183,11 +183,6 @@ struct LibraryView: View {
                 loadSubscribedPodcasts()
             }
         }
-        .refreshable {
-            loadSubscribedPodcasts()
-            loadAllEpisodesForPodcasts()
-            updateService.forceUpdate()
-        }
         .onChange(of: selectedViewType) {
             // Reset edit mode when switching views
             isEditMode = false
