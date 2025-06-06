@@ -24,6 +24,9 @@ class ImageCache: ObservableObject {
     private let diskCacheQueue = DispatchQueue(label: "image-cache-disk", qos: .utility)
     private let downloadQueue = DispatchQueue(label: "image-cache-download", qos: .userInitiated, attributes: .concurrent)
     private let operationQueue: OperationQueue
+
+    // Notification token for memory warning observer
+    private var memoryWarningObserver: NSObjectProtocol?
     
     // Track ongoing downloads to prevent duplicate requests
     private var ongoingDownloads: [URL: DownloadOperation] = [:]
@@ -322,12 +325,13 @@ class ImageCache: ObservableObject {
     }
     
     private func setupMemoryWarningObserver() {
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(handleMemoryWarning),
-            name: UIApplication.didReceiveMemoryWarningNotification,
-            object: nil
-        )
+        memoryWarningObserver = NotificationCenter.default.addObserver(
+            forName: UIApplication.didReceiveMemoryWarningNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.handleMemoryWarning()
+        }
     }
     
     @objc private func handleMemoryWarning() {
@@ -469,4 +473,10 @@ private class DownloadOperation: Operation, @unchecked Sendable {
         
         return optimizedImage
     }
-} 
+
+    deinit {
+        if let observer = memoryWarningObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
+    }
+}

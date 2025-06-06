@@ -177,6 +177,16 @@ class EpisodeCacheService: ObservableObject {
             return (total, fresh, expired, sizeKB)
         }
     }
+
+    /// Approximate memory footprint of the in-memory cache in bytes
+    func getCacheMemoryUsage() -> Int {
+        return cacheQueue.sync {
+            episodeCache.values.reduce(0) { result, entry in
+                let data = try? JSONEncoder().encode(entry.episodes)
+                return result + (data?.count ?? 0)
+            }
+        }
+    }
     
     // MARK: - Private Methods
     
@@ -232,7 +242,12 @@ class EpisodeCacheService: ObservableObject {
         }
         
         let container = CacheContainer(entries: entries)
-        _ = FileStorage.shared.save(container, to: "episodeCache.json")
+        if FileStorage.shared.save(container, to: "episodeCache.json") {
+            let mem = formatBytes(getCacheMemoryUsage())
+            print("💾 Episode cache persisted (\(mem) in memory)")
+        } else {
+            print("⚠️ Episode cache not saved due to storage issue")
+        }
     }
     
     private func loadCacheFromDisk() {
@@ -334,6 +349,13 @@ class EpisodeCacheService: ObservableObject {
                 self.saveCacheToDisk()
             }
         }
+    }
+
+    private func formatBytes(_ bytes: Int) -> String {
+        let formatter = ByteCountFormatter()
+        formatter.allowedUnits = [.useAll]
+        formatter.countStyle = .file
+        return formatter.string(fromByteCount: Int64(bytes))
     }
 #if DEBUG
     /// Insert a cache entry for testing purposes

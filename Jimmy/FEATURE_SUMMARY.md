@@ -239,6 +239,8 @@ The app now provides a comprehensive podcast discovery and management experience
 - **Robust error handling** with user-friendly messages
 - **Network resilience** with retry mechanisms
 - **Data corruption protection** with validation
+- **Automatic recovery of corrupted cache files**
+- **Graceful caching when disk space is low**
 - **🆕 Widget fallback states** for offline scenarios
 
 ### ✅ Accessibility

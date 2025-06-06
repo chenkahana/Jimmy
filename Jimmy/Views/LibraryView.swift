@@ -9,6 +9,7 @@ struct LibraryView: View {
     @ObservedObject private var episodeViewModel = EpisodeViewModel.shared
     @ObservedObject private var updateService = EpisodeUpdateService.shared
     @ObservedObject private var episodeCacheService = EpisodeCacheService.shared
+    @State private var episodesUpdatedObserver: NSObjectProtocol?
     
     enum LibraryViewType: String, CaseIterable {
         case shows = "Shows"
@@ -174,13 +175,19 @@ struct LibraryView: View {
             }
             
             // Start listening for episode updates
-            NotificationCenter.default.addObserver(
+            episodesUpdatedObserver = NotificationCenter.default.addObserver(
                 forName: .episodesUpdated,
                 object: nil,
                 queue: .main
-            ) { _ in
+            ) { [weak self] _ in
                 // Refresh podcast data when episodes are updated
-                loadSubscribedPodcasts()
+                self?.loadSubscribedPodcasts()
+            }
+        }
+        .onDisappear {
+            if let observer = episodesUpdatedObserver {
+                NotificationCenter.default.removeObserver(observer)
+                episodesUpdatedObserver = nil
             }
         }
         .onChange(of: selectedViewType) {

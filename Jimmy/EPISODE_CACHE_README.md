@@ -18,10 +18,12 @@ The episode caching system provides instant access to previously loaded podcast 
 - Automatic cleanup of old entries after 2 hours
 - Cache invalidation when new episodes are detected during background updates
 - Stale cache fallback during network errors
+- Graceful handling when disk space is low
 
 ### 💾 Persistent Storage
 - Cache survives app restarts
-- Stored in UserDefaults with JSON encoding
+- Stored on disk using `FileStorage` with JSON encoding
+- Automatic recovery from corrupted files
 - Minimal storage footprint with efficient data structures
 
 ### 📊 Visual Indicators
