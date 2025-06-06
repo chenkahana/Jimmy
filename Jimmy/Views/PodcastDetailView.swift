@@ -262,30 +262,13 @@ struct PodcastDetailHeaderView: View {
     
     var body: some View {
         HStack(alignment: .top, spacing: 16) {
-            // Show Picture (Left side) - Artwork removed
-            // AsyncImage(url: podcast.artworkURL) { image in
-            //     image
-            //         .resizable()
-            //         .aspectRatio(contentMode: .fill)
-            // } placeholder: {
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(
-                        LinearGradient(
-                            colors: [Color.gray.opacity(0.1), Color.gray.opacity(0.2)], // Placeholder color
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .overlay(
-                        Image(systemName: "waveform.circle.fill") // Using a generic podcast icon (Korean for broadcast)
-                            .font(.system(size: 40))
-                            .foregroundColor(.secondary.opacity(0.8))
-                    )
-            // }
-            .frame(width: 120, height: 120)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-            // .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2) // Shadow removed
-            
+            // Show Picture (Left side)
+            PodcastArtworkView(
+                artworkURL: podcast.artworkURL,
+                size: 120,
+                cornerRadius: 12
+            )
+        
             // Show Details (Right side)
             VStack(alignment: .leading, spacing: 8) {
                 // Show Name
