@@ -215,15 +215,20 @@ class EpisodeCacheService: ObservableObject {
         completion: @escaping ([Episode], String?) -> Void
     ) {
         PodcastService.shared.fetchEpisodes(for: podcast) { [weak self] episodes in
-            guard let self = self else { return }
+            guard let self = self else { 
+                completion([], "Service unavailable")
+                return 
+            }
             
             if episodes.isEmpty {
                 completion([], "Unable to load episodes. Please check your internet connection and try again.")
                 return
             }
             
-            // Cache the episodes
-            self.cacheQueue.async(flags: .barrier) {
+            // Cache the episodes safely
+            self.cacheQueue.async(flags: .barrier) { [weak self] in
+                guard let self = self else { return }
+                
                 let entry = CacheEntry(
                     episodes: episodes,
                     timestamp: Date(),
@@ -263,8 +268,11 @@ class EpisodeCacheService: ObservableObject {
         
         let container = CacheContainer(entries: entries)
         if FileStorage.shared.save(container, to: "episodeCache.json") {
-            let mem = formatBytes(getCacheMemoryUsage())
-            print("💾 Episode cache persisted (\(mem) in memory)")
+            // Calculate memory usage directly without calling getCacheMemoryUsage() to avoid deadlock
+            let totalEpisodes = episodeCache.values.reduce(0) { $0 + $1.episodes.count }
+            let estimatedBytes = totalEpisodes * 1024 // Rough estimate: 1KB per episode
+            let mem = formatBytes(estimatedBytes)
+            print("💾 Episode cache persisted (\(mem) estimated in memory)")
         } else {
             print("⚠️ Episode cache not saved due to storage issue")
         }

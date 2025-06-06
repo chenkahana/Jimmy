@@ -179,9 +179,9 @@ struct LibraryView: View {
                 forName: .episodesUpdated,
                 object: nil,
                 queue: .main
-            ) { [weak self] _ in
+            ) { _ in
                 // Refresh podcast data when episodes are updated
-                self?.loadSubscribedPodcasts()
+                loadSubscribedPodcasts()
             }
         }
         .onDisappear {

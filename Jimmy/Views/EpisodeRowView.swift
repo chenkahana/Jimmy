@@ -252,8 +252,10 @@ struct EpisodeRowView: View {
             }
             .tint(episode.played ? .orange : .gray)
         }
-        .fullScreenCover(isPresented: $showingEpisodeDetail) {
-            EpisodeDetailView(episode: episode, podcast: podcast)
+        .sheet(isPresented: $showingEpisodeDetail) {
+            NavigationView {
+                EpisodeDetailView(episode: episode, podcast: podcast)
+            }
         }
         .sheet(isPresented: $showingShareSheet) {
             if let url = shareURL {

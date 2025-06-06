@@ -390,6 +390,12 @@ class ImageCache: ObservableObject {
             }
         }
     }
+    
+    deinit {
+        if let observer = memoryWarningObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
+    }
 }
 
 // MARK: - Download Operation
@@ -472,11 +478,5 @@ private class DownloadOperation: Operation, @unchecked Sendable {
         UIGraphicsEndImageContext()
         
         return optimizedImage
-    }
-
-    deinit {
-        if let observer = memoryWarningObserver {
-            NotificationCenter.default.removeObserver(observer)
-        }
     }
 }
