@@ -141,15 +141,7 @@ struct FloatingMiniPlayerView: View {
                     }
                     .padding(.horizontal, 16)
                     .padding(.vertical, 12)
-                    .background(
-                        RoundedRectangle(cornerRadius: 16)
-                            .fill(.ultraThinMaterial)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 16)
-                                    .stroke(Color.white.opacity(0.2), lineWidth: 1)
-                            )
-                            .shadow(color: .black.opacity(0.15), radius: 12, x: 0, y: 6)
-                    )
+                    .enhanced3DCard(cornerRadius: 16, elevation: 6)
                     .overlay(
                         // Small X button in top-right corner
                         VStack {
@@ -223,7 +215,7 @@ struct FloatingMiniPlayerView: View {
                 VStack(spacing: 0) {
                     // Thin progress bar with glow effect
                     ProgressView(value: audioPlayer.playbackPosition, total: audioPlayer.duration)
-                        .progressViewStyle(GlowingProgressViewStyle())
+                        .progressViewStyle(Enhanced3DProgressViewStyle())
                         .frame(height: 4)
                     
                     // Mini player content - Enhanced 3D design
@@ -435,21 +427,7 @@ struct FloatingMiniPlayerView: View {
                     }
                     .padding(.horizontal, 20)
                     .padding(.vertical, 14)
-                    .background(
-                        // Enhanced 3D background
-                        Rectangle()
-                            .fill(
-                                LinearGradient(
-                                    colors: [
-                                        Color(.systemBackground),
-                                        Color(.systemGray6).opacity(0.4),
-                                        Color(.systemBackground)
-                                    ],
-                                    startPoint: .top,
-                                    endPoint: .bottom
-                                )
-                            )
-                    )
+                    .enhanced3DCard(cornerRadius: 0, elevation: 8)
                     .overlay(
                         // Top highlight line for 3D effect
                         Rectangle()
@@ -500,58 +478,64 @@ struct FloatingMiniPlayerView: View {
         }
     }
     
-    // Enhanced 3D button style for mini player controls
-    struct Enhanced3DButtonStyle: ButtonStyle {
-        func makeBody(configuration: Configuration) -> some View {
-            configuration.label
-                .scaleEffect(configuration.isPressed ? 0.92 : 1.0)
-                .offset(y: configuration.isPressed ? 1 : 0)
-                .animation(.easeInOut(duration: 0.1), value: configuration.isPressed)
-        }
-    }
+    // Note: Enhanced3DButtonStyle is now defined in Enhanced3DStyles.swift
     
-    // Custom glowing progress view style
-    struct GlowingProgressViewStyle: ProgressViewStyle {
+    // Enhanced 3D progress view style
+    struct Enhanced3DProgressViewStyle: ProgressViewStyle {
         func makeBody(configuration: Configuration) -> some View {
             let progress = configuration.fractionCompleted ?? 0.0
             
             GeometryReader { geometry in
                 ZStack(alignment: .leading) {
-                    // Background track
-                    Rectangle()
-                        .fill(Color(.systemGray5))
-                        .frame(height: 4)
-                    
-                    // Progress fill with glow
-                    Rectangle()
+                    // Background track with inset 3D effect
+                    RoundedRectangle(cornerRadius: 2)
                         .fill(
                             LinearGradient(
                                 colors: [
-                                    Color.orange.opacity(0.8),
-                                    Color.orange,
-                                    Color.orange.opacity(0.9)
-                                ],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                        .frame(width: geometry.size.width * progress, height: 4)
-                        .shadow(color: .orange.opacity(0.4), radius: 3, x: 0, y: 0)
-                    
-                    // Highlight line for 3D effect
-                    Rectangle()
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color.white.opacity(0.6),
-                                    Color.clear
+                                    Color.black.opacity(0.15),
+                                    Color("DarkBackground").opacity(0.1),
+                                    Color.black.opacity(0.05)
                                 ],
                                 startPoint: .top,
                                 endPoint: .bottom
                             )
                         )
-                        .frame(width: geometry.size.width * progress, height: 1)
-                        .offset(y: -1.5)
+                        .frame(height: 4)
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 2)
+                                .stroke(Color.black.opacity(0.2), lineWidth: 0.5)
+                        }
+                    
+                    // Progress fill with raised 3D effect
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color.orange.opacity(0.9),
+                                    Color.orange,
+                                    Color.orange.opacity(0.8)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: geometry.size.width * progress, height: 4)
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 2)
+                                .fill(
+                                    LinearGradient(
+                                        colors: [
+                                            Color.white.opacity(0.4),
+                                            Color.clear
+                                        ],
+                                        startPoint: .top,
+                                        endPoint: .bottom
+                                    )
+                                )
+                                .frame(width: geometry.size.width * progress, height: 2)
+                                .offset(y: -1)
+                        }
+                        .shadow(color: Color.orange.opacity(0.3), radius: 2, x: 0, y: 0)
                 }
             }
         }

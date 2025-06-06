@@ -201,9 +201,10 @@ struct LibraryView: View {
         subscribedPodcasts = PodcastService.shared.loadPodcasts()
         
         // For testing purposes - add sample data if no podcasts exist
-        if subscribedPodcasts.isEmpty {
-            addSampleDataForTesting()
-        }
+        // DISABLED: Let new users start with empty library
+        // if subscribedPodcasts.isEmpty {
+        //     addSampleDataForTesting()
+        // }
     }
     
     private func loadAllEpisodesForPodcasts() {

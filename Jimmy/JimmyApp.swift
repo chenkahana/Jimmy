@@ -12,6 +12,8 @@ import UniformTypeIdentifiers
 struct JimmyApp: App {
     // Initialize the update service
     private let updateService = EpisodeUpdateService.shared
+    @State private var showFileImportSheet = false
+    @State private var pendingAudioURL: URL?
     
     var body: some Scene {
         WindowGroup {
@@ -22,16 +24,37 @@ struct JimmyApp: App {
                 .onAppear {
                     // Ensure background updates are running
                     updateService.startPeriodicUpdates()
+                    setupFileImportCallback()
+                }
+                .sheet(isPresented: $showFileImportSheet) {
+                    if let audioURL = pendingAudioURL {
+                        FileImportNamingView(audioURL: audioURL) { fileName, showName, existingShowID in
+                            SharedAudioImporter.shared.importFile(
+                                from: audioURL,
+                                fileName: fileName,
+                                showName: showName,
+                                existingShowID: existingShowID
+                            )
+                            pendingAudioURL = nil
+                        }
+                    }
                 }
         }
     }
     
+    private func setupFileImportCallback() {
+        SharedAudioImporter.shared.onFileRequiresNaming = { url in
+            pendingAudioURL = url
+            showFileImportSheet = true
+        }
+    }
+    
     private func handleURL(_ url: URL) {
-        // If a local audio file was shared to the app, import it
+        // If a local audio file was shared to the app, trigger the naming popup
         if url.isFileURL {
             if let type = try? url.resourceValues(forKeys: [.contentTypeKey]).contentType,
                type.conforms(to: .audio) {
-                _ = SharedAudioImporter.shared.importFile(from: url)
+                SharedAudioImporter.shared.handleSharedFile(from: url)
             }
             return
         }

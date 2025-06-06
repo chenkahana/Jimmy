@@ -29,6 +29,14 @@ class RSSParser: NSObject, XMLParserDelegate {
         print("🔍 Starting RSS parse...")
         let parseResult = parser.parse()
         print("📊 RSS parse result: \(parseResult ? "✅ Success" : "❌ Failed")")
+        
+        if !parseResult {
+            if let error = parser.parserError {
+                print("⚠️ XML Parse Error: \(error.localizedDescription)")
+            }
+            print("📄 Data preview (first 300 chars): \(String(data: data.prefix(300), encoding: .utf8) ?? "Unable to decode")")
+        }
+        
         print("🎨 Found podcast artwork: \(podcastArtworkURL.isEmpty ? "❌ None" : "✅ \(podcastArtworkURL)")")
         print("📝 Found podcast title: \(podcastTitle.isEmpty ? "❌ None" : "✅ \(podcastTitle)")")
         print("👤 Found podcast author: \(podcastAuthor.isEmpty ? "❌ None" : "✅ \(podcastAuthor)")")
@@ -133,6 +141,11 @@ class RSSParser: NSObject, XMLParserDelegate {
             parsingItem = false
         }
         currentElementName = ""
+    }
+    
+    func parser(_ parser: XMLParser, parseErrorOccurred parseError: Error) {
+        print("❌ XML Parser Error: \(parseError.localizedDescription)")
+        print("❌ Line: \(parser.lineNumber), Column: \(parser.columnNumber)")
     }
     
     // Helper to parse pubDate string

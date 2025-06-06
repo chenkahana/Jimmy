@@ -215,7 +215,21 @@ struct PodcastGridItem: View {
                     size: 100,
                     cornerRadius: 12
                 )
-                .shadow(color: .black.opacity(0.15), radius: 4, x: 0, y: 2)
+                .shadow(color: .black.opacity(0.2), radius: 6, x: 0, y: 3)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(0.2),
+                                    Color.clear
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 0.5
+                        )
+                }
                 
                 Text(podcast.title)
                     .font(.caption)

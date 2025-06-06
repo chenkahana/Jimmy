@@ -1,7 +1,7 @@
 import Foundation
 import OSLog
 
-class PodcastService {
+class PodcastService: ObservableObject {
     static let shared = PodcastService()
     private let podcastsKey = "podcastsKey"
     
@@ -43,8 +43,43 @@ class PodcastService {
                 }
                 return
             case .success(let data):
+                #if DEBUG
+                print("🌐 RSS Feed data received for \(podcast.title): \(data.count) bytes")
+                #endif
+                
+                // Check if we received any data
+                guard !data.isEmpty else {
+                    #if DEBUG
+                    print("⚠️ Empty RSS data received for \(podcast.title)")
+                    #endif
+                    ErrorLogger.shared.log("Empty RSS data for \(podcast.title)")
+                    DispatchQueue.main.async {
+                        completion([])
+                    }
+                    return
+                }
+                
+                // Check if the data looks like valid XML
+                if let dataString = String(data: data, encoding: .utf8) {
+                    if !dataString.contains("<rss") && !dataString.contains("<feed") {
+                        #if DEBUG
+                        print("⚠️ RSS data doesn't appear to be valid XML for \(podcast.title)")
+                        print("📄 First 200 characters: \(String(dataString.prefix(200)))")
+                        #endif
+                        ErrorLogger.shared.log("Invalid RSS format for \(podcast.title)")
+                        DispatchQueue.main.async {
+                            completion([])
+                        }
+                        return
+                    }
+                }
+                
                 let parser = RSSParser()
                 let episodes = parser.parseRSS(data: data, podcastID: podcast.id) // Use podcast.id instead of random UUID
+
+                #if DEBUG
+                print("📊 RSS Parser returned \(episodes.count) episodes for \(podcast.title)")
+                #endif
 
                 // ALWAYS update podcast artwork from RSS channel data to ensure correct artwork
                 // This prevents episode artwork from being used as podcast artwork

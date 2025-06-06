@@ -87,11 +87,7 @@ struct QueueEpisodeCardView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color(.systemBackground))
-                .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
-        )
+        .enhanced3DCard(cornerRadius: 16, elevation: 3)
         .contentShape(Rectangle())
         .onTapGesture {
             if !isEditMode {

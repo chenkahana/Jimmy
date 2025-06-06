@@ -32,7 +32,21 @@ struct LargeRecommendedPodcastItem: View {
                 size: 160,
                 cornerRadius: 16
             )
-            .shadow(color: .black.opacity(0.2), radius: 6, x: 0, y: 3)
+            .shadow(color: .black.opacity(0.25), radius: 8, x: 0, y: 4)
+            .overlay {
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(0.2),
+                                Color.clear
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 0.5
+                    )
+            }
 
             Text(result.title)
                 .font(.headline)
@@ -57,8 +71,7 @@ struct LargeRecommendedPodcastItem: View {
         }
         .padding(8)
         .background(gradient)
-        .clipShape(RoundedRectangle(cornerRadius: 20))
-        .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+        .enhanced3DCard(cornerRadius: 20, elevation: 3)
     }
 }
 

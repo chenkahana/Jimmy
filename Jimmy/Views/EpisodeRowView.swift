@@ -25,7 +25,7 @@ struct EpisodeRowView: View {
     
     var body: some View {
         HStack(spacing: 12) {
-            // Episode artwork with played indicator overlay
+            // Episode artwork with enhanced 3D styling and played indicator overlay
             ZStack(alignment: .bottomTrailing) {
                 CachedAsyncImage(url: episode.artworkURL ?? podcast.artworkURL) { image in
                     image
@@ -33,32 +33,67 @@ struct EpisodeRowView: View {
                             .aspectRatio(contentMode: .fill)
                     } placeholder: {
                         RoundedRectangle(cornerRadius: 8)
-                            .fill(Color.gray.opacity(0.3))
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        Color.gray.opacity(0.4),
+                                        Color.gray.opacity(0.2)
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
                             .overlay(
                                 Image(systemName: "play.circle")
                                     .foregroundColor(.gray)
+                                    .shadow(color: .black.opacity(0.3), radius: 1, x: 0, y: 1)
                             )
                     }
                     .transition(.opacity.combined(with: .scale))
                     .frame(width: 60, height: 60)
                     .clipShape(RoundedRectangle(cornerRadius: 8))
                     .opacity(episode.played ? 0.6 : 1.0) // Dim played episodes
+                    .shadow(color: .black.opacity(0.15), radius: 4, x: 0, y: 2)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(
+                                LinearGradient(
+                                    colors: [
+                                        Color.white.opacity(0.2),
+                                        Color.clear
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                ),
+                                lineWidth: 0.5
+                            )
+                    }
                     
-                    // Enhanced played indicator
+                    // Enhanced played indicator with 3D effect
                     if episode.played {
                         ZStack {
-                            // White background circle for contrast
+                            // Enhanced background circle with gradient
                             Circle()
-                                .fill(Color.white)
+                                .fill(
+                                    LinearGradient(
+                                        colors: [
+                                            Color.white,
+                                            Color.white.opacity(0.9)
+                                        ],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
                                 .frame(width: 20, height: 20)
+                                .shadow(color: .black.opacity(0.2), radius: 2, x: 0, y: 1)
                             
-                            // Green checkmark
+                            // Green checkmark with subtle shadow
                             Image(systemName: "checkmark.circle.fill")
                                 .font(.system(size: 16, weight: .semibold))
                                 .foregroundColor(.green)
+                                .shadow(color: .green.opacity(0.3), radius: 1, x: 0, y: 0.5)
                         }
                         .offset(x: 6, y: 6)
-                        .shadow(color: .black.opacity(0.2), radius: 2, x: 0, y: 1)
                     }
                 }
                 
@@ -211,21 +246,7 @@ struct EpisodeRowView: View {
             }
         .padding(.vertical, 8)
         .padding(.horizontal, 16)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(
-                    isCurrentlyPlaying ? Color.orange.opacity(0.1) :
-                    episode.played ? Color.gray.opacity(0.05) : Color(.systemBackground)
-                )
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(
-                    isCurrentlyPlaying ? Color.orange.opacity(0.3) :
-                    episode.played ? Color.gray.opacity(0.1) : Color.clear,
-                    lineWidth: 1
-                )
-        )
+        .enhanced3DListRow(isSelected: isCurrentlyPlaying)
         .onTapGesture {
             showingEpisodeDetail = true
         }

@@ -32,10 +32,10 @@ class EpisodeUpdateService: ObservableObject {
         // Prevent starting multiple timers if called again
         guard updateTimer == nil else { return }
 
-        // Schedule immediate update on app launch
-        Task {
-            await updateAllEpisodes()
-        }
+        // DISABLED: Don't schedule immediate update on app launch for clean user experience
+        // Task {
+        //     await updateAllEpisodes()
+        // }
         
         // Schedule recurring updates
         updateTimer = Timer.scheduledTimer(withTimeInterval: updateInterval, repeats: true) { [weak self] _ in

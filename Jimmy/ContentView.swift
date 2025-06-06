@@ -48,10 +48,10 @@ struct ContentView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .clipped() // Ensure no content leaks outside bounds
                     
-                    // Custom Tab Bar
-                    CustomTabBar(selectedTab: $selectedTab)
-                }
-                .ignoresSafeArea(.keyboard, edges: .bottom)
+                                    // Custom Tab Bar with Enhanced 3D
+                CustomTabBar(selectedTab: $selectedTab)
+            }
+            .ignoresSafeArea(.keyboard, edges: .bottom)
                 
                 // Floating Mini Player - Above tab bar with enhanced 3D effect
                 VStack {
@@ -77,8 +77,27 @@ struct ContentView: View {
             }
         }
         .onAppear {
-            // Ensure the loading screen is visible immediately on launch
+            // Show loading screen as branded startup experience
             showLoadingScreen = true
+            
+            // Auto-hide loading screen if no podcasts exist (new user)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                let podcasts = PodcastService.shared.loadPodcasts()
+                if podcasts.isEmpty {
+                    withAnimation(.easeInOut) {
+                        showLoadingScreen = false
+                    }
+                }
+            }
+            
+            // Fallback: Always hide loading screen after maximum 3 seconds
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+                if showLoadingScreen {
+                    withAnimation(.easeInOut) {
+                        showLoadingScreen = false
+                    }
+                }
+            }
         }
         .onChange(of: updateService.isUpdating) { updating in
             withAnimation(.easeInOut) {
@@ -131,9 +150,39 @@ struct ContentView: View {
                 .padding(.bottom, 8)
             }
             .background {
-                Rectangle()
-                    .fill(.regularMaterial)
-                    .ignoresSafeArea(.all, edges: .bottom)
+                ZStack {
+                    // Enhanced 3D background with depth
+                    Rectangle()
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color("SurfaceElevated"),
+                                    Color("SurfaceElevated").opacity(0.95),
+                                    Color("DarkBackground").opacity(0.1)
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                    
+                    // Top highlight line for 3D effect
+                    Rectangle()
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color("SurfaceHighlighted").opacity(0.3),
+                                    Color("SurfaceHighlighted").opacity(0.1),
+                                    Color.clear
+                                ],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .frame(height: 0.5)
+                        .offset(y: -44)
+                }
+                .ignoresSafeArea(.all, edges: .bottom)
+                .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: -4)
             }
         }
     }
@@ -147,24 +196,43 @@ struct ContentView: View {
             Button(action: onTap) {
                 VStack(spacing: 2) {
                     ZStack {
-                        // Background indicator for selected state
+                        // Enhanced 3D background indicator for selected state
                         if isSelected {
-                            RoundedRectangle(cornerRadius: 16)
-                                .fill(
-                                    LinearGradient(
-                                        gradient: Gradient(colors: [
-                                            Color.accentColor.opacity(0.15),
-                                            Color.accentColor.opacity(0.05)
-                                        ]),
-                                        startPoint: .top,
-                                        endPoint: .bottom
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 16)
+                                    .fill(
+                                        LinearGradient(
+                                            gradient: Gradient(colors: [
+                                                Color.accentColor.opacity(0.2),
+                                                Color.accentColor.opacity(0.1),
+                                                Color.accentColor.opacity(0.05)
+                                            ]),
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
                                     )
-                                )
-                                .frame(width: 64, height: 32)
-                                .transition(.asymmetric(
-                                    insertion: .scale(scale: 0.8).combined(with: .opacity),
-                                    removal: .scale(scale: 0.8).combined(with: .opacity)
-                                ))
+                                    .frame(width: 64, height: 32)
+                                
+                                // Inner highlight for 3D effect
+                                RoundedRectangle(cornerRadius: 16)
+                                    .stroke(
+                                        LinearGradient(
+                                            colors: [
+                                                Color.accentColor.opacity(0.4),
+                                                Color.clear
+                                            ],
+                                            startPoint: .top,
+                                            endPoint: .bottom
+                                        ),
+                                        lineWidth: 0.5
+                                    )
+                                    .frame(width: 64, height: 32)
+                            }
+                            .shadow(color: Color.accentColor.opacity(0.2), radius: 4, x: 0, y: 2)
+                            .transition(.asymmetric(
+                                insertion: .scale(scale: 0.8).combined(with: .opacity),
+                                removal: .scale(scale: 0.8).combined(with: .opacity)
+                            ))
                         }
                         
                         // Icon

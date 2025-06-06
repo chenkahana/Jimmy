@@ -248,7 +248,10 @@ class EpisodeCacheService: ObservableObject {
             }
             
             if episodes.isEmpty {
-                completion([], "Unable to load episodes. Please check your internet connection and try again.")
+                #if DEBUG
+                print("⚠️ No episodes found for \(podcast.title). Feed URL: \(podcast.feedURL)")
+                #endif
+                completion([], "Unable to load episodes from this podcast feed. This could be due to an invalid RSS feed, network issues, or the podcast may not have any episodes yet.")
                 return
             }
             

@@ -461,24 +461,45 @@ struct SearchResultDetailView: View {
 
             if episodes.isEmpty && !isLoading {
                 VStack(spacing: 16) {
-                    Image(systemName: "wifi.slash")
-                        .font(.system(size: 48))
-                        .foregroundColor(.gray)
+                    if let error = loadingError {
+                        Image(systemName: "exclamationmark.triangle")
+                            .font(.system(size: 48))
+                            .foregroundColor(.orange)
+                        
+                        Text("Connection Error")
+                            .font(.headline)
+                            .foregroundColor(.primary)
+                        
+                        Text(error)
+                            .font(.body)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                        
+                        Button("Retry") {
+                            loadEpisodes(forceRefresh: true)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .padding(.top, 8)
+                    } else {
+                        Image(systemName: "wifi.slash")
+                            .font(.system(size: 48))
+                            .foregroundColor(.gray)
 
-                    Text("Unable to Load Episodes")
-                        .font(.headline)
-                        .foregroundColor(.primary)
+                        Text("Unable to Load Episodes")
+                            .font(.headline)
+                            .foregroundColor(.primary)
 
-                    Text("Check your internet connection and try again")
-                        .font(.body)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
+                        Text("Check your internet connection and try again")
+                            .font(.body)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
 
-                    Button("Retry") {
-                        loadEpisodes(forceRefresh: true)
+                        Button("Retry") {
+                            loadEpisodes(forceRefresh: true)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .padding(.top, 8)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .padding(.top, 8)
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 40)
