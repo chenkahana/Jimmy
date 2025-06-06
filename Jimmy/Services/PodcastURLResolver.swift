@@ -12,7 +12,7 @@ class PodcastURLResolver {
         }
         
         // If it's already an RSS feed URL, try it directly
-        if urlString.contains("/rss") || urlString.contains("/feed") || urlString.contains(".xml") {
+        if urlString.contains("/rss") || urlString.contains("/feed") || urlString.contains(".xml") || urlString.hasSuffix(".rss") {
             testRSSFeed(url: url, completion: completion)
             return
         }
@@ -184,17 +184,24 @@ class PodcastURLResolver {
     
     private func testRSSFeed(url: URL, completion: @escaping (URL?) -> Void) {
         // Test if the URL is actually a valid RSS feed
-        URLSession.shared.dataTask(with: url) { data, response, error in
+        var request = URLRequest(url: url)
+        request.setValue("Jimmy Podcast Player/1.0", forHTTPHeaderField: "User-Agent")
+        request.timeoutInterval = 15.0
+        
+        URLSession.shared.dataTask(with: request) { data, response, error in
             guard let data = data,
                   let string = String(data: data, encoding: .utf8) else {
+                print("❌ Failed to fetch RSS data for \(url.absoluteString)")
                 completion(nil)
                 return
             }
             
             // Basic check for RSS/XML content
             if string.contains("<rss") || string.contains("<feed") || string.contains("<channel") {
+                print("✅ Valid RSS feed detected: \(url.absoluteString)")
                 completion(url)
             } else {
+                print("❌ Not a valid RSS feed, got: \(string.prefix(200))")
                 completion(nil)
             }
         }.resume()
