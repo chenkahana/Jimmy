@@ -96,16 +96,22 @@ extension AppDataDocument {
     
     // MARK: - iCloud Implementation
     private static func saveToiCloudKeyValueStore() {
-        let doc = AppDataDocument()
-        let encoder = JSONEncoder()
-        if let data = try? encoder.encode(doc.appData) {
-            let kvStore = NSUbiquitousKeyValueStore.default
-            kvStore.set(data, forKey: iCloudKey)
-            kvStore.synchronize()
-            
-            #if DEBUG
-            print("✅ Successfully saved data to iCloud Key-Value Store")
-            #endif
+        DispatchQueue.global(qos: .utility).async {
+            let doc = AppDataDocument()
+            let encoder = JSONEncoder()
+            if let data = try? encoder.encode(doc.appData) {
+                let kvStore = NSUbiquitousKeyValueStore.default
+                kvStore.set(data, forKey: iCloudKey)
+                
+                // Don't call synchronize() as it's blocking - let the system handle sync timing
+                // kvStore.synchronize()
+                
+                #if DEBUG
+                DispatchQueue.main.async {
+                    print("✅ Successfully saved data to iCloud Key-Value Store")
+                }
+                #endif
+            }
         }
     }
     

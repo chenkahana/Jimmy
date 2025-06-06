@@ -11,11 +11,49 @@ struct ContentView: View {
     @AppStorage("darkMode") private var darkMode: Bool = false
     @AppStorage("highContrastMode") private var highContrastMode: Bool = false
     @State private var selectedTab: Int = 3
+    @State private var isInitializing = true
     @ObservedObject private var updateService = EpisodeUpdateService.shared
     @ObservedObject private var undoManager = ShakeUndoManager.shared
 
     
     var body: some View {
+        ZStack {
+            if isInitializing {
+                // Simple loading view during initialization
+                ZStack {
+                    Color(.systemBackground)
+                        .ignoresSafeArea()
+                    
+                    VStack(spacing: 20) {
+                        Image(systemName: "waveform.circle.fill")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 80, height: 80)
+                            .foregroundStyle(Color.accentColor)
+                        
+                        Text("Jimmy")
+                            .font(.title)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.primary)
+                    }
+                }
+                .onAppear {
+                    // Hide loading view after brief delay to allow background initialization
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            isInitializing = false
+                        }
+                    }
+                }
+            } else {
+                // Main app content
+                mainAppContent
+            }
+        }
+        .preferredColorScheme(darkMode ? .dark : .light)
+    }
+    
+    private var mainAppContent: some View {
         ZStack {
             ZStack(alignment: .bottom) {
                 // Main content area with tab bar
@@ -70,9 +108,6 @@ struct ContentView: View {
                     .padding(.bottom, 88) // Position above tab bar (tab bar height ~76px + spacing)
                 }
             }
-            .preferredColorScheme(darkMode ? .dark : .light)
-            
-
             
             // Undo toast notification
             if undoManager.showUndoToast {
@@ -83,7 +118,6 @@ struct ContentView: View {
                 .zIndex(1000) // Ensure it appears above everything
             }
         }
-
     }
     
     

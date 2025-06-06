@@ -24,9 +24,17 @@ struct JimmyApp: App {
                     handleURL(url)
                 }
                 .onAppear {
-                    // Ensure background updates are running
-                    updateService.startPeriodicUpdates()
-                    setupFileImportCallback()
+                    // Defer heavy startup operations to avoid blocking UI
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        // Start background services after UI is loaded
+                        updateService.startPeriodicUpdates()
+                        
+                        // Setup shake detection for undo functionality
+                        undoManager.setupShakeDetection()
+                        
+                        // Setup file import callback
+                        setupFileImportCallback()
+                    }
                 }
                 .sheet(isPresented: $showFileImportSheet) {
                     if let audioURL = pendingAudioURL {

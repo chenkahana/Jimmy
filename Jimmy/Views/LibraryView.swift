@@ -161,27 +161,33 @@ struct LibraryView: View {
             }
         }
         .onAppear {
+            // Load basic data first (lightweight)
             loadSubscribedPodcasts()
-            loadAllEpisodesForPodcasts()
             
-            // Clean up large UserDefaults data that has been migrated to file storage
-            UserDefaultsCleanup.shared.performCleanup()
-            
-            // Fix artwork URLs for sample podcasts and refresh real ones
-            if UserDefaults.standard.bool(forKey: "artworkFixApplied") == false {
-                print("🎨 Applying one-time artwork fix...")
-                fixPodcastArtwork()
-                UserDefaults.standard.set(true, forKey: "artworkFixApplied")
+            // Defer heavy operations to avoid blocking UI
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                // Load episodes in background
+                DispatchQueue.global(qos: .userInitiated).async {
+                    self.loadAllEpisodesForPodcasts()
+                }
+                
+                // Setup notification observer
+                setupEpisodesUpdatedObserver()
             }
             
-            // Start listening for episode updates
-            episodesUpdatedObserver = NotificationCenter.default.addObserver(
-                forName: .episodesUpdated,
-                object: nil,
-                queue: .main
-            ) { _ in
-                // Refresh podcast data when episodes are updated
-                loadSubscribedPodcasts()
+            // Defer cleanup and maintenance operations even further
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                DispatchQueue.global(qos: .utility).async {
+                    // Clean up large UserDefaults data that has been migrated to file storage
+                    UserDefaultsCleanup.shared.performCleanup()
+                    
+                    // Fix artwork URLs for sample podcasts and refresh real ones
+                    if UserDefaults.standard.bool(forKey: "artworkFixApplied") == false {
+                        print("🎨 Applying one-time artwork fix...")
+                        self.fixPodcastArtwork()
+                        UserDefaults.standard.set(true, forKey: "artworkFixApplied")
+                    }
+                }
             }
         }
         .onDisappear {
@@ -528,6 +534,18 @@ struct LibraryView: View {
                 }
             }
         }.resume()
+    }
+    
+    private func setupEpisodesUpdatedObserver() {
+        // Start listening for episode updates
+        episodesUpdatedObserver = NotificationCenter.default.addObserver(
+            forName: .episodesUpdated,
+            object: nil,
+            queue: .main
+        ) { _ in
+            // Refresh podcast data when episodes are updated
+            loadSubscribedPodcasts()
+        }
     }
 }
 

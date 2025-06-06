@@ -191,6 +191,20 @@ struct SettingsView: View {
                 }
             }
 
+            Section(header: Text("Guides & Documentation")) {
+                NavigationLink(destination: DocumentationView()) {
+                    HStack {
+                        Image(systemName: "book.closed")
+                            .foregroundColor(.accentColor)
+                        Text("Browse Documentation")
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .foregroundColor(.secondary)
+                            .font(.caption)
+                    }
+                }
+            }
+            
             Section(header: Text("Feedback")) {
                 Button("Submit a Request or Bug") {
                     showingFeedbackForm = true

@@ -100,9 +100,15 @@ struct QueueView: View {
                 }
             }
             .onAppear {
-                viewModel.syncCurrentEpisodeWithQueue()
-                // Preload episodes for faster playback
-                AudioPlayerService.shared.preloadEpisodes(Array(viewModel.queue.prefix(3)))
+                // Defer heavy operations to avoid blocking UI
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    viewModel.syncCurrentEpisodeWithQueue()
+                    
+                    // Preload episodes for faster playback - but only if queue is not empty
+                    if !viewModel.queue.isEmpty {
+                        AudioPlayerService.shared.preloadEpisodes(Array(viewModel.queue.prefix(3)))
+                    }
+                }
             }
         }
         .navigationViewStyle(.stack)

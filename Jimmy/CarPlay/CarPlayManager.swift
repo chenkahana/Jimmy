@@ -27,11 +27,37 @@ final class CarPlayManager: NSObject {
 
     func reloadData() {
         guard let controller = interfaceController else { return }
-        queueTemplate = buildQueueTemplate()
-        if let template = queueTemplate {
-            controller.setRootTemplate(CPNowPlayingTemplate.shared, animated: false)
-            controller.pushTemplate(template, animated: false)
+        
+        // Only rebuild template if queue contents have actually changed
+        let newTemplate = buildQueueTemplate()
+        
+        // Compare with existing template to avoid unnecessary updates
+        if let existingTemplate = queueTemplate,
+           existingTemplate.sections.count == newTemplate.sections.count,
+           let existingItems = existingTemplate.sections.first?.items,
+           let newItems = newTemplate.sections.first?.items,
+           existingItems.count == newItems.count {
+            
+            // Check if the items are actually different - cast to CPListItem for comparison
+            let itemsChanged = zip(existingItems, newItems).contains { existing, new in
+                guard let existingItem = existing as? CPListItem,
+                      let newItem = new as? CPListItem else { return true }
+                return existingItem.text != newItem.text || existingItem.detailText != newItem.detailText
+            }
+            
+            if !itemsChanged {
+                return // No changes needed
+            }
         }
+        
+        queueTemplate = newTemplate
+        
+        // Update templates more efficiently
+        if controller.templates.count > 1 {
+            controller.popToRootTemplate(animated: false)
+        }
+        
+        controller.pushTemplate(newTemplate, animated: false)
     }
 
     /// Helper to retrieve the podcast associated with an episode

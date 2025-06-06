@@ -18,7 +18,8 @@ class EpisodeUpdateService: ObservableObject {
     private let updateInterval: TimeInterval = 900 // 15 minutes
     
     private init() {
-        startPeriodicUpdates()
+        // REMOVED: Don't start periodic updates automatically to avoid blocking app launch  
+        // startPeriodicUpdates() - This will be called manually from JimmyApp.onAppear
     }
     
     deinit {

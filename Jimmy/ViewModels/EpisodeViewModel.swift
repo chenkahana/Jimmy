@@ -13,7 +13,10 @@ class EpisodeViewModel: ObservableObject {
     
     private init() {
         loadPlayedIDs()
-        loadEpisodes()
+        // Load episodes asynchronously to avoid blocking startup
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            self?.loadEpisodes()
+        }
     }
     
     // MARK: - Episode Management
@@ -105,13 +108,17 @@ class EpisodeViewModel: ObservableObject {
     private func loadEpisodes() {
         // Try to migrate from UserDefaults first, then load from file
         if let migratedEpisodes = FileStorage.shared.migrateFromUserDefaults([Episode].self, userDefaultsKey: episodesKey, filename: "episodes.json") {
-            episodes = migratedEpisodes
-            applyPlayedIDs()
+            DispatchQueue.main.async { [weak self] in
+                self?.episodes = migratedEpisodes
+                self?.applyPlayedIDs()
+            }
         } else {
             FileStorage.shared.loadAsync([Episode].self, from: "episodes.json") { [weak self] saved in
-                if let self = self, let saved = saved {
-                    self.episodes = saved
-                    self.applyPlayedIDs()
+                DispatchQueue.main.async {
+                    if let self = self, let saved = saved {
+                        self.episodes = saved
+                        self.applyPlayedIDs()
+                    }
                 }
             }
         }
@@ -277,7 +284,7 @@ extension QueueViewModel {
     func updateEpisodeInQueue(_ episode: Episode) {
         if let index = queue.firstIndex(where: { $0.id == episode.id }) {
             queue[index] = episode
-            saveQueue()
+            debouncedSaveQueue()
         }
     }
 } 
