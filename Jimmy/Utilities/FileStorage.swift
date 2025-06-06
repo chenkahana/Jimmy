@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(OSLog)
+import OSLog
+#endif
 
 /// Utility for storing large data in files instead of UserDefaults
 /// UserDefaults has a 4MB limit, so we use file storage for larger datasets
@@ -8,6 +11,9 @@ class FileStorage {
     private let fileManager = FileManager.default
     private let documentsDirectory: URL
     private let ioQueue = DispatchQueue(label: "file-storage-io", qos: .utility)
+#if canImport(OSLog)
+    private let logger = Logger(subsystem: "com.jimmy.app", category: "filestorage")
+#endif
     
     private init() {
         documentsDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask)[0]
@@ -31,15 +37,27 @@ class FileStorage {
 
             // Ensure we have at least 5MB free before attempting to write.
             if !hasEnoughDiskSpace(for: data.count) {
+#if canImport(OSLog)
+                logger.warning("Not enough disk space to save \(filename, privacy: .public). Skipping write")
+#else
                 print("⚠️ Not enough disk space to save \(filename). Skipping write")
+#endif
                 return false
             }
 
             try data.write(to: url)
+#if canImport(OSLog)
+            logger.info("Saved \(filename, privacy: .public) (\(data.count) bytes)")
+#else
             print("💾 Saved \(filename) (\(data.count) bytes)")
+#endif
             return true
         } catch {
+            #if canImport(OSLog)
+            logger.error("Failed to save \(filename, privacy: .public): \(error.localizedDescription, privacy: .public)")
+            #else
             print("❌ Failed to save \(filename): \(error.localizedDescription)")
+            #endif
             return false
         }
     }
@@ -55,13 +73,21 @@ class FileStorage {
         do {
             let data = try Data(contentsOf: url)
             let object = try JSONDecoder().decode(type, from: data)
+#if canImport(OSLog)
+            logger.info("Loaded \(filename, privacy: .public) (\(data.count) bytes)")
+#else
             print("📱 Loaded \(filename) (\(data.count) bytes)")
+#endif
             return object
         } catch {
             // Move the corrupted file aside so future loads don't keep failing
             let corruptURL = url.appendingPathExtension("corrupt")
             try? fileManager.moveItem(at: url, to: corruptURL)
+            #if canImport(OSLog)
+            logger.error("Failed to load \(filename, privacy: .public): \(error.localizedDescription, privacy: .public). Moved to \(corruptURL.lastPathComponent, privacy: .public)")
+            #else
             print("❌ Failed to load \(filename): \(error.localizedDescription). Moved to \(corruptURL.lastPathComponent)")
+            #endif
             return nil
         }
     }
@@ -76,10 +102,18 @@ class FileStorage {
         
         do {
             try fileManager.removeItem(at: url)
+#if canImport(OSLog)
+            logger.info("Deleted \(filename, privacy: .public)")
+#else
             print("🗑️ Deleted \(filename)")
+#endif
             return true
         } catch {
+            #if canImport(OSLog)
+            logger.error("Failed to delete \(filename, privacy: .public): \(error.localizedDescription, privacy: .public)")
+            #else
             print("❌ Failed to delete \(filename): \(error.localizedDescription)")
+            #endif
             return false
         }
     }
@@ -123,7 +157,11 @@ class FileStorage {
         if save(object, to: filename) {
             // Clear from UserDefaults to free up space
             UserDefaults.standard.removeObject(forKey: userDefaultsKey)
+#if canImport(OSLog)
+            logger.info("Migrated \(userDefaultsKey, privacy: .public) from UserDefaults to file storage")
+#else
             print("📦 Migrated \(userDefaultsKey) from UserDefaults to file storage")
+#endif
             return object
         }
         
