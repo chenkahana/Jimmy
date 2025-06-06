@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(FoundationXML)
+import FoundationXML
+#endif
 
 class OPMLParser: NSObject, XMLParserDelegate {
     private var podcasts: [Podcast] = []
