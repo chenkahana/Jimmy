@@ -57,6 +57,17 @@ class SubscriptionImportService {
             .replacingOccurrences(of: "⁩", with: "")
             .trimmingCharacters(in: .whitespacesAndNewlines)
         
+        // If the string itself is just a URL, treat it as an RSS/Apple URL
+        if cleanString.hasPrefix("http://") || cleanString.hasPrefix("https://") {
+            // Use host as a placeholder title
+            if let url = URL(string: cleanString) {
+                let hostTitle = url.host ?? cleanString
+                return ParsedPodcast(title: hostTitle, author: "Unknown", appleURL: cleanString)
+            } else {
+                return nil
+            }
+        }
+
         // Extract URL if present (between parentheses)
         var title: String = ""
         var author: String = ""
