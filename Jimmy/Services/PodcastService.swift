@@ -34,7 +34,7 @@ class PodcastService {
             // Handle timeout or network errors
             if let error = error {
                 #if DEBUG
-                print("⚠️ RSS Feed fetch error for \(podcast.title): \(error.localizedDescription)")
+                AppLogger.error("⚠️ RSS Feed fetch error for \(podcast.title): \(error.localizedDescription)", category: .network)
                 #endif
                 
                 DispatchQueue.main.async {
@@ -47,7 +47,7 @@ class PodcastService {
             if let httpResponse = response as? HTTPURLResponse {
                 guard httpResponse.statusCode == 200 else {
                     #if DEBUG
-                    print("⚠️ RSS Feed HTTP error for \(podcast.title): \(httpResponse.statusCode)")
+                    AppLogger.error("⚠️ RSS Feed HTTP error for \(podcast.title): \(httpResponse.statusCode)", category: .network)
                     #endif
                     
                     DispatchQueue.main.async {
@@ -59,7 +59,7 @@ class PodcastService {
             
             guard let data = data else {
                 #if DEBUG
-                print("⚠️ No data received for RSS feed: \(podcast.title)")
+                AppLogger.error("⚠️ No data received for RSS feed: \(podcast.title)", category: .network)
                 #endif
                 
                 DispatchQueue.main.async {
@@ -75,11 +75,11 @@ class PodcastService {
             // This prevents episode artwork from being used as podcast artwork
             if let artworkURLString = parser.getPodcastArtworkURL(), 
                let artworkURL = URL(string: artworkURLString) {
-                print("🎨 Auto-updating podcast artwork for \(podcast.title)")
-                print("   RSS Channel Artwork: \(artworkURL.absoluteString)")
+                AppLogger.info("🎨 Auto-updating podcast artwork for \(podcast.title)", category: .network)
+                AppLogger.info("   RSS Channel Artwork: \(artworkURL.absoluteString)", category: .network)
                 self.updatePodcastArtwork(podcast: podcast, artworkURL: artworkURL)
             } else {
-                print("⚠️ No channel artwork found in RSS for \(podcast.title) - keeping existing artwork")
+                AppLogger.info("⚠️ No channel artwork found in RSS for \(podcast.title) - keeping existing artwork", category: .network)
             }
             
             // Update the podcast's lastEpisodeDate with the most recent episode
@@ -106,14 +106,14 @@ class PodcastService {
             savePodcasts(podcasts)
             
             if oldURL != newURL {
-                print("🎨 ✅ Updated artwork for '\(podcast.title)'")
-                print("   Old: \(oldURL)")
-                print("   New: \(newURL)")
+                AppLogger.info("🎨 ✅ Updated artwork for '\(podcast.title)'", category: .network)
+                AppLogger.info("   Old: \(oldURL)", category: .network)
+                AppLogger.info("   New: \(newURL)", category: .network)
             } else {
-                print("🎨 ℹ️ Refreshed artwork for '\(podcast.title)' (same URL)")
+                AppLogger.info("🎨 ℹ️ Refreshed artwork for '\(podcast.title)' (same URL)", category: .network)
             }
         } else {
-            print("⚠️ Podcast not found for artwork update: \(podcast.title)")
+            AppLogger.info("⚠️ Podcast not found for artwork update: \(podcast.title)", category: .network)
         }
     }
 
@@ -128,12 +128,12 @@ class PodcastService {
 
     // Force refresh podcast metadata (title, author, description, artwork) from RSS feed
     func refreshPodcastMetadata(for podcast: Podcast, completion: @escaping (Bool) -> Void) {
-        print("🔍 Refreshing metadata for: \(podcast.title)")
-        print("🎨 Current artwork URL: \(podcast.artworkURL?.absoluteString ?? "nil")")
+        AppLogger.info("🔍 Refreshing metadata for: \(podcast.title)", category: .network)
+        AppLogger.info("🎨 Current artwork URL: \(podcast.artworkURL?.absoluteString ?? "nil")", category: .network)
         
         URLSession.shared.dataTask(with: podcast.feedURL) { data, response, error in
             guard let data = data, error == nil else {
-                print("❌ Failed to fetch RSS for \(podcast.title): \(error?.localizedDescription ?? "unknown error")")
+                AppLogger.error("❌ Failed to fetch RSS for \(podcast.title): \(error?.localizedDescription ?? "unknown error")", category: .network)
                 DispatchQueue.main.async { completion(false) }
                 return
             }
@@ -143,7 +143,7 @@ class PodcastService {
             
             var podcasts = self.loadPodcasts()
             guard let index = podcasts.firstIndex(where: { $0.id == podcast.id }) else {
-                print("❌ Podcast not found in saved podcasts: \(podcast.title)")
+                AppLogger.error("❌ Podcast not found in saved podcasts: \(podcast.title)", category: .network)
                 DispatchQueue.main.async { completion(false) }
                 return
             }
@@ -156,39 +156,39 @@ class PodcastService {
                 let oldArtwork = podcasts[index].artworkURL?.absoluteString ?? "nil"
                 podcasts[index].artworkURL = artworkURL
                 wasUpdated = true
-                print("🎨 Updated artwork for \(podcast.title)")
-                print("   Old: \(oldArtwork)")
-                print("   New: \(artworkURL.absoluteString)")
+                AppLogger.info("🎨 Updated artwork for \(podcast.title)", category: .network)
+                AppLogger.info("   Old: \(oldArtwork)", category: .network)
+                AppLogger.info("   New: \(artworkURL.absoluteString)", category: .network)
             } else {
-                print("⚠️ No artwork URL found in RSS for \(podcast.title)")
+                AppLogger.info("⚠️ No artwork URL found in RSS for \(podcast.title)", category: .network)
             }
             
             // Update title if different
             if let newTitle = parser.getPodcastTitle(), newTitle != podcasts[index].title {
                 podcasts[index].title = newTitle
                 wasUpdated = true
-                print("📝 Updated title for \(podcast.title) -> \(newTitle)")
+                AppLogger.info("📝 Updated title for \(podcast.title) -> \(newTitle)", category: .network)
             }
             
             // Update author if different  
             if let newAuthor = parser.getPodcastAuthor(), newAuthor != podcasts[index].author {
                 podcasts[index].author = newAuthor
                 wasUpdated = true
-                print("👤 Updated author for \(podcast.title) -> \(newAuthor)")
+                AppLogger.info("👤 Updated author for \(podcast.title) -> \(newAuthor)", category: .network)
             }
             
             // Update description if different
             if let newDescription = parser.getPodcastDescription(), newDescription != podcasts[index].description {
                 podcasts[index].description = newDescription
                 wasUpdated = true
-                print("📄 Updated description for \(podcast.title)")
+                AppLogger.info("📄 Updated description for \(podcast.title)", category: .network)
             }
             
             if wasUpdated {
                 self.savePodcasts(podcasts)
-                print("✅ Successfully updated metadata for \(podcast.title)")
+                AppLogger.info("✅ Successfully updated metadata for \(podcast.title)", category: .network)
             } else {
-                print("ℹ️ No changes needed for \(podcast.title)")
+                AppLogger.info("ℹ️ No changes needed for \(podcast.title)", category: .network)
             }
             
             DispatchQueue.main.async { completion(wasUpdated) }
@@ -294,7 +294,7 @@ class PodcastService {
             return
         }
         
-        print("🔄 Starting artwork refresh for \(podcasts.count) podcasts")
+        AppLogger.info("🔄 Starting artwork refresh for \(podcasts.count) podcasts", category: .network)
         
         let dispatchGroup = DispatchGroup()
         var updatedCount = 0
@@ -303,7 +303,7 @@ class PodcastService {
         for podcast in podcasts {
             dispatchGroup.enter()
             
-            print("🔍 Processing: \(podcast.title)")
+            AppLogger.info("🔍 Processing: \(podcast.title)", category: .network)
             
             URLSession.shared.dataTask(with: podcast.feedURL) { data, response, error in
                 defer {
@@ -312,7 +312,7 @@ class PodcastService {
                 }
                 
                 guard let data = data, error == nil else {
-                    print("❌ Failed to fetch RSS for \(podcast.title): \(error?.localizedDescription ?? "unknown")")
+                    AppLogger.error("❌ Failed to fetch RSS for \(podcast.title): \(error?.localizedDescription ?? "unknown")", category: .network)
                     return
                 }
                 
@@ -329,18 +329,18 @@ class PodcastService {
                         self.savePodcasts(podcasts)
                         updatedCount += 1
                         
-                        print("✅ Updated \(podcast.title)")
-                        print("   Old: \(oldURL)")
-                        print("   New: \(artworkURL.absoluteString)")
+                        AppLogger.info("✅ Updated \(podcast.title)", category: .network)
+                        AppLogger.info("   Old: \(oldURL)", category: .network)
+                        AppLogger.info("   New: \(artworkURL.absoluteString)", category: .network)
                     }
                 } else {
-                    print("⚠️ No artwork found for \(podcast.title)")
+                    AppLogger.info("⚠️ No artwork found for \(podcast.title)", category: .network)
                 }
             }.resume()
         }
         
         dispatchGroup.notify(queue: .main) {
-            print("🎨 Artwork refresh complete: \(updatedCount) of \(totalProcessed) updated")
+            AppLogger.info("🎨 Artwork refresh complete: \(updatedCount) of \(totalProcessed) updated", category: .network)
             completion(updatedCount, totalProcessed)
         }
     }

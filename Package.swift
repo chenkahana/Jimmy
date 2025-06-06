@@ -15,6 +15,7 @@ let package = Package(
             path: "Jimmy/Utilities",
             sources: [
                 "FileStorage.swift",
+                "AppLogger.swift",
                 "SpotifyListParser.swift",
                 "UserDataService.swift",
                 "../Models/Podcast.swift"

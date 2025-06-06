@@ -28,10 +28,10 @@ class FileStorage {
         do {
             let data = try JSONEncoder().encode(object)
             try data.write(to: url)
-            print("💾 Saved \(filename) (\(data.count) bytes)")
+            AppLogger.info("💾 Saved \(filename) (\(data.count) bytes)", category: .storage)
             return true
         } catch {
-            print("❌ Failed to save \(filename): \(error.localizedDescription)")
+            AppLogger.error("❌ Failed to save \(filename): \(error.localizedDescription)", category: .storage)
             return false
         }
     }
@@ -47,10 +47,10 @@ class FileStorage {
         do {
             let data = try Data(contentsOf: url)
             let object = try JSONDecoder().decode(type, from: data)
-            print("📱 Loaded \(filename) (\(data.count) bytes)")
+            AppLogger.info("📱 Loaded \(filename) (\(data.count) bytes)", category: .storage)
             return object
         } catch {
-            print("❌ Failed to load \(filename): \(error.localizedDescription)")
+            AppLogger.error("❌ Failed to load \(filename): \(error.localizedDescription)", category: .storage)
             return nil
         }
     }
@@ -65,10 +65,10 @@ class FileStorage {
         
         do {
             try fileManager.removeItem(at: url)
-            print("🗑️ Deleted \(filename)")
+            AppLogger.info("🗑️ Deleted \(filename)", category: .storage)
             return true
         } catch {
-            print("❌ Failed to delete \(filename): \(error.localizedDescription)")
+            AppLogger.error("❌ Failed to delete \(filename): \(error.localizedDescription)", category: .storage)
             return false
         }
     }
@@ -112,7 +112,7 @@ class FileStorage {
         if save(object, to: filename) {
             // Clear from UserDefaults to free up space
             UserDefaults.standard.removeObject(forKey: userDefaultsKey)
-            print("📦 Migrated \(userDefaultsKey) from UserDefaults to file storage")
+            AppLogger.info("📦 Migrated \(userDefaultsKey) from UserDefaults to file storage", category: .storage)
             return object
         }
         

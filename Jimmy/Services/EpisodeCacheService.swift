@@ -77,7 +77,7 @@ class EpisodeCacheService: ObservableObject {
             
             // Check cache first (unless force refresh is requested)
             if !forceRefresh, let cachedEntry = self.episodeCache[podcastID], !cachedEntry.isExpired {
-                print("📱 Using cached episodes for \(podcast.title) (age: \(Int(cachedEntry.age/60))m)")
+                AppLogger.info("📱 Using cached episodes for \(podcast.title) (age: \(Int(cachedEntry.age/60))m)", category: .storage)
                 
                 DispatchQueue.main.async {
                     self.isLoadingEpisodes[podcastID] = false
@@ -88,7 +88,7 @@ class EpisodeCacheService: ObservableObject {
             
             // Cache miss or expired - fetch fresh data
             let cacheAge = self.episodeCache[podcastID]?.age ?? 0
-            print("🌐 Fetching fresh episodes for \(podcast.title) (cache age: \(Int(cacheAge/60))m, force: \(forceRefresh))")
+            AppLogger.info("🌐 Fetching fresh episodes for \(podcast.title) (cache age: \(Int(cacheAge/60))m, force: \(forceRefresh))", category: .network)
             
             self.fetchAndCacheEpisodes(for: podcast) { episodes, error in
                 DispatchQueue.main.async {
@@ -99,7 +99,7 @@ class EpisodeCacheService: ObservableObject {
                         
                         // If we have stale cache data, return it as fallback
                         if let staleEntry = self.episodeCache[podcastID] {
-                            print("⚠️ Using stale cache as fallback for \(podcast.title)")
+                            AppLogger.info("⚠️ Using stale cache as fallback for \(podcast.title)", category: .storage)
                             completion(staleEntry.episodes)
                         } else {
                             completion([])
@@ -203,7 +203,7 @@ class EpisodeCacheService: ObservableObject {
                 self.episodeCache[podcast.id] = entry
                 self.saveCacheToDisk()
                 
-                print("💾 Cached \(episodes.count) episodes for \(podcast.title)")
+                AppLogger.info("💾 Cached \(episodes.count) episodes for \(podcast.title)", category: .storage)
             }
             
             completion(episodes, nil)
@@ -241,7 +241,7 @@ class EpisodeCacheService: ObservableObject {
         
         // First try to migrate old format from UserDefaults
         if UserDefaults.standard.object(forKey: persistenceKey) != nil {
-            print("📦 Migrating cache from UserDefaults to file storage...")
+            AppLogger.info("📦 Migrating cache from UserDefaults to file storage...", category: .storage)
             if let oldData = UserDefaults.standard.object(forKey: persistenceKey) as? [String: [String: Any]] {
                 // Convert old format to new format
                 var entries: [String: CacheData] = [:]
@@ -269,7 +269,7 @@ class EpisodeCacheService: ObservableObject {
                 // Save to new format and clear UserDefaults
                 if !entries.isEmpty {
                     _ = FileStorage.shared.save(container!, to: "episodeCache.json")
-                    print("📦 Successfully migrated \(entries.count) cache entries")
+                    AppLogger.info("📦 Successfully migrated \(entries.count) cache entries", category: .storage)
                 }
                 UserDefaults.standard.removeObject(forKey: persistenceKey)
             }
@@ -304,7 +304,7 @@ class EpisodeCacheService: ObservableObject {
         }
         
         episodeCache = loadedCache
-        print("📱 Loaded episode cache with \(episodeCache.count) entries from file storage")
+        AppLogger.info("📱 Loaded episode cache with \(episodeCache.count) entries from file storage", category: .storage)
     }
     
     // MARK: - Cache Maintenance
@@ -330,7 +330,7 @@ class EpisodeCacheService: ObservableObject {
             let removedCount = originalCount - self.episodeCache.count
             
             if removedCount > 0 {
-                print("🧹 Cleaned up \(removedCount) old cache entries")
+                AppLogger.info("🧹 Cleaned up \(removedCount) old cache entries", category: .storage)
                 self.saveCacheToDisk()
             }
         }
