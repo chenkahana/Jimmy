@@ -12,12 +12,16 @@ let package = Package(
     targets: [
         .target(
             name: "JimmyUtilities",
-            path: "Jimmy/Utilities",
+            path: "Jimmy",
             sources: [
-                "FileStorage.swift",
-                "SpotifyListParser.swift",
-                "UserDataService.swift",
-                "../Models/Podcast.swift"
+                "Utilities/FileStorage.swift",
+                "Utilities/SpotifyListParser.swift",
+                "Utilities/UserDataService.swift",
+                "Utilities/AppleBulkImportParser.swift",
+                "Utilities/GoogleTakeoutParser.swift",
+                "Utilities/OPMLParser.swift",
+                "Utilities/StringExtensions.swift",
+                "Models/Podcast.swift"
             ]
         ),
         .testTarget(
