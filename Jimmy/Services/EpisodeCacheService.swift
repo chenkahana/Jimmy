@@ -84,7 +84,7 @@ class EpisodeCacheService: ObservableObject {
             // Check cache first (unless force refresh is requested)
             if !forceRefresh, let cachedEntry = self.episodeCache[podcastID], !cachedEntry.isExpired {
                 #if canImport(OSLog)
-                logger.info("Using cached episodes for \(podcast.title, privacy: .public) (age: \(Int(cachedEntry.age/60))m)")
+                self.logger.info("Using cached episodes for \(podcast.title, privacy: .public) (age: \(Int(cachedEntry.age/60))m)")
                 #else
                 print("📱 Using cached episodes for \(podcast.title) (age: \(Int(cachedEntry.age/60))m)")
                 #endif
@@ -100,7 +100,7 @@ class EpisodeCacheService: ObservableObject {
             if !NetworkMonitor.shared.isConnected {
                 if let cachedEntry = self.episodeCache[podcastID] {
                     #if canImport(OSLog)
-                    logger.info("Offline - using cached episodes for \(podcast.title, privacy: .public)")
+                    self.logger.info("Offline - using cached episodes for \(podcast.title, privacy: .public)")
                     #else
                     print("📡 Offline - using cached episodes for \(podcast.title)")
                     #endif
@@ -123,7 +123,7 @@ class EpisodeCacheService: ObservableObject {
             // Cache miss or expired - fetch fresh data
             let cacheAge = self.episodeCache[podcastID]?.age ?? 0
             #if canImport(OSLog)
-            logger.info("Fetching fresh episodes for \(podcast.title, privacy: .public) (cache age: \(Int(cacheAge/60))m, force: \(forceRefresh))")
+            self.logger.info("Fetching fresh episodes for \(podcast.title, privacy: .public) (cache age: \(Int(cacheAge/60))m, force: \(forceRefresh))")
             #else
             print("🌐 Fetching fresh episodes for \(podcast.title) (cache age: \(Int(cacheAge/60))m, force: \(forceRefresh))")
             #endif
@@ -229,7 +229,12 @@ class EpisodeCacheService: ObservableObject {
             }
         }
     }
-    
+
+    /// Manually trigger migration from legacy UserDefaults storage
+    func migrateLegacyCacheIfNeeded() {
+        _ = migrateLegacyCache()
+    }
+
     // MARK: - Private Methods
     
     private func fetchAndCacheEpisodes(
@@ -274,10 +279,10 @@ class EpisodeCacheService: ObservableObject {
     // MARK: - Persistence
     
     private func saveCacheToDisk() {
-        guard !episodeCache.isEmpty else { 
+        guard !episodeCache.isEmpty else {
             // Delete cache file if cache is empty
             _ = FileStorage.shared.delete("episodeCache.json")
-            return 
+            return
         }
         
         // Convert cache to Codable format
@@ -311,6 +316,54 @@ class EpisodeCacheService: ObservableObject {
             print("⚠️ Episode cache not saved due to storage issue")
             #endif
         }
+    }
+
+    /// Migrate cache from legacy UserDefaults storage if present
+    @discardableResult
+    func migrateLegacyCache() -> CacheContainer? {
+        guard let oldData = UserDefaults.standard.object(forKey: persistenceKey) as? [String: [String: Any]] else {
+            return nil
+        }
+
+#if canImport(OSLog)
+        self.logger.info("Migrating cache from UserDefaults to file storage...")
+#else
+        print("📦 Migrating cache from UserDefaults to file storage...")
+#endif
+
+        var entries: [String: CacheData] = [:]
+
+        for (uuidString, entryData) in oldData {
+            guard let episodesBase64 = entryData["episodes"] as? String,
+                  let episodesData = Data(base64Encoded: episodesBase64),
+                  let episodes = try? JSONDecoder().decode([Episode].self, from: episodesData),
+                  let timestampInterval = entryData["timestamp"] as? TimeInterval else {
+                continue
+            }
+
+            let lastModified = entryData["lastModified"] as? String
+
+            let cacheData = CacheData(
+                episodes: episodes,
+                timestamp: timestampInterval,
+                lastModified: lastModified
+            )
+            entries[uuidString] = cacheData
+        }
+
+        let container = CacheContainer(entries: entries)
+
+        if !entries.isEmpty {
+            _ = FileStorage.shared.save(container, to: "episodeCache.json")
+#if canImport(OSLog)
+            self.logger.info("Successfully migrated \(entries.count) cache entries")
+#else
+            print("📦 Successfully migrated \(entries.count) cache entries")
+#endif
+        }
+        UserDefaults.standard.removeObject(forKey: persistenceKey)
+
+        return entries.isEmpty ? nil : container
     }
     
     private func loadCacheFromDisk() {

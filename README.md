@@ -14,11 +14,10 @@ A minimalist, queue-centric iOS podcast app inspired by Google Podcasts with enh
 - ✅ **Offline fallback** with cached episodes when network is unavailable
 - ✅ **Crash and error logging** with exportable log file
 
-### ⚠️ Lock-Screen Widget - **IMPLEMENTATION COMPLETE, SETUP REQUIRED**
+### ✅ Lock-Screen Widget - **FULLY INTEGRATED**
 - ✅ **Widget code fully implemented** and tested
-- ✅ **Data synchronization** between app and widget ready
-- ⚠️ **Widget files temporarily in `WidgetFiles/`** directory
-- ⚠️ **Requires Xcode Widget Extension target setup**
+- ✅ **Data synchronization** between app and widget via App Groups
+- ✅ **Widget extension target configured** in Xcode
 - 📋 **Detailed setup guide** available in `Jimmy/WIDGET_README.md`
 
 ### ⚠️ Apple Watch App - **IN PROGRESS**
@@ -80,13 +79,11 @@ Jimmy is a personal podcast app for iPhone, designed for simplicity, speed, and 
 5. Start adding episodes to your queue and enjoy listening!
 
 ### Widget Setup (Optional)
-The lock-screen widget is fully implemented but requires Xcode project setup:
+The lock-screen widget ships as a separate extension. To rebuild or modify:
 
 1. **See detailed instructions** in `Jimmy/WIDGET_README.md`
-2. **Create Widget Extension target** in Xcode
-3. **Move widget files** from `WidgetFiles/` directory
-4. **Configure App Groups** for data sharing
-5. **Build and test** on physical device
+2. **Ensure App Groups** `group.com.chenkahana.jimmy` are enabled
+3. **Build and test** on a physical device
 
 ## 📋 Build Information
 
@@ -99,8 +96,8 @@ The lock-screen widget is fully implemented but requires Xcode project setup:
 - 🆕 **Fixed memory leaks identified with Instruments**
 
 ### Build Status:
-- **Main App**: ✅ Builds successfully 
-- **Widget Extension**: ⚠️ Requires Xcode target setup
+- **Main App**: ✅ Builds successfully
+- **Widget Extension**: ✅ Builds successfully
 - **Dependencies**: ✅ All resolved
 - **Code Signing**: ✅ Configured
 
@@ -129,11 +126,12 @@ Jimmy/
 │   ├── Services/            # Logic for syncing, importing, backup, audio playback
 │   │   └── WidgetDataService.swift  # Widget data sharing
 │   └── Utilities/           # Helpers (accessibility, parsers, etc.)
-├── WidgetFiles/             # Widget implementation (to be moved to extension)
+├── JimmyWidgetExtension/    # Widget extension target
 │   ├── JimmyWidgetBundle.swift
 │   ├── JimmyWidgetExtension.swift
 │   ├── WidgetIntents.swift
-│   └── Configuration files
+│   ├── Info.plist
+│   └── JimmyWidgetExtension.entitlements
 ├── WatchFiles/              # Apple Watch app implementation files
 │   ├── JimmyWatchApp.swift
 │   ├── WatchContentView.swift
