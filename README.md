@@ -2,7 +2,7 @@
 
 A minimalist, queue-centric iOS podcast app inspired by Google Podcasts with enhanced search and subscription capabilities, featuring a lock-screen widget for seamless playback control.
 
-## 🚨 Current Project Status (Updated May 2025)
+## 🚨 Current Project Status (Updated June 2025)
 
 ### ✅ Main App - **FULLY FUNCTIONAL**
 - ✅ **Builds successfully** with no errors
@@ -11,6 +11,8 @@ A minimalist, queue-centric iOS podcast app inspired by Google Podcasts with enh
 - ✅ **Queue management** and episode tracking
 - ✅ **Import functionality** (OPML, Apple Podcasts, Google Takeout)
 - ✅ **Modern SwiftUI interface** with dark mode support
+- ✅ **Offline fallback** with cached episodes when network is unavailable
+- ✅ **Crash and error logging** with exportable log file
 
 ### ✅ Lock-Screen Widget - **FULLY INTEGRATED**
 - ✅ **Widget code fully implemented** and tested
@@ -177,4 +179,4 @@ This project is for personal use and educational purposes.
 
 ---
 
-**🎉 Ready to Use**: The main app is fully functional and ready for use. The lock-screen widget is implemented and ready for Xcode setup following the guide in `WIDGET_README.md`. The Apple Watch companion is provided as sample code and needs an Xcode Watch App target to run.
+**🎉 Ready to Use**: The main app is fully functional and ready for use. The lock-screen widget is implemented and ready for Xcode setup following the guide in `WIDGET_README.md`. The Apple Watch companion is provided as sample code and needs an Xcode Watch App target to run. Version 2 is now stable with comprehensive tests and error monitoring.

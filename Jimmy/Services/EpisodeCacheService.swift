@@ -1,5 +1,8 @@
 import Foundation
 import SwiftUI
+#if canImport(OSLog)
+import OSLog
+#endif
 
 /// Service that manages caching of episodes for individual podcasts
 class EpisodeCacheService: ObservableObject {
@@ -37,6 +40,9 @@ class EpisodeCacheService: ObservableObject {
     private var episodeCache: [UUID: CacheEntry] = [:]
     private let cacheQueue = DispatchQueue(label: "episode-cache-queue", qos: .userInitiated, attributes: .concurrent)
     private let persistenceKey = "episodeCacheData"
+#if canImport(OSLog)
+    private let logger = Logger(subsystem: "com.jimmy.app", category: "cache")
+#endif
     
     // MARK: - Published Properties
     
@@ -77,7 +83,11 @@ class EpisodeCacheService: ObservableObject {
             
             // Check cache first (unless force refresh is requested)
             if !forceRefresh, let cachedEntry = self.episodeCache[podcastID], !cachedEntry.isExpired {
+                #if canImport(OSLog)
+                logger.info("Using cached episodes for \(podcast.title, privacy: .public) (age: \(Int(cachedEntry.age/60))m)")
+                #else
                 print("📱 Using cached episodes for \(podcast.title) (age: \(Int(cachedEntry.age/60))m)")
+                #endif
                 
                 DispatchQueue.main.async {
                     self.isLoadingEpisodes[podcastID] = false
@@ -89,7 +99,11 @@ class EpisodeCacheService: ObservableObject {
             // If offline, return cached data if available
             if !NetworkMonitor.shared.isConnected {
                 if let cachedEntry = self.episodeCache[podcastID] {
+                    #if canImport(OSLog)
+                    logger.info("Offline - using cached episodes for \(podcast.title, privacy: .public)")
+                    #else
                     print("📡 Offline - using cached episodes for \(podcast.title)")
+                    #endif
                     DispatchQueue.main.async {
                         self.isLoadingEpisodes[podcastID] = false
                         self.loadingErrors[podcastID] = "You appear to be offline. Showing cached episodes."
@@ -108,7 +122,11 @@ class EpisodeCacheService: ObservableObject {
 
             // Cache miss or expired - fetch fresh data
             let cacheAge = self.episodeCache[podcastID]?.age ?? 0
+            #if canImport(OSLog)
+            logger.info("Fetching fresh episodes for \(podcast.title, privacy: .public) (cache age: \(Int(cacheAge/60))m, force: \(forceRefresh))")
+            #else
             print("🌐 Fetching fresh episodes for \(podcast.title) (cache age: \(Int(cacheAge/60))m, force: \(forceRefresh))")
+            #endif
             
             self.fetchAndCacheEpisodes(for: podcast) { episodes, error in
                 DispatchQueue.main.async {
@@ -119,7 +137,11 @@ class EpisodeCacheService: ObservableObject {
                         
                         // If we have stale cache data, return it as fallback
                         if let staleEntry = self.episodeCache[podcastID] {
+                            #if canImport(OSLog)
+                            logger.warning("Using stale cache as fallback for \(podcast.title, privacy: .public)")
+                            #else
                             print("⚠️ Using stale cache as fallback for \(podcast.title)")
+                            #endif
                             completion(staleEntry.episodes)
                         } else {
                             completion([])
@@ -237,8 +259,12 @@ class EpisodeCacheService: ObservableObject {
                 
                 self.episodeCache[podcast.id] = entry
                 self.saveCacheToDisk()
-                
+
+                #if canImport(OSLog)
+                logger.info("Cached \(episodes.count) episodes for \(podcast.title, privacy: .public)")
+                #else
                 print("💾 Cached \(episodes.count) episodes for \(podcast.title)")
+                #endif
             }
             
             completion(episodes, nil)
@@ -269,9 +295,17 @@ class EpisodeCacheService: ObservableObject {
         let container = CacheContainer(entries: entries)
         if FileStorage.shared.save(container, to: "episodeCache.json") {
             let mem = formatBytes(getCacheMemoryUsage())
+#if canImport(OSLog)
+            logger.info("Episode cache persisted (\(mem) in memory)")
+#else
             print("💾 Episode cache persisted (\(mem) in memory)")
+#endif
         } else {
+            #if canImport(OSLog)
+            logger.error("Episode cache not saved due to storage issue")
+            #else
             print("⚠️ Episode cache not saved due to storage issue")
+            #endif
         }
     }
 
@@ -282,7 +316,11 @@ class EpisodeCacheService: ObservableObject {
             return nil
         }
 
+#if canImport(OSLog)
+        logger.info("Migrating cache from UserDefaults to file storage...")
+#else
         print("📦 Migrating cache from UserDefaults to file storage...")
+#endif
 
         var entries: [String: CacheData] = [:]
 
@@ -308,7 +346,11 @@ class EpisodeCacheService: ObservableObject {
 
         if !entries.isEmpty {
             _ = FileStorage.shared.save(container, to: "episodeCache.json")
+#if canImport(OSLog)
+            logger.info("Successfully migrated \(entries.count) cache entries")
+#else
             print("📦 Successfully migrated \(entries.count) cache entries")
+#endif
         }
         UserDefaults.standard.removeObject(forKey: persistenceKey)
 
@@ -348,7 +390,11 @@ class EpisodeCacheService: ObservableObject {
         }
         
         episodeCache = loadedCache
+        #if canImport(OSLog)
+        logger.info("Loaded episode cache with \(episodeCache.count) entries from file storage")
+        #else
         print("📱 Loaded episode cache with \(episodeCache.count) entries from file storage")
+        #endif
     }
     
     // MARK: - Cache Maintenance
@@ -374,7 +420,11 @@ class EpisodeCacheService: ObservableObject {
             let removedCount = originalCount - self.episodeCache.count
             
             if removedCount > 0 {
+                #if canImport(OSLog)
+                logger.info("Cleaned up \(removedCount) old cache entries")
+                #else
                 print("🧹 Cleaned up \(removedCount) old cache entries")
+                #endif
                 self.saveCacheToDisk()
             }
         }
