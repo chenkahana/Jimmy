@@ -52,6 +52,9 @@ struct SettingsView: View {
                         Text("2x").tag(2.0)
                     }
                     .pickerStyle(MenuPickerStyle())
+                    .onChange(of: playbackSpeed) { newValue in
+                        AudioPlayerService.shared.updatePlaybackSpeed(newValue)
+                    }
                 }
             }
             Section(header: Text("Appearance")) {
@@ -222,6 +225,9 @@ struct SettingsView: View {
             }
         }
         .navigationTitle("Settings")
+        .onAppear {
+            AudioPlayerService.shared.updatePlaybackSpeed(playbackSpeed)
+        }
         .fileExporter(isPresented: $isExporting, document: AppDataDocument(), contentType: .json, defaultFilename: "JimmyBackup") { result in
             if case .failure(let error) = result {
                 importError = error.localizedDescription
