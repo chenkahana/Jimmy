@@ -138,7 +138,7 @@ class EpisodeCacheService: ObservableObject {
                         // If we have stale cache data, return it as fallback
                         if let staleEntry = self.episodeCache[podcastID] {
                             #if canImport(OSLog)
-                            logger.warning("Using stale cache as fallback for \(podcast.title, privacy: .public)")
+                            self.logger.warning("Using stale cache as fallback for \(podcast.title, privacy: .public)")
                             #else
                             print("⚠️ Using stale cache as fallback for \(podcast.title)")
                             #endif
@@ -261,7 +261,7 @@ class EpisodeCacheService: ObservableObject {
                 self.saveCacheToDisk()
 
                 #if canImport(OSLog)
-                logger.info("Cached \(episodes.count) episodes for \(podcast.title, privacy: .public)")
+                self.logger.info("Cached \(episodes.count) episodes for \(podcast.title, privacy: .public)")
                 #else
                 print("💾 Cached \(episodes.count) episodes for \(podcast.title)")
                 #endif
@@ -300,13 +300,13 @@ class EpisodeCacheService: ObservableObject {
             let mem = formatBytes(estimatedBytes)
             
 #if canImport(OSLog)
-            logger.info("Episode cache persisted (\(mem) estimated in memory)")
+            self.logger.info("Episode cache persisted (\(mem) estimated in memory)")
 #else
             print("💾 Episode cache persisted (\(mem) estimated in memory)")
 #endif
         } else {
             #if canImport(OSLog)
-            logger.error("Episode cache not saved due to storage issue")
+            self.logger.error("Episode cache not saved due to storage issue")
             #else
             print("⚠️ Episode cache not saved due to storage issue")
             #endif
@@ -320,7 +320,7 @@ class EpisodeCacheService: ObservableObject {
         // First try to migrate old format from UserDefaults
         if UserDefaults.standard.object(forKey: persistenceKey) != nil {
             #if canImport(OSLog)
-            logger.info("Migrating cache from UserDefaults to file storage...")
+            self.logger.info("Migrating cache from UserDefaults to file storage...")
             #else
             print("📦 Migrating cache from UserDefaults to file storage...")
             #endif
@@ -352,7 +352,7 @@ class EpisodeCacheService: ObservableObject {
                 if !entries.isEmpty {
                     _ = FileStorage.shared.save(container!, to: "episodeCache.json")
                     #if canImport(OSLog)
-                    logger.info("Successfully migrated \(entries.count) cache entries")
+                    self.logger.info("Successfully migrated \(entries.count) cache entries")
                     #else
                     print("📦 Successfully migrated \(entries.count) cache entries")
                     #endif
@@ -391,9 +391,9 @@ class EpisodeCacheService: ObservableObject {
         
         episodeCache = loadedCache
         #if canImport(OSLog)
-        logger.info("Loaded episode cache with \(episodeCache.count) entries from file storage")
+        self.logger.info("Loaded episode cache with \(self.episodeCache.count) entries from file storage")
         #else
-        print("📱 Loaded episode cache with \(episodeCache.count) entries from file storage")
+        print("📱 Loaded episode cache with \(self.episodeCache.count) entries from file storage")
         #endif
     }
     
@@ -421,7 +421,7 @@ class EpisodeCacheService: ObservableObject {
             
             if removedCount > 0 {
                 #if canImport(OSLog)
-                logger.info("Cleaned up \(removedCount) old cache entries")
+                self.logger.info("Cleaned up \(removedCount) old cache entries")
                 #else
                 print("🧹 Cleaned up \(removedCount) old cache entries")
                 #endif
