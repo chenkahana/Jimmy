@@ -86,6 +86,26 @@ class EpisodeCacheService: ObservableObject {
                 return
             }
             
+            // If offline, return cached data if available
+            if !NetworkMonitor.shared.isConnected {
+                if let cachedEntry = self.episodeCache[podcastID] {
+                    print("📡 Offline - using cached episodes for \(podcast.title)")
+                    DispatchQueue.main.async {
+                        self.isLoadingEpisodes[podcastID] = false
+                        self.loadingErrors[podcastID] = "You appear to be offline. Showing cached episodes."
+                        completion(cachedEntry.episodes)
+                    }
+                    return
+                } else {
+                    DispatchQueue.main.async {
+                        self.isLoadingEpisodes[podcastID] = false
+                        self.loadingErrors[podcastID] = "You appear to be offline."
+                        completion([])
+                    }
+                    return
+                }
+            }
+
             // Cache miss or expired - fetch fresh data
             let cacheAge = self.episodeCache[podcastID]?.age ?? 0
             print("🌐 Fetching fresh episodes for \(podcast.title) (cache age: \(Int(cacheAge/60))m, force: \(forceRefresh))")

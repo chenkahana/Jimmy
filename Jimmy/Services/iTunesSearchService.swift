@@ -27,47 +27,21 @@ struct iTunesSearchService {
         var request = URLRequest(url: url)
         request.timeoutInterval = 10.0 // 10 second timeout
         request.cachePolicy = .useProtocolCachePolicy
-        
-        URLSession.shared.dataTask(with: request) { data, response, error in
-            // Check for network errors
-            if let error = error {
-                #if DEBUG
-                print("⚠️ iTunes Search API error: \(error.localizedDescription)")
-                #endif
-                
-                // Retry up to 2 times for network errors
+
+        NetworkManager.shared.fetchData(with: request, retries: 2) { result in
+            guard case let .success(data) = result else {
+                if case let .failure(err) = result, case NetworkError.offline = err {
+                    DispatchQueue.main.async { completion([]) }
+                    return
+                }
                 if retryCount < 2 {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
                         self.searchPodcastsWithRetry(query: query, retryCount: retryCount + 1, completion: completion)
                     }
                     return
-                } else {
-                    DispatchQueue.main.async {
-                        completion([])
-                    }
-                    return
                 }
-            }
-            
-            guard let data = data else {
-                DispatchQueue.main.async {
-                    completion([])
-                }
+                DispatchQueue.main.async { completion([]) }
                 return
-            }
-            
-            // Check HTTP response
-            if let httpResponse = response as? HTTPURLResponse {
-                guard httpResponse.statusCode == 200 else {
-                    #if DEBUG
-                    print("⚠️ iTunes Search API HTTP error: \(httpResponse.statusCode)")
-                    #endif
-                    
-                    DispatchQueue.main.async {
-                        completion([])
-                    }
-                    return
-                }
             }
             
             do {
@@ -106,7 +80,7 @@ struct iTunesSearchService {
                     completion([])
                 }
             }
-        }.resume()
+        }
     }
     
     // Get podcast details by iTunes ID
@@ -118,11 +92,11 @@ struct iTunesSearchService {
             return
         }
         
-        URLSession.shared.dataTask(with: url) { data, response, error in
-            guard let data = data, error == nil else {
-                DispatchQueue.main.async {
-                    completion(nil)
-                }
+        let request = URLRequest(url: url)
+
+        NetworkManager.shared.fetchData(with: request) { result in
+            guard case let .success(data) = result else {
+                DispatchQueue.main.async { completion(nil) }
                 return
             }
             
@@ -155,7 +129,7 @@ struct iTunesSearchService {
                     completion(nil)
                 }
             }
-        }.resume()
+        }
     }
 }
 
@@ -262,8 +236,8 @@ extension iTunesSearchService {
         var request = URLRequest(url: url)
         request.timeoutInterval = 10.0
 
-        URLSession.shared.dataTask(with: request) { data, response, error in
-            guard let data = data, error == nil else {
+        NetworkManager.shared.fetchData(with: request) { result in
+            guard case let .success(data) = result else {
                 DispatchQueue.main.async { completion(nil) }
                 return
             }
@@ -274,6 +248,6 @@ extension iTunesSearchService {
             } else {
                 DispatchQueue.main.async { completion(nil) }
             }
-        }.resume()
+        }
     }
 }

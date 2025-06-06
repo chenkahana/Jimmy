@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 
 class PodcastService {
     static let shared = PodcastService()
@@ -24,74 +25,48 @@ class PodcastService {
     // Fetch episodes from a podcast RSS feed
     func fetchEpisodes(for podcast: Podcast, completion: @escaping ([Episode]) -> Void) {
         let url = podcast.feedURL
-        
+
         // Create URLRequest with timeout configuration
         var request = URLRequest(url: url)
         request.timeoutInterval = 15.0 // 15 second timeout
         request.cachePolicy = .useProtocolCachePolicy
-        
-        let task = URLSession.shared.dataTask(with: request) { data, response, error in
-            // Handle timeout or network errors
-            if let error = error {
+
+        NetworkManager.shared.fetchData(with: request) { result in
+            switch result {
+            case .failure(let error):
                 #if DEBUG
                 print("⚠️ RSS Feed fetch error for \(podcast.title): \(error.localizedDescription)")
                 #endif
-                
+                ErrorLogger.shared.log("RSS fetch error for \(podcast.title): \(error.localizedDescription)")
                 DispatchQueue.main.async {
                     completion([])
                 }
                 return
-            }
-            
-            // Check HTTP response status
-            if let httpResponse = response as? HTTPURLResponse {
-                guard httpResponse.statusCode == 200 else {
-                    #if DEBUG
-                    print("⚠️ RSS Feed HTTP error for \(podcast.title): \(httpResponse.statusCode)")
-                    #endif
-                    
-                    DispatchQueue.main.async {
-                        completion([])
-                    }
-                    return
+            case .success(let data):
+                let parser = RSSParser()
+                let episodes = parser.parseRSS(data: data, podcastID: podcast.id) // Use podcast.id instead of random UUID
+
+                // ALWAYS update podcast artwork from RSS channel data to ensure correct artwork
+                // This prevents episode artwork from being used as podcast artwork
+                if let artworkURLString = parser.getPodcastArtworkURL(),
+                   let artworkURL = URL(string: artworkURLString) {
+                    print("🎨 Auto-updating podcast artwork for \(podcast.title)")
+                    print("   RSS Channel Artwork: \(artworkURL.absoluteString)")
+                    self.updatePodcastArtwork(podcast: podcast, artworkURL: artworkURL)
+                } else {
+                    print("⚠️ No channel artwork found in RSS for \(podcast.title) - keeping existing artwork")
                 }
-            }
-            
-            guard let data = data else {
-                #if DEBUG
-                print("⚠️ No data received for RSS feed: \(podcast.title)")
-                #endif
-                
+
+                // Update the podcast's lastEpisodeDate with the most recent episode
+                if let latestEpisodeDate = episodes.compactMap({ $0.publishedDate }).max() {
+                    self.updatePodcastLastEpisodeDate(podcast: podcast, lastEpisodeDate: latestEpisodeDate)
+                }
+
                 DispatchQueue.main.async {
-                    completion([])
+                    completion(episodes)
                 }
-                return
-            }
-            
-            let parser = RSSParser()
-            let episodes = parser.parseRSS(data: data, podcastID: podcast.id) // Use podcast.id instead of random UUID
-            
-            // ALWAYS update podcast artwork from RSS channel data to ensure correct artwork
-            // This prevents episode artwork from being used as podcast artwork
-            if let artworkURLString = parser.getPodcastArtworkURL(), 
-               let artworkURL = URL(string: artworkURLString) {
-                print("🎨 Auto-updating podcast artwork for \(podcast.title)")
-                print("   RSS Channel Artwork: \(artworkURL.absoluteString)")
-                self.updatePodcastArtwork(podcast: podcast, artworkURL: artworkURL)
-            } else {
-                print("⚠️ No channel artwork found in RSS for \(podcast.title) - keeping existing artwork")
-            }
-            
-            // Update the podcast's lastEpisodeDate with the most recent episode
-            if let latestEpisodeDate = episodes.compactMap({ $0.publishedDate }).max() {
-                self.updatePodcastLastEpisodeDate(podcast: podcast, lastEpisodeDate: latestEpisodeDate)
-            }
-            
-            DispatchQueue.main.async {
-                completion(episodes)
             }
         }
-        task.resume()
     }
 
     // Update podcast artwork in saved podcasts
@@ -131,9 +106,12 @@ class PodcastService {
         print("🔍 Refreshing metadata for: \(podcast.title)")
         print("🎨 Current artwork URL: \(podcast.artworkURL?.absoluteString ?? "nil")")
         
-        URLSession.shared.dataTask(with: podcast.feedURL) { data, response, error in
-            guard let data = data, error == nil else {
-                print("❌ Failed to fetch RSS for \(podcast.title): \(error?.localizedDescription ?? "unknown error")")
+        let request = URLRequest(url: podcast.feedURL)
+        NetworkManager.shared.fetchData(with: request) { result in
+            guard case let .success(data) = result else {
+                if case let .failure(err) = result {
+                    ErrorLogger.shared.log("Metadata refresh failed for \(podcast.title): \(err.localizedDescription)")
+                }
                 DispatchQueue.main.async { completion(false) }
                 return
             }
@@ -192,7 +170,7 @@ class PodcastService {
             }
             
             DispatchQueue.main.async { completion(wasUpdated) }
-        }.resume()
+        }
     }
 
     // Download episode audio file
@@ -245,9 +223,15 @@ class PodcastService {
         }
         
         // Fetch and parse the RSS feed to validate it and get podcast info
-        URLSession.shared.dataTask(with: feedURL) { data, response, error in
-            guard let data = data, error == nil else {
-                completion(nil, error ?? PodcastServiceError.networkError)
+        let request = URLRequest(url: feedURL)
+        NetworkManager.shared.fetchData(with: request) { result in
+            guard case let .success(data) = result else {
+                if case let .failure(err) = result {
+                    ErrorLogger.shared.log("Add podcast failed for \(feedURL.absoluteString): \(err.localizedDescription)")
+                    completion(nil, err)
+                } else {
+                    completion(nil, PodcastServiceError.networkError)
+                }
                 return
             }
             
@@ -305,17 +289,19 @@ class PodcastService {
             
             print("🔍 Processing: \(podcast.title)")
             
-            URLSession.shared.dataTask(with: podcast.feedURL) { data, response, error in
+            let request = URLRequest(url: podcast.feedURL)
+            NetworkManager.shared.fetchData(with: request) { result in
                 defer {
                     totalProcessed += 1
                     dispatchGroup.leave()
                 }
-                
-                guard let data = data, error == nil else {
-                    print("❌ Failed to fetch RSS for \(podcast.title): \(error?.localizedDescription ?? "unknown")")
+
+                guard case let .success(data) = result else {
+                    if case let .failure(err) = result {
+                        ErrorLogger.shared.log("Artwork refresh failed for \(podcast.title): \(err.localizedDescription)")
+                    }
                     return
                 }
-                
                 let parser = RSSParser()
                 _ = parser.parseRSS(data: data, podcastID: podcast.id)
                 
@@ -336,7 +322,7 @@ class PodcastService {
                 } else {
                     print("⚠️ No artwork found for \(podcast.title)")
                 }
-            }.resume()
+            }
         }
         
         dispatchGroup.notify(queue: .main) {
