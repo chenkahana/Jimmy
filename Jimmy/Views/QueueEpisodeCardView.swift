@@ -5,6 +5,7 @@ struct QueueEpisodeCardView: View {
     let podcast: Podcast?
     let isCurrentlyPlaying: Bool
     let isEditMode: Bool
+    let isLoading: Bool
     let onTap: () -> Void
     let onRemove: () -> Void
     let onMoveToEnd: () -> Void
@@ -21,15 +22,23 @@ struct QueueEpisodeCardView: View {
                         LinearGradient(
                             colors: isCurrentlyPlaying ?
                                 [Color.orange.opacity(0.3), Color.orange.opacity(0.1)] :
+                                isLoading ?
+                                [Color.accentColor.opacity(0.3), Color.accentColor.opacity(0.1)] :
                                 [Color(.systemGray5), Color(.systemGray4)],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
                     )
                     .overlay(
-                        Image(systemName: isCurrentlyPlaying ? "speaker.wave.2.fill" : "waveform.circle")
-                            .foregroundColor(isCurrentlyPlaying ? .orange : .gray)
-                            .font(.title2)
+                        Group {
+                            if isLoading {
+                                LoadingIndicator(size: 20, color: .accentColor)
+                            } else {
+                                Image(systemName: isCurrentlyPlaying ? "speaker.wave.2.fill" : "waveform.circle")
+                                    .foregroundColor(isCurrentlyPlaying ? .orange : .gray)
+                                    .font(.title2)
+                            }
+                        }
                     )
             }
             .transition(.opacity.combined(with: .scale))
@@ -90,10 +99,11 @@ struct QueueEpisodeCardView: View {
         .enhanced3DCard(cornerRadius: 16, elevation: 3)
         .contentShape(Rectangle())
         .onTapGesture {
-            if !isEditMode {
+            if !isEditMode && !isLoading {
                 onTap()
             }
         }
+        .disabled(isLoading)
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
             if !isEditMode {
                 Button {
@@ -140,6 +150,7 @@ struct QueueEpisodeCardView: View {
         podcast: samplePodcast,
         isCurrentlyPlaying: false,
         isEditMode: true,
+        isLoading: false,
         onTap: {},
         onRemove: {},
         onMoveToEnd: {}

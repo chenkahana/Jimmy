@@ -10,6 +10,7 @@ struct EpisodeRowView: View {
     
     @ObservedObject private var queueViewModel = QueueViewModel.shared
     @ObservedObject private var audioPlayer = AudioPlayerService.shared
+    @ObservedObject private var loadingManager = LoadingStateManager.shared
     @State private var showingEpisodeDetail = false
     @State private var showingShareSheet = false
     @State private var shareURL: URL?
@@ -227,20 +228,29 @@ struct EpisodeRowView: View {
                     // Play button - separate from main tap area
                     Button(action: {
                         // This actually plays the episode
-                        onTap()
+                        if !loadingManager.isEpisodeLoading(episode.id) {
+                            onTap()
+                        }
                     }) {
-                        Image(systemName: isCurrentlyPlaying ? "speaker.wave.2.fill" : "play.circle.fill")
-                            .font(.title2)
-                            .foregroundColor(isCurrentlyPlaying ? .orange : .blue)
-                            .opacity(episode.played ? 0.7 : 1.0) // Slightly dim play button for played episodes
-                            .frame(width: 44, height: 44) // Also improve play button touch target
-                            .background(
-                                Circle()
-                                    .fill(Color.clear)
-                                    .contentShape(Circle())
-                            )
+                        Group {
+                            if loadingManager.isEpisodeLoading(episode.id) {
+                                LoadingIndicator(size: 20, color: .blue)
+                            } else {
+                                Image(systemName: isCurrentlyPlaying ? "speaker.wave.2.fill" : "play.circle.fill")
+                                    .font(.title2)
+                                    .foregroundColor(isCurrentlyPlaying ? .orange : .blue)
+                                    .opacity(episode.played ? 0.7 : 1.0) // Slightly dim play button for played episodes
+                            }
+                        }
+                        .frame(width: 44, height: 44) // Also improve play button touch target
+                        .background(
+                            Circle()
+                                .fill(Color.clear)
+                                .contentShape(Circle())
+                        )
                     }
                     .buttonStyle(.plain)
+                    .disabled(loadingManager.isEpisodeLoading(episode.id))
                 }
                 .frame(height: 60)
             }

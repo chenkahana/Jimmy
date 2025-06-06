@@ -4,10 +4,13 @@ import UserNotifications
 class QueueViewModel: ObservableObject {
     static let shared = QueueViewModel()
     @Published var queue: [Episode] = []
+    @Published var loadingEpisodeID: UUID?
     private let queueKey = "queueKey"
     
     private init() {
         loadQueue()
+        // Preload first few episodes for faster playback
+        preloadUpcomingEpisodes()
     }
     
     // MARK: - Basic Queue Operations
@@ -88,6 +91,9 @@ class QueueViewModel: ObservableObject {
     func playEpisodeFromLibrary(_ episode: Episode) {
         let audioPlayer = AudioPlayerService.shared
 
+        // Set loading state immediately for UI feedback
+        loadingEpisodeID = episode.id
+
         // Remove any existing instance of this episode to keep the queue unique
         queue.removeAll { $0.id == episode.id }
 
@@ -113,16 +119,26 @@ class QueueViewModel: ObservableObject {
         audioPlayer.play()
 
         saveQueue()
+        preloadUpcomingEpisodes()
+        
+        // Clear loading state after a brief delay
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            self.clearLoadingState()
+        }
     }
     
     /// Play an episode from the queue - removes all episodes above it
     func playEpisodeFromQueue(_ episode: Episode) {
         guard let episodeIndex = queue.firstIndex(where: { $0.id == episode.id }) else { return }
 
+        // Set loading state immediately for UI feedback
+        loadingEpisodeID = episode.id
+
         // If it's already at position 0, just play it
         if episodeIndex == 0 {
             AudioPlayerService.shared.loadEpisode(episode)
             AudioPlayerService.shared.play()
+            clearLoadingState()
             return
         }
 
@@ -140,6 +156,12 @@ class QueueViewModel: ObservableObject {
         AudioPlayerService.shared.play()
 
         saveQueue()
+        preloadUpcomingEpisodes()
+        
+        // Clear loading state after a brief delay
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            self.clearLoadingState()
+        }
     }
     
     /// Play an episode from the queue using index - removes all episodes above it
@@ -147,10 +169,14 @@ class QueueViewModel: ObservableObject {
         guard index < queue.count else { return }
         let episode = queue[index]
 
+        // Set loading state immediately for UI feedback
+        loadingEpisodeID = episode.id
+
         // If it's already at position 0, just play it
         if index == 0 {
             AudioPlayerService.shared.loadEpisode(episode)
             AudioPlayerService.shared.play()
+            clearLoadingState()
             return
         }
 
@@ -168,6 +194,12 @@ class QueueViewModel: ObservableObject {
         AudioPlayerService.shared.play()
 
         saveQueue()
+        preloadUpcomingEpisodes()
+        
+        // Clear loading state after a brief delay
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            self.clearLoadingState()
+        }
     }
     
     /// Ensure the currently playing episode is at the top of the queue
@@ -244,5 +276,16 @@ class QueueViewModel: ObservableObject {
             queue = savedQueue
         }
         CarPlayManager.shared.reloadData()
+    }
+    
+    // MARK: - Loading State Management
+    
+    private func clearLoadingState() {
+        loadingEpisodeID = nil
+    }
+    
+    private func preloadUpcomingEpisodes() {
+        // Preload the first 3 episodes in the queue for faster loading
+        AudioPlayerService.shared.preloadEpisodes(Array(queue.prefix(3)))
     }
 }

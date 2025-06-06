@@ -2,10 +2,11 @@ import Foundation
 import AVFoundation
 import MediaPlayer
 
-class AudioPlayerService: ObservableObject {
+class AudioPlayerService: NSObject, ObservableObject {
     static let shared = AudioPlayerService()
     
     @Published var isPlaying = false
+    @Published var isLoading = false
     @Published var currentEpisode: Episode?
     @Published var playbackPosition: TimeInterval = 0
     @Published var duration: TimeInterval = 0
@@ -13,7 +14,12 @@ class AudioPlayerService: ObservableObject {
     private var player: AVPlayer?
     private var timeObserver: Any?
     
-    private init() {
+    // Cache for prepared AVPlayerItems to reduce loading time
+    private var playerItemCache: [UUID: AVPlayerItem] = [:]
+    private let cacheQueue = DispatchQueue(label: "AudioPlayerCacheQueue", qos: .utility)
+    
+    private override init() {
+        super.init()
         setupAudioSession()
         setupRemoteTransportControls()
         setupNotificationObservers()
@@ -245,6 +251,12 @@ class AudioPlayerService: ObservableObject {
     func loadEpisode(_ episode: Episode) {
         guard let audioURL = episode.audioURL else { return }
         
+        // Set loading state immediately
+        DispatchQueue.main.async {
+            self.isLoading = true
+            LoadingStateManager.shared.setEpisodeLoading(episode.id, isLoading: true)
+        }
+        
         // Stop current playback
         pause()
         
@@ -254,15 +266,32 @@ class AudioPlayerService: ObservableObject {
         // Update current episode
         currentEpisode = episode
         
-        // Create player item
-        let playerItem = AVPlayerItem(url: audioURL)
-        player = AVPlayer(playerItem: playerItem)
-        
-        // Seek to saved position
-        if episode.playbackPosition > 0 {
-            let seekTime = CMTime(seconds: episode.playbackPosition, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
-            player?.seek(to: seekTime)
+        // Check if we have a cached player item first
+        if let cachedPlayerItem = playerItemCache[episode.id] {
+            // Use cached item for faster loading
+            player = AVPlayer(playerItem: cachedPlayerItem)
+            setupPlayerForEpisode(episode, playerItem: cachedPlayerItem)
+        } else {
+            // Create new player item
+            let playerItem = AVPlayerItem(url: audioURL)
+            player = AVPlayer(playerItem: playerItem)
+            
+            // Cache the item for future use
+            cacheQueue.async { [weak self] in
+                self?.playerItemCache[episode.id] = playerItem
+                // Clean cache if it gets too large
+                if self?.playerItemCache.count ?? 0 > 5 {
+                    self?.cleanupOldCacheItems()
+                }
+            }
+            
+            setupPlayerForEpisode(episode, playerItem: playerItem)
         }
+    }
+    
+    private func setupPlayerForEpisode(_ episode: Episode, playerItem: AVPlayerItem) {
+        // Observe player item status for loading completion
+        playerItem.addObserver(self, forKeyPath: "status", options: [.new], context: nil)
         
         // Set up time observer for the new player
         setupTimeObserver()
@@ -275,13 +304,84 @@ class AudioPlayerService: ObservableObject {
             object: playerItem
         )
         
-        // Get duration first
-        if let duration = player?.currentItem?.asset.duration {
-            self.duration = CMTimeGetSeconds(duration)
+        // Get duration and update UI when ready
+        DispatchQueue.main.async {
+            if let asset = self.player?.currentItem?.asset {
+                let duration = asset.duration
+                if !duration.isIndefinite {
+                    self.duration = CMTimeGetSeconds(duration)
+                }
+            }
+            
+            // Seek to saved position after player is ready
+            if episode.playbackPosition > 0 {
+                let seekTime = CMTime(seconds: episode.playbackPosition, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
+                self.player?.seek(to: seekTime) { [weak self] _ in
+                    DispatchQueue.main.async {
+                        self?.isLoading = false
+                        LoadingStateManager.shared.setEpisodeLoading(episode.id, isLoading: false)
+                    }
+                }
+            } else {
+                self.isLoading = false
+                LoadingStateManager.shared.setEpisodeLoading(episode.id, isLoading: false)
+            }
+            
+            // Update now playing info (this will load artwork)
+            self.updateNowPlayingInfo()
         }
-        
-        // Update now playing info (this will load artwork)
-        updateNowPlayingInfo()
+    }
+    
+    override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey: Any]?, context: UnsafeMutableRawPointer?) {
+        if keyPath == "status", let playerItem = object as? AVPlayerItem {
+            DispatchQueue.main.async {
+                switch playerItem.status {
+                case .readyToPlay:
+                    self.isLoading = false
+                    if let currentEpisode = self.currentEpisode {
+                        LoadingStateManager.shared.setEpisodeLoading(currentEpisode.id, isLoading: false)
+                    }
+                    let duration = playerItem.asset.duration
+                    if !duration.isIndefinite {
+                        self.duration = CMTimeGetSeconds(duration)
+                    }
+                case .failed:
+                    self.isLoading = false
+                    if let currentEpisode = self.currentEpisode {
+                        LoadingStateManager.shared.setEpisodeLoading(currentEpisode.id, isLoading: false)
+                    }
+                    print("⚠️ Player item failed to load: \(playerItem.error?.localizedDescription ?? "Unknown error")")
+                case .unknown:
+                    break
+                @unknown default:
+                    break
+                }
+            }
+        }
+    }
+    
+    private func cleanupOldCacheItems() {
+        // Keep only the 3 most recently used items
+        let maxCacheSize = 3
+        if playerItemCache.count > maxCacheSize {
+            let keysToRemove = Array(playerItemCache.keys.prefix(playerItemCache.count - maxCacheSize))
+            for key in keysToRemove {
+                playerItemCache.removeValue(forKey: key)
+            }
+        }
+    }
+    
+    /// Preload episodes for faster playback
+    func preloadEpisodes(_ episodes: [Episode]) {
+        cacheQueue.async { [weak self] in
+            for episode in episodes.prefix(3) { // Only preload first 3
+                guard let audioURL = episode.audioURL,
+                      self?.playerItemCache[episode.id] == nil else { continue }
+                
+                let playerItem = AVPlayerItem(url: audioURL)
+                self?.playerItemCache[episode.id] = playerItem
+            }
+        }
     }
     
     private func cleanupPlayer() {
@@ -298,6 +398,9 @@ class AudioPlayerService: ObservableObject {
                 name: .AVPlayerItemDidPlayToEndTime,
                 object: currentPlayerItem
             )
+            
+            // Remove status observer (wrap in try-catch in case observer wasn't added)
+            currentPlayerItem.removeObserver(self, forKeyPath: "status")
         }
         
         // Clear the player reference
@@ -431,11 +534,14 @@ class AudioPlayerService: ObservableObject {
     }
     
     func play() {
-        // Activate audio session before playing
-        do {
-            try AVAudioSession.sharedInstance().setActive(true)
-        } catch {
-            print("⚠️ Failed to activate audio session: \(error)")
+        // Activate audio session before playing (only if not already active)
+        let audioSession = AVAudioSession.sharedInstance()
+        if !audioSession.isOtherAudioPlaying {
+            do {
+                try audioSession.setActive(true)
+            } catch {
+                print("⚠️ Failed to activate audio session: \(error)")
+            }
         }
         
         player?.play()

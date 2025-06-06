@@ -41,6 +41,7 @@ struct QueueView: View {
                                 podcast: getPodcast(for: episode),
                                 isCurrentlyPlaying: currentPlayingEpisode?.id == episode.id,
                                 isEditMode: editMode == .active,
+                                isLoading: viewModel.loadingEpisodeID == episode.id || audioPlayer.isLoading && currentPlayingEpisode?.id == episode.id,
                                 onTap: {
                                     if editMode == .inactive {
                                         viewModel.playEpisodeFromQueue(at: index)
@@ -100,6 +101,8 @@ struct QueueView: View {
             }
             .onAppear {
                 viewModel.syncCurrentEpisodeWithQueue()
+                // Preload episodes for faster playback
+                AudioPlayerService.shared.preloadEpisodes(Array(viewModel.queue.prefix(3)))
             }
         }
         .navigationViewStyle(.stack)
