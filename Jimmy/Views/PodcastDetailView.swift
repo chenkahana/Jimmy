@@ -99,13 +99,6 @@ struct PodcastDetailView: View {
         .onAppear {
             loadEpisodes()
         }
-        .refreshable {
-            await withCheckedContinuation { continuation in
-                loadEpisodes(forceRefresh: true) {
-                    continuation.resume()
-                }
-            }
-        }
     }
     
     private func loadEpisodes(forceRefresh: Bool = false, completion: (() -> Void)? = nil) {

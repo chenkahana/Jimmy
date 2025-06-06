@@ -148,9 +148,6 @@ struct PodcastSearchView: View {
                         .padding(.vertical, 40)
                     }
                 }
-                .refreshable {
-                    await refreshData()
-                }
             }
         }
         .navigationTitle("Search")
