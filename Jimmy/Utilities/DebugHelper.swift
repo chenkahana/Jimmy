@@ -25,10 +25,10 @@ class DebugHelper {
                 try fileManager.removeItem(at: url)
             }
         } catch {
-            print("Error clearing documents directory: \(error)")
+            AppLogger.error("Error clearing documents directory: \(error)")
         }
-        
-        print("All app data reset successfully")
+
+        AppLogger.info("All app data reset successfully")
     }
     
     // Send test notification
@@ -41,9 +41,9 @@ class DebugHelper {
         let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
         UNUserNotificationCenter.current().add(request) { error in
             if let error = error {
-                print("Error sending test notification: \(error)")
+                AppLogger.error("Error sending test notification: \(error)")
             } else {
-                print("Test notification sent successfully")
+                AppLogger.info("Test notification sent successfully")
             }
         }
     }
@@ -53,10 +53,10 @@ class DebugHelper {
         let podcasts = PodcastService.shared.loadPodcasts()
         let queue = QueueViewModel.shared.queue
         
-        print("=== Jimmy App State ===")
-        print("Podcasts: \(podcasts.count)")
-        print("Queue episodes: \(queue.count)")
-        print("Settings: darkMode = \(UserDefaults.standard.bool(forKey: "darkMode"))")
-        print("========================")
+        AppLogger.info("=== Jimmy App State ===")
+        AppLogger.info("Podcasts: \(podcasts.count)")
+        AppLogger.info("Queue episodes: \(queue.count)")
+        AppLogger.info("Settings: darkMode = \(UserDefaults.standard.bool(forKey: \"darkMode\"))")
+        AppLogger.info("========================")
     }
 } 

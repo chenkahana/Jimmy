@@ -25,6 +25,12 @@ A minimalist, queue-centric iOS podcast app inspired by Google Podcasts with enh
 - 💫 **Watch connectivity implemented** for playback control
 - 📋 **Instructions** in `Jimmy/WATCH_README.md`
 
+## Development Roadmap
+
+Work on **Version 2 – Stability Improvements** is now complete. All five phases
+have shipped, and the release is fully stabilized. See
+[versions/v2.md](versions/v2.md) for the final checklist and notes.
+
 ## Overview
 Jimmy is a personal podcast app for iPhone, designed for simplicity, speed, and a queue-focused listening experience. It allows you to import your podcast subscriptions, discover and manage shows, and listen to episodes with a clean, modern interface. The app includes a beautiful lock-screen widget that matches your wireframe design for seamless playback control.
 
@@ -153,6 +159,7 @@ Jimmy/
 - **Watch Status**: Connectivity implemented, Xcode setup required
 - **Build Issues**: All resolved, main app builds successfully
 - **Repository**: Published and updated on GitHub
+- **Release Notes**: See [versions/v2_release_notes.md](versions/v2_release_notes.md)
 
 ## 🤝 Collaboration & Project Rules
 
