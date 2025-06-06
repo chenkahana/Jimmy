@@ -1,5 +1,7 @@
 import Foundation
+#if canImport(UserNotifications)
 import UserNotifications
+#endif
 
 class DebugHelper {
     static let shared = DebugHelper()
@@ -32,12 +34,13 @@ class DebugHelper {
     }
     
     // Send test notification
+#if canImport(UserNotifications)
     func sendTestNotification() {
         let content = UNMutableNotificationContent()
         content.title = "Jimmy Test"
         content.body = "This is a test notification from the debug helper"
         content.sound = .default
-        
+
         let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
         UNUserNotificationCenter.current().add(request) { error in
             if let error = error {
@@ -47,6 +50,7 @@ class DebugHelper {
             }
         }
     }
+#endif
     
     // Print current app state
     func printAppState() {
@@ -56,7 +60,8 @@ class DebugHelper {
         AppLogger.info("=== Jimmy App State ===")
         AppLogger.info("Podcasts: \(podcasts.count)")
         AppLogger.info("Queue episodes: \(queue.count)")
-        AppLogger.info("Settings: darkMode = \(UserDefaults.standard.bool(forKey: \"darkMode\"))")
+        let darkMode = UserDefaults.standard.bool(forKey: "darkMode")
+        AppLogger.info("Settings: darkMode = \(darkMode)")
         AppLogger.info("========================")
     }
-} 
+}
