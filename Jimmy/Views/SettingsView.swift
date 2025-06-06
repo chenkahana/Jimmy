@@ -27,8 +27,6 @@ struct SettingsView: View {
     @State private var activeAlert: SettingsAlert?
     @State private var isSubscriptionImporting = false
     @State private var subscriptionImportMessage: String?
-    @StateObject private var authService = AuthenticationService.shared
-    @State private var authError: String?
 
     enum SettingsAlert {
         case resetData
@@ -41,38 +39,6 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
-            Section(header: Text("Account")) {
-                if let user = authService.currentUser {
-                    HStack {
-                        VStack(alignment: .leading) {
-                            Text("Logged in as")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                            Text(user.name)
-                                .fontWeight(.semibold)
-                        }
-                        Spacer()
-                        Button("Sign Out", role: .destructive) {
-                            authService.signOut()
-                        }
-                    }
-                } else {
-                    Button("Sign in with Apple") {
-                        authService.login(with: .apple) { result in
-                            if case .failure(let error) = result {
-                                authError = error.localizedDescription
-                            }
-                        }
-                    }
-                    Button("Sign in with Google") {
-                        authService.login(with: .google) { result in
-                            if case .failure(let error) = result {
-                                authError = error.localizedDescription
-                            }
-                        }
-                    }
-                }
-            }
             Section(header: Text("Playback")) {
                 HStack {
                     Text("Speed")
@@ -304,14 +270,6 @@ struct SettingsView: View {
             alertButtons()
         } message: {
             alertMessage()
-        }
-        .alert("Login Error", isPresented: Binding(
-            get: { authError != nil },
-            set: { if !$0 { authError = nil } }
-        )) {
-            Button("OK", role: .cancel) { authError = nil }
-        } message: {
-            Text(authError ?? "")
         }
         .sheet(isPresented: $showingManualImport) {
             ManualPodcastImportView()

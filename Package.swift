@@ -16,8 +16,6 @@ let package = Package(
             sources: [
                 "FileStorage.swift",
                 "SpotifyListParser.swift",
-                "AuthenticationService.swift",
-                "UIApplication+TopViewController.swift",
                 "UserDataService.swift",
                 "../Models/Podcast.swift"
             ]
