@@ -191,23 +191,7 @@ struct EpisodeDetailView: View {
                 }
             .navigationTitle("Episode Details")
             .navigationBarTitleDisplayMode(.inline)
-            .navigationBarBackButtonHidden(true)
-            .background(SwipeBackHelper())
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button(action: {
-                        dismiss()
-                    }) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "chevron.left")
-                                .font(.body.weight(.medium))
-                            Text(podcast.title)
-                                .lineLimit(1)
-                        }
-                        .foregroundColor(.orange)
-                    }
-                }
-                
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Menu {
                         Button(action: {

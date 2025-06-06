@@ -7,6 +7,7 @@ struct PodcastDetailView: View {
     @ObservedObject private var audioPlayer = AudioPlayerService.shared
     @ObservedObject private var episodeCacheService = EpisodeCacheService.shared
     @Environment(\.dismiss) private var dismiss
+    @State private var loadingTask: Task<Void, Never>? // Track async tasks for cleanup
 
     private enum EpisodeTab: String, CaseIterable, Identifiable {
         case unplayed = "Unplayed"
@@ -109,23 +110,7 @@ struct PodcastDetailView: View {
         .listStyle(.plain)
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
-        .navigationBarBackButtonHidden(true)
-        .background(SwipeBackHelper())
         .toolbar {
-            ToolbarItem(placement: .navigationBarLeading) {
-                Button(action: {
-                    dismiss()
-                }) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: 16, weight: .medium))
-                        Text("Library")
-                            .font(.system(size: 16, weight: .medium))
-                    }
-                    .foregroundColor(.accentColor)
-                }
-            }
-            
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button(action: {
                     loadEpisodes(forceRefresh: true)
@@ -140,9 +125,17 @@ struct PodcastDetailView: View {
         .onAppear {
             loadEpisodes()
         }
+        .onDisappear {
+            // Cancel any running async operations to prevent crashes
+            loadingTask?.cancel()
+            loadingTask = nil
+        }
     }
     
     private func loadEpisodes(forceRefresh: Bool = false, completion: (() -> Void)? = nil) {
+        // Cancel any existing loading task
+        loadingTask?.cancel()
+        
         // Always clear episodes first to prevent any potential duplication
         episodes = []
         
@@ -161,90 +154,102 @@ struct PodcastDetailView: View {
             return
         }
         
-        // Fetch episodes using cache service
-        episodeCacheService.getEpisodes(for: podcast, forceRefresh: forceRefresh) { fetchedEpisodes in
-            // Debug logging for fetched episodes
-            print("📱 Fetched \(fetchedEpisodes.count) episodes from network for \(podcast.title)")
-            print("📱 First 3 fetched episode titles:")
-            for (index, episode) in fetchedEpisodes.prefix(3).enumerated() {
-                print("   \(index + 1). \(episode.title) (ID: \(episode.id))")
-            }
-            
-            // Check for potential title-based duplicates
-            let titleCounts = Dictionary(grouping: fetchedEpisodes, by: { $0.title }).mapValues { $0.count }
-            let duplicateTitles = titleCounts.filter { $0.value > 1 }
-            if !duplicateTitles.isEmpty {
-                print("⚠️ Found episodes with duplicate titles:")
-                for (title, count) in duplicateTitles {
-                    print("   '\(title)' appears \(count) times")
-                }
-            }
-            
-            // Deduplicate episodes by ID AND by podcast name + episode title
-            var episodeDict: [UUID: Episode] = [:]
-            var titlePodcastDict: [String: Episode] = [:]
-            
-            for episode in fetchedEpisodes {
-                guard let podcastID = episode.podcastID else { continue }
-                let titleKey = "\(podcastID.uuidString)_\(episode.title)"
+        // Create a new task for async loading
+        loadingTask = Task {
+            // Fetch episodes using cache service
+            episodeCacheService.getEpisodes(for: podcast, forceRefresh: forceRefresh) { fetchedEpisodes in
                 
-                // Skip if we already have this episode by ID
-                if episodeDict[episode.id] != nil {
-                    continue
+                // Check if task was cancelled
+                if Task.isCancelled { return }
+                
+                // Debug logging for fetched episodes
+                print("📱 Fetched \(fetchedEpisodes.count) episodes from network for \(podcast.title)")
+                print("📱 First 3 fetched episode titles:")
+                for (index, episode) in fetchedEpisodes.prefix(3).enumerated() {
+                    print("   \(index + 1). \(episode.title) (ID: \(episode.id))")
                 }
                 
-                // Skip if we already have an episode with the same title for this podcast
-                if let existingEpisode = titlePodcastDict[titleKey] {
-                    // Keep the one with the more recent published date, or first one if dates are equal
-                    switch (episode.publishedDate, existingEpisode.publishedDate) {
-                    case (let newDate?, let existingDate?):
-                        if newDate > existingDate {
-                            // Replace with newer episode
+                // Check for potential title-based duplicates
+                let titleCounts = Dictionary(grouping: fetchedEpisodes, by: { $0.title }).mapValues { $0.count }
+                let duplicateTitles = titleCounts.filter { $0.value > 1 }
+                if !duplicateTitles.isEmpty {
+                    print("⚠️ Found episodes with duplicate titles:")
+                    for (title, count) in duplicateTitles {
+                        print("   '\(title)' appears \(count) times")
+                    }
+                }
+                
+                // Deduplicate episodes by ID AND by podcast name + episode title
+                var episodeDict: [UUID: Episode] = [:]
+                var titlePodcastDict: [String: Episode] = [:]
+                
+                for episode in fetchedEpisodes {
+                    guard let podcastID = episode.podcastID else { continue }
+                    let titleKey = "\(podcastID.uuidString)_\(episode.title)"
+                    
+                    // Skip if we already have this episode by ID
+                    if episodeDict[episode.id] != nil {
+                        continue
+                    }
+                    
+                    // Skip if we already have an episode with the same title for this podcast
+                    if let existingEpisode = titlePodcastDict[titleKey] {
+                        // Keep the one with the more recent published date, or first one if dates are equal
+                        switch (episode.publishedDate, existingEpisode.publishedDate) {
+                        case (let newDate?, let existingDate?):
+                            if newDate > existingDate {
+                                // Replace with newer episode
+                                episodeDict.removeValue(forKey: existingEpisode.id)
+                                episodeDict[episode.id] = episode
+                                titlePodcastDict[titleKey] = episode
+                            }
+                            // Otherwise keep existing
+                        case (_, nil):
+                            // New episode has date, existing doesn't - prefer new
                             episodeDict.removeValue(forKey: existingEpisode.id)
                             episodeDict[episode.id] = episode
                             titlePodcastDict[titleKey] = episode
+                        default:
+                            // Keep existing episode
+                            break
                         }
-                        // Otherwise keep existing
-                    case (_, nil):
-                        // New episode has date, existing doesn't - prefer new
-                        episodeDict.removeValue(forKey: existingEpisode.id)
+                    } else {
+                        // New episode - add it
                         episodeDict[episode.id] = episode
                         titlePodcastDict[titleKey] = episode
-                    default:
-                        // Keep existing episode
-                        break
                     }
-                } else {
-                    // New episode - add it
-                    episodeDict[episode.id] = episode
-                    titlePodcastDict[titleKey] = episode
                 }
-            }
-            
-            episodes = Array(episodeDict.values).sorted { episode1, episode2 in
-                switch (episode1.publishedDate, episode2.publishedDate) {
-                case (let date1?, let date2?):
-                    return date1 > date2 // Most recent first
-                case (nil, _?):
-                    return false
-                case (_?, nil):
-                    return true
-                case (nil, nil):
-                    return episode1.title.localizedCaseInsensitiveCompare(episode2.title) == .orderedAscending
+                
+                let sortedEpisodes = Array(episodeDict.values).sorted { episode1, episode2 in
+                    switch (episode1.publishedDate, episode2.publishedDate) {
+                    case (let date1?, let date2?):
+                        return date1 > date2 // Most recent first
+                    case (nil, _?):
+                        return false
+                    case (_?, nil):
+                        return true
+                    case (nil, nil):
+                        return episode1.title.localizedCaseInsensitiveCompare(episode2.title) == .orderedAscending
+                    }
                 }
+                
+                // Update episodes on main thread
+                DispatchQueue.main.async {
+                    episodes = sortedEpisodes
+                }
+                
+                // Only sync with global episode view model when we fetch fresh data
+                // This prevents duplication while ensuring new episodes are added to the library
+                episodeCacheService.syncWithEpisodeViewModel(episodes: sortedEpisodes)
+                
+                print("📱 Final result: \(sortedEpisodes.count) unique episodes for \(podcast.title) (deduped from \(fetchedEpisodes.count))")
+                print("📱 Final first 3 episode titles:")
+                for (index, episode) in sortedEpisodes.prefix(3).enumerated() {
+                    print("   \(index + 1). \(episode.title) (ID: \(episode.id))")
+                }
+                
+                completion?()
             }
-            
-            // Only sync with global episode view model when we fetch fresh data
-            // This prevents duplication while ensuring new episodes are added to the library
-            episodeCacheService.syncWithEpisodeViewModel(episodes: episodes)
-            
-            print("📱 Final result: \(episodes.count) unique episodes for \(podcast.title) (deduped from \(fetchedEpisodes.count))")
-            print("📱 Final first 3 episode titles:")
-            for (index, episode) in episodes.prefix(3).enumerated() {
-                print("   \(index + 1). \(episode.title) (ID: \(episode.id))")
-            }
-            
-            completion?()
         }
     }
 }

@@ -267,7 +267,7 @@ class PodcastService {
             DispatchQueue.main.async {
                 completion(podcast, nil)
             }
-        }.resume()
+        }
     }
 
     // Force refresh all podcast artwork from RSS feeds
