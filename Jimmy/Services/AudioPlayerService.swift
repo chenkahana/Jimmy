@@ -396,6 +396,12 @@ class AudioPlayerService: ObservableObject {
     
     private func updatePlaybackProgress() {
         guard let episode = currentEpisode else { return }
+
+        // Automatically mark episode as played when less than 5 seconds remain
+        if !episode.played && duration > 0 && (duration - playbackPosition) <= 5 {
+            EpisodeViewModel.shared.markEpisodeAsPlayed(episode, played: true)
+            currentEpisode?.played = true
+        }
         
         // Update episode in queue
         if let queueViewModel = QueueViewModel.shared as QueueViewModel?,
