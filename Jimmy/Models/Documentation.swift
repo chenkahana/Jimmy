@@ -242,7 +242,7 @@ class DocumentationService: ObservableObject {
             .appendingPathComponent(file.filename)
         
         if FileManager.default.fileExists(atPath: workspacePath.path) {
-            return try? String(contentsOf: workspacePath)
+            return try? String(contentsOf: workspacePath, encoding: .utf8)
         }
         
         // Try alternative paths for development
@@ -255,7 +255,7 @@ class DocumentationService: ObservableObject {
         for path in alternativePaths {
             let url = URL(fileURLWithPath: path)
             if FileManager.default.fileExists(atPath: url.path) {
-                return try? String(contentsOf: url)
+                return try? String(contentsOf: url, encoding: .utf8)
             }
         }
         
@@ -290,18 +290,18 @@ For the most up-to-date documentation, visit the Jimmy project repository.
     private func loadFromBundle(file: DocumentationFile) -> String? {
         // Try with docs prefix
         if let url = Bundle.main.url(forResource: "docs/\(file.filename.replacingOccurrences(of: ".md", with: ""))", withExtension: "md") {
-            return try? String(contentsOf: url)
+            return try? String(contentsOf: url, encoding: .utf8)
         }
         
         // Try without docs prefix
         if let url = Bundle.main.url(forResource: file.filename.replacingOccurrences(of: ".md", with: ""), withExtension: "md") {
-            return try? String(contentsOf: url)
+            return try? String(contentsOf: url, encoding: .utf8)
         }
         
         // Try with just the filename
         let filename = URL(fileURLWithPath: file.filename).lastPathComponent.replacingOccurrences(of: ".md", with: "")
         if let url = Bundle.main.url(forResource: filename, withExtension: "md") {
-            return try? String(contentsOf: url)
+            return try? String(contentsOf: url, encoding: .utf8)
         }
         
         return nil

@@ -52,7 +52,7 @@ struct SettingsView: View {
                         Text("2x").tag(2.0)
                     }
                     .pickerStyle(MenuPickerStyle())
-                    .onChange(of: playbackSpeed) { newValue in
+                    .onChange(of: playbackSpeed) { oldValue, newValue in
                         AudioPlayerService.shared.updatePlaybackSpeed(Float(newValue))
                     }
                 }

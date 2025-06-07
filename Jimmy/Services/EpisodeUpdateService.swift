@@ -82,22 +82,22 @@ class EpisodeUpdateService: ObservableObject {
         
         // Update episodes concurrently
         await withTaskGroup(of: (Podcast, [Episode]).self) { group in
+            var allNewEpisodes: [Episode] = []
+            var completedCount = 0
             let totalPodcasts = Double(podcasts.count)
-            var completedCount = 0.0
+            var updatedPodcasts: [Podcast] = []
             
             for podcast in podcasts {
                 group.addTask {
-                    return await self.fetchEpisodesForPodcast(podcast)
+                    await self.fetchEpisodesForPodcast(podcast)
                 }
             }
             
-            var allNewEpisodes: [Episode] = []
-            var updatedPodcasts: [Podcast] = []
-            
             for await (podcast, episodes) in group {
-                completedCount += 1
+                let currentCount = completedCount + 1
+                completedCount = currentCount
                 await MainActor.run {
-                    self.updateProgress = completedCount / totalPodcasts
+                    self.updateProgress = Double(currentCount) / totalPodcasts
                 }
                 
                 if !episodes.isEmpty {
@@ -242,7 +242,7 @@ class EpisodeUpdateService: ObservableObject {
                         var updatedPodcast = allPodcasts[index]
                         
                         // ALWAYS fetch artwork from RSS feed to ensure it's up-to-date.
-                        if let artworkURL = self.fetchPodcastArtworkFromRSS_Background(updatedPodcast.feedURL) {
+                        if let artworkURL = EpisodeUpdateService.fetchPodcastArtworkFromRSS_Background(updatedPodcast.feedURL) {
                             // Only update if the new URL is different from the old one
                             if updatedPodcast.artworkURL != artworkURL {
                                 updatedPodcast.artworkURL = artworkURL
@@ -269,7 +269,7 @@ class EpisodeUpdateService: ObservableObject {
         }
     }
     
-    private func fetchPodcastArtworkFromRSS_Background(_ feedURL: URL) -> URL? {
+    private static func fetchPodcastArtworkFromRSS_Background(_ feedURL: URL) -> URL? {
         // Create a synchronous request (we're already in background queue)
         var result: URL? = nil
         let semaphore = DispatchSemaphore(value: 0)

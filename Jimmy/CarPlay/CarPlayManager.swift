@@ -15,8 +15,8 @@ final class CarPlayManager: NSObject {
         self.interfaceController = interfaceController
         queueTemplate = buildQueueTemplate()
         if let template = queueTemplate {
-            interfaceController.setRootTemplate(CPNowPlayingTemplate.shared, animated: false)
-            interfaceController.pushTemplate(template, animated: false)
+            interfaceController.setRootTemplate(CPNowPlayingTemplate.shared, animated: false, completion: nil)
+            interfaceController.pushTemplate(template, animated: false, completion: nil)
         }
     }
 
@@ -54,10 +54,10 @@ final class CarPlayManager: NSObject {
         
         // Update templates more efficiently
         if controller.templates.count > 1 {
-            controller.popToRootTemplate(animated: false)
+            controller.popToRootTemplate(animated: false, completion: nil)
         }
         
-        controller.pushTemplate(newTemplate, animated: false)
+        controller.pushTemplate(newTemplate, animated: false, completion: nil)
     }
 
     /// Helper to retrieve the podcast associated with an episode

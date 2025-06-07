@@ -322,13 +322,21 @@ class AudioPlayerService: NSObject, ObservableObject {
         // Get duration and update UI when ready
         DispatchQueue.main.async {
             if let asset = self.player?.currentItem?.asset {
-                let duration = asset.duration
-                if !duration.isIndefinite {
-                    self.duration = CMTimeGetSeconds(duration)
-                    
-                    // Save duration to episode if it's not already set
-                    if episode.episodeDuration == 0 {
-                        EpisodeViewModel.shared.updateEpisodeDuration(episode, duration: self.duration)
+                Task {
+                    do {
+                        let duration = try await asset.load(.duration)
+                        if !duration.isIndefinite {
+                            await MainActor.run {
+                                self.duration = CMTimeGetSeconds(duration)
+                                
+                                // Save duration to episode if it's not already set
+                                if episode.episodeDuration == 0 {
+                                    EpisodeViewModel.shared.updateEpisodeDuration(episode, duration: self.duration)
+                                }
+                            }
+                        }
+                    } catch {
+                        print("⚠️ Failed to load asset duration: \(error)")
                     }
                 }
             }
@@ -366,13 +374,21 @@ class AudioPlayerService: NSObject, ObservableObject {
                     if let currentEpisode = self.currentEpisode {
                         LoadingStateManager.shared.setEpisodeLoading(currentEpisode.id, isLoading: false)
                     }
-                    let duration = playerItem.asset.duration
-                    if !duration.isIndefinite {
-                        self.duration = CMTimeGetSeconds(duration)
-                        
-                        // Save duration to episode if it's not already set
-                        if let currentEpisode = self.currentEpisode, currentEpisode.episodeDuration == 0 {
-                            EpisodeViewModel.shared.updateEpisodeDuration(currentEpisode, duration: self.duration)
+                    Task {
+                        do {
+                            let duration = try await playerItem.asset.load(.duration)
+                            if !duration.isIndefinite {
+                                await MainActor.run {
+                                    self.duration = CMTimeGetSeconds(duration)
+                                    
+                                    // Save duration to episode if it's not already set
+                                    if let currentEpisode = self.currentEpisode, currentEpisode.episodeDuration == 0 {
+                                        EpisodeViewModel.shared.updateEpisodeDuration(currentEpisode, duration: self.duration)
+                                    }
+                                }
+                            }
+                        } catch {
+                            print("⚠️ Failed to load asset duration: \(error)")
                         }
                     }
                 case .failed:

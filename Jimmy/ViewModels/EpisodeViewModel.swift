@@ -246,9 +246,7 @@ class EpisodeViewModel: ObservableObject {
     
     private func attemptAutomaticRecovery() {
         // Ensure this runs on main thread since it might update @Published properties
-        DispatchQueue.main.async { [weak self] in
-            guard let self = self else { return }
-            
+        DispatchQueue.main.async {
             // Check if we have any podcasts but no episodes - this suggests corrupted episode data
             let podcasts = PodcastService.shared.loadPodcasts()
             

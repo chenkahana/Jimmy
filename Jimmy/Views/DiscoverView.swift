@@ -96,7 +96,7 @@ struct DiscoverView: View {
         }
         .navigationTitle("Discover")
         .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search Podcasts")
-        .onChange(of: searchText) { newValue in
+        .onChange(of: searchText) { oldValue, newValue in
             let trimmed = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
             if trimmed.isEmpty {
                 searchResults = []

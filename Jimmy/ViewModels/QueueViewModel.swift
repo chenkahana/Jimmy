@@ -468,7 +468,7 @@ class QueueViewModel: ObservableObject {
     private func loadQueue(completion: (() -> Void)? = nil) {
         // Load queue asynchronously to never block the UI
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            guard let self = self else { 
+            guard let self else { 
                 completion?()
                 return 
             }

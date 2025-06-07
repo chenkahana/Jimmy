@@ -95,7 +95,7 @@ struct ToastModifier: ViewModifier {
             content
             ToastView(message: message, isShowing: isShowing)
         }
-        .onChange(of: isShowing) { newValue in
+        .onChange(of: isShowing) { oldValue, newValue in
             if newValue {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
                     isShowing = false
