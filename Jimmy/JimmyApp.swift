@@ -14,6 +14,8 @@ struct JimmyApp: App {
     private let updateService = EpisodeUpdateService.shared
     // Initialize the undo manager for shake-to-undo functionality
     private let undoManager = ShakeUndoManager.shared
+    // Initialize background task manager for BGTaskScheduler
+    private let backgroundTaskManager = BackgroundTaskManager.shared
     @State private var showFileImportSheet = false
     @State private var pendingAudioURL: URL?
     
@@ -28,6 +30,9 @@ struct JimmyApp: App {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                         // Start background services after UI is loaded
                         updateService.startPeriodicUpdates()
+                        
+                        // Setup background task scheduler for refresh
+                        backgroundTaskManager.scheduleBackgroundRefresh()
                         
                         // Setup shake detection for undo functionality
                         undoManager.setupShakeDetection()

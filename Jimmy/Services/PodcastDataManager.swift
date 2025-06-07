@@ -27,7 +27,8 @@ class PodcastDataManager: ObservableObject {
     
     private init() {
         loadPodcasts()
-        setupAutoRefresh()
+        // Background refresh is now handled by BackgroundTaskManager
+        // setupAutoRefresh() - REMOVED: Timer-based refresh replaced with BGTaskScheduler
     }
     
     // MARK: - Public Interface
@@ -177,10 +178,21 @@ class PodcastDataManager: ObservableObject {
         }
     }
     
-    private func setupAutoRefresh() {
-        // Setup timer for periodic refresh
-        Timer.scheduledTimer(withTimeInterval: refreshInterval, repeats: true) { [weak self] _ in
-            self?.refreshPodcasts()
+    // MARK: - Background Refresh Support
+    
+    /// Called by BackgroundTaskManager during background refresh
+    /// Returns completion handler for async/await compatibility
+    func performBackgroundRefresh() async -> Bool {
+        return await withCheckedContinuation { continuation in
+            refreshPodcasts(force: true)
+            
+            // Wait for completion with timeout
+            DispatchQueue.main.asyncAfter(deadline: .now() + 15) {
+                continuation.resume(returning: !self.isLoading)
+            }
         }
     }
+    
+    // REMOVED: Timer-based auto-refresh replaced with BGTaskScheduler
+    // private func setupAutoRefresh() { ... }
 } 
