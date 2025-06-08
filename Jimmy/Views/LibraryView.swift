@@ -329,6 +329,10 @@ struct LibraryView: View {
                     }
                 }
             }
+            // Trigger episode update if enough time has passed
+            if updateService.needsUpdate() {
+                updateService.forceUpdate()
+            }
             // INSTANT DISPLAY: Cache is ready, no additional work needed on subsequent appearances
         }
         .onDisappear {

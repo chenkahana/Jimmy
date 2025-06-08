@@ -318,6 +318,14 @@ class EpisodeCacheService: ObservableObject {
             }
         }
     }
+
+    /// Update cache with the given episodes for a podcast
+    /// - Parameters:
+    ///   - episodes: Episodes to store in cache
+    ///   - podcastID: Podcast identifier
+    func updateCache(_ episodes: [Episode], for podcastID: UUID) {
+        cacheEpisodes(episodes, for: podcastID)
+    }
     
     // PERFORMANCE FIX: Make cache persistence fully async to prevent blocking
     private func saveCacheToDisk() {
