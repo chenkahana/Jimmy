@@ -104,7 +104,7 @@ struct JimmyApp: App {
                                 print("Error importing podcast via URL scheme: \(error.localizedDescription)")
                                 // Could show a notification or alert here
                             } else if let podcast = podcast {
-                                print("Successfully imported \"\(podcast.title)\" via URL scheme!")
+    
                                 // Could show a success notification here
                             }
                         }

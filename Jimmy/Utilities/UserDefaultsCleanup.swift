@@ -32,8 +32,6 @@ class UserDefaultsCleanup {
             
             // Synchronize to ensure changes are written
             defaults.synchronize()
-        } else {
-            print("✅ UserDefaults cleanup: no large data found")
         }
     }
     

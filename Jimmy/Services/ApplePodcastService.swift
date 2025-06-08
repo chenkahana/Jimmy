@@ -184,9 +184,7 @@ class ApplePodcastService {
                     podcastsDict[key] = (item: item, episodes: 1)
                 }
                 
-                #if DEBUG
-                print("✅ [\(method)] Added: \(podcastTitle) by \(artist) (\(podcastsDict[key]!.episodes) episodes)")
-                #endif
+
             }
         }
         
@@ -227,9 +225,7 @@ class ApplePodcastService {
                     )
                     podcasts.append(podcast)
                     
-                    #if DEBUG
-                    print("✅ [\(method)] Found RSS feed for: \(podcastTitle)")
-                    #endif
+
                 }
             }
         }

@@ -199,7 +199,6 @@ class PodcastService: ObservableObject {
             
             if wasUpdated {
                 self.savePodcasts(podcasts)
-                print("✅ Successfully updated metadata for \(podcast.title)")
             } else {
                 print("ℹ️ No changes needed for \(podcast.title)")
             }
@@ -355,10 +354,6 @@ class PodcastService: ObservableObject {
                         podcasts[index].artworkURL = artworkURL
                         self.savePodcasts(podcasts)
                         updatedCount += 1
-                        
-                        print("✅ Updated \(podcast.title)")
-                        print("   Old: \(oldURL)")
-                        print("   New: \(artworkURL.absoluteString)")
                     }
                 } else {
                     print("⚠️ No artwork found for \(podcast.title)")

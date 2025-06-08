@@ -93,7 +93,6 @@ class BackgroundTaskManager: ObservableObject {
             }
             
             task.setTaskCompleted(success: success)
-            print("✅ Background refresh completed with success: \(success)")
         }
     }
     

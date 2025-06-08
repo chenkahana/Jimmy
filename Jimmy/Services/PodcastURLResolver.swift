@@ -197,7 +197,6 @@ class PodcastURLResolver {
             
             // Basic check for RSS/XML content
             if string.contains("<rss") || string.contains("<feed") || string.contains("<channel") {
-                print("✅ Valid RSS feed detected: \(url.absoluteString)")
                 completion(url)
             } else {
                 print("❌ Not a valid RSS feed, got: \(string.prefix(200))")

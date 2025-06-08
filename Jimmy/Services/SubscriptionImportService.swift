@@ -140,8 +140,6 @@ class SubscriptionImportService {
                         lock.lock()
                         podcasts.append(podcast)
                         lock.unlock()
-                        
-                        print("✅ Resolved: \(parsedPodcast.title) -> \(rssURL.absoluteString)")
                     } else {
                         // Fallback: search by title and author
                         self?.searchForPodcast(title: parsedPodcast.title, author: parsedPodcast.author) { podcast in

@@ -80,6 +80,14 @@ extension AppDataDocument {
             return
         }
         
+        // Additional check: verify iCloud capability is available
+        guard iCloudKeyValueStoreAvailable() else {
+            #if DEBUG
+            print("⚠️ iCloud Key-Value Store not available - skipping backup")
+            #endif
+            return
+        }
+        
         // Save to iCloud Key-Value Store
         saveToiCloudKeyValueStore()
     }
@@ -90,25 +98,86 @@ extension AppDataDocument {
             return
         }
         
+        // Additional check: verify iCloud capability is available
+        guard iCloudKeyValueStoreAvailable() else {
+            #if DEBUG
+            print("⚠️ iCloud Key-Value Store not available - skipping restore")
+            #endif
+            return
+        }
+        
         // Load from iCloud Key-Value Store
         loadFromiCloudKeyValueStore()
     }
     
+    // MARK: - iCloud Capability Check
+    private static func iCloudKeyValueStoreAvailable() -> Bool {
+        // For development/debug builds, skip the entitlement check and just check if iCloud is available
+        #if DEBUG
+        // Check if iCloud is available on the device
+        let ubiquityToken = FileManager.default.ubiquityIdentityToken
+        
+        if ubiquityToken == nil {
+            print("⚠️ iCloud not available: ubiquityIdentityToken is nil")
+            print("   This could mean:")
+            print("   - Not signed into iCloud")
+            print("   - iCloud Drive is disabled in Settings")
+            print("   - iCloud Key-Value Store is disabled for this app")
+            return false
+        }
+        
+        // Additional check: try to see if we can access NSUbiquitousKeyValueStore
+        do {
+            let store = NSUbiquitousKeyValueStore.default
+            // Just try to get the synchronization status - this will fail if iCloud KVS isn't available
+            _ = store.dictionaryRepresentation
+            print("✓ iCloud Key-Value Store appears to be available")
+            return true
+        } catch {
+            print("⚠️ iCloud Key-Value Store not accessible: \(error.localizedDescription)")
+            return false
+        }
+        #else
+        // In release builds, check both entitlement and iCloud availability
+        guard Bundle.main.object(forInfoDictionaryKey: "com.apple.developer.ubiquity-kvstore-identifier") != nil else {
+            return false
+        }
+        
+        guard FileManager.default.ubiquityIdentityToken != nil else {
+            return false
+        }
+        
+        return true
+        #endif
+    }
+    
     // MARK: - iCloud Implementation
     private static func saveToiCloudKeyValueStore() {
+        // Check if iCloud is available before accessing NSUbiquitousKeyValueStore
+        guard FileManager.default.ubiquityIdentityToken != nil else {
+            #if DEBUG
+            print("⚠️ iCloud is not available - skipping backup")
+            #endif
+            return
+        }
+        
         DispatchQueue.global(qos: .utility).async {
-            let doc = AppDataDocument()
-            let encoder = JSONEncoder()
-            if let data = try? encoder.encode(doc.appData) {
-                let kvStore = NSUbiquitousKeyValueStore.default
-                kvStore.set(data, forKey: iCloudKey)
-                
-                // Don't call synchronize() as it's blocking - let the system handle sync timing
-                // kvStore.synchronize()
-                
+            do {
+                let doc = AppDataDocument()
+                let encoder = JSONEncoder()
+                if let data = try? encoder.encode(doc.appData) {
+                    let kvStore = NSUbiquitousKeyValueStore.default
+                    kvStore.set(data, forKey: iCloudKey)
+                    
+                    // Don't call synchronize() as it's blocking - let the system handle sync timing
+                    // kvStore.synchronize()
+                    
+
+                }
+            } catch {
                 #if DEBUG
                 DispatchQueue.main.async {
-                    print("✅ Successfully saved data to iCloud Key-Value Store")
+                    print("⚠️ Failed to save to iCloud: \(error.localizedDescription)")
                 }
                 #endif
             }
@@ -116,13 +185,18 @@ extension AppDataDocument {
     }
     
     private static func loadFromiCloudKeyValueStore() {
+        // Check if iCloud is available before accessing NSUbiquitousKeyValueStore
+        guard FileManager.default.ubiquityIdentityToken != nil else {
+            #if DEBUG
+            print("⚠️ iCloud is not available - skipping restore")
+            #endif
+            return
+        }
+        
         let kvStore = NSUbiquitousKeyValueStore.default
         if let data = kvStore.data(forKey: iCloudKey) {
             do {
                 try importData(data)
-                #if DEBUG
-                print("✅ Successfully loaded data from iCloud Key-Value Store")
-                #endif
             } catch {
                 #if DEBUG
                 print("⚠️ Failed to import iCloud data: \(error.localizedDescription)")

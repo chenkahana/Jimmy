@@ -101,7 +101,6 @@ class ShakeUndoManager: ObservableObject {
         var podcasts = PodcastService.shared.loadPodcasts()
         podcasts.append(podcast)
         PodcastService.shared.savePodcasts(podcasts)
-        print("✅ Restored subscription to: \(podcast.title)")
     }
     
     private func undoEpisodeRemovalFromQueue(_ episode: Episode, atIndex: Int) {
@@ -114,20 +113,17 @@ class ShakeUndoManager: ObservableObject {
             queue.queue.append(episode)
         }
         queue.saveQueue()
-        print("✅ Restored episode to queue: \(episode.title)")
     }
     
     private func undoQueueReorder(_ previousQueue: [Episode]) {
         let queue = QueueViewModel.shared
         queue.queue = previousQueue
         queue.saveQueue()
-        print("✅ Restored previous queue order")
     }
     
     private func undoEpisodeAddedToQueue(_ episode: Episode) {
         let queue = QueueViewModel.shared
         queue.removeFromQueue(episode)
-        print("✅ Removed episode from queue: \(episode.title)")
     }
     
     private func undoEpisodeMove(_ episode: Episode, fromIndex: Int, toIndex: Int) {
@@ -139,7 +135,6 @@ class ShakeUndoManager: ObservableObject {
             queue.queue.insert(removedEpisode, at: fromIndex)
             queue.saveQueue()
         }
-        print("✅ Restored episode position: \(episode.title)")
     }
     
     private func undoPodcastSubscription(_ podcast: Podcast) {
@@ -147,7 +142,6 @@ class ShakeUndoManager: ObservableObject {
         var podcasts = PodcastService.shared.loadPodcasts()
         podcasts.removeAll { $0.id == podcast.id }
         PodcastService.shared.savePodcasts(podcasts)
-        print("✅ Removed subscription to: \(podcast.title)")
     }
     
     private func undoBulkEpisodeRemovalFromQueue(_ removedEpisodes: [Episode], removedFromIndex: Int, targetEpisode: Episode) {
@@ -179,7 +173,6 @@ class ShakeUndoManager: ObservableObject {
         queue.updateEpisodeIDs()
         
         queue.saveQueue()
-        print("✅ Restored \(removedEpisodes.count) episodes to queue before \"\(targetEpisode.title)\"")
     }
     
     // MARK: - Shake Detection
@@ -255,8 +248,6 @@ class ShakeUndoManager: ObservableObject {
             self.undoToastMessage = "Undid: \(action.description)"
             self.showUndoToast = true
         }
-        
-        print("✅ Undo completed successfully")
     }
     
     deinit {
