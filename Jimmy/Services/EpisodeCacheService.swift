@@ -84,19 +84,42 @@ class EpisodeCacheService: ObservableObject {
             }
             
             // Check cache first (unless force refresh is requested) - use async access
-            self.getCachedEpisodesAsync(for: podcastID) { cachedEpisodes in
-                if !forceRefresh, let episodes = cachedEpisodes {
-                    #if canImport(OSLog)
-                    self.logger.info("Using cached episodes for \(podcast.title, privacy: .public)")
-                    #else
-                    print("📱 Using cached episodes for \(podcast.title)")
-                    #endif
-                    
-                    DispatchQueue.main.async {
-                        self.isLoadingEpisodes[podcastID] = false
-                        completion(episodes)
+            self.getCachedEpisodesAsync(for: podcastID, ignoreExpiry: true) { cachedEpisodes in
+                // If we have cached episodes and not forcing refresh, return them immediately
+                if let episodes = cachedEpisodes, !forceRefresh {
+                    let isFresh = self.hasFreshCache(for: podcastID)
+
+                    if isFresh {
+                        #if canImport(OSLog)
+                        self.logger.info("Using cached episodes for \(podcast.title, privacy: .public)")
+                        #else
+                        print("📱 Using cached episodes for \(podcast.title)")
+                        #endif
+
+                        DispatchQueue.main.async {
+                            self.isLoadingEpisodes[podcastID] = false
+                            completion(episodes)
+                        }
+                        return
+                    } else {
+                        // Stale cache - show immediately then refresh in background
+                        #if canImport(OSLog)
+                        self.logger.info("Using stale episodes for \(podcast.title, privacy: .public) and refreshing")
+                        #else
+                        print("📱 Using stale episodes for \(podcast.title) and refreshing")
+                        #endif
+
+                        DispatchQueue.main.async {
+                            completion(episodes)
+                        }
+
+                        self.fetchAndCacheEpisodes(for: podcast) { _, _ in
+                            DispatchQueue.main.async {
+                                self.isLoadingEpisodes[podcastID] = false
+                            }
+                        }
+                        return
                     }
-                    return
                 }
                 
                 // If offline, return cached data if available
