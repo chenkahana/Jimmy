@@ -83,6 +83,7 @@ class EpisodeUpdateService: ObservableObject {
         // Update episodes concurrently
         await withTaskGroup(of: (Podcast, [Episode]).self) { group in
             var allNewEpisodes: [Episode] = []
+            var episodesByPodcast: [UUID: [Episode]] = [:]
             var completedCount = 0
             let totalPodcasts = Double(podcasts.count)
             var updatedPodcasts: [Podcast] = []
@@ -102,6 +103,7 @@ class EpisodeUpdateService: ObservableObject {
                 
                 if !episodes.isEmpty {
                     allNewEpisodes.append(contentsOf: episodes)
+                    episodesByPodcast[podcast.id] = episodes
                     
                     // Update podcast's lastEpisodeDate
                     var updatedPodcast = podcast
@@ -113,7 +115,7 @@ class EpisodeUpdateService: ObservableObject {
             }
             
             // Process all new episodes on sorting queue
-            await processNewEpisodes(allNewEpisodes, updatedPodcasts: updatedPodcasts)
+            await processNewEpisodes(allNewEpisodes, updatedPodcasts: updatedPodcasts, episodesByPodcast: episodesByPodcast)
         }
         
         await MainActor.run {
@@ -131,7 +133,7 @@ class EpisodeUpdateService: ObservableObject {
         }
     }
     
-    private func processNewEpisodes(_ newEpisodes: [Episode], updatedPodcasts: [Podcast]) async {
+    private func processNewEpisodes(_ newEpisodes: [Episode], updatedPodcasts: [Podcast], episodesByPodcast: [UUID: [Episode]]) async {
         await withTaskGroup(of: Void.self) { group in
             // Task 1: Update episodes in background
             group.addTask {
@@ -148,11 +150,11 @@ class EpisodeUpdateService: ObservableObject {
                 await self.updatePodcastArtwork(updatedPodcasts)
             }
             
-            // Task 4: Invalidate episode cache for podcasts with new episodes
+            // Task 4: Refresh episode cache with latest data
             group.addTask {
-                await self.invalidateEpisodeCache(for: newEpisodes)
+                await self.refreshEpisodeCache(episodesByPodcast)
             }
-            
+
             // Task 5: Sort and notify UI on main thread
             group.addTask {
                 await self.sortAndNotifyUI()
@@ -304,22 +306,14 @@ class EpisodeUpdateService: ObservableObject {
         }
     }
     
-    private func invalidateEpisodeCache(for newEpisodes: [Episode]) async {
-        guard !newEpisodes.isEmpty else { return }
-        
-        // Get unique podcast IDs that have new episodes
-        let podcastIDsWithNewEpisodes = Set(newEpisodes.compactMap { $0.podcastID })
-        
+    private func refreshEpisodeCache(_ episodesByPodcast: [UUID: [Episode]]) async {
         await MainActor.run {
             let episodeCacheService = EpisodeCacheService.shared
-            
-            for podcastID in podcastIDsWithNewEpisodes {
-                episodeCacheService.clearCache(for: podcastID)
-                print("🗑️ Invalidated episode cache for podcast: \(podcastID)")
-            }
-            
-            if !podcastIDsWithNewEpisodes.isEmpty {
-                print("🔄 Cache invalidated for \(podcastIDsWithNewEpisodes.count) podcasts with new episodes")
+
+            for (podcastID, episodes) in episodesByPodcast {
+                guard !episodes.isEmpty else { continue }
+                episodeCacheService.updateCache(episodes, for: podcastID)
+                print("💾 Updated cache for podcast: \(podcastID) with \(episodes.count) episodes")
             }
         }
     }
