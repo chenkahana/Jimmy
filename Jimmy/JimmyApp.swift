@@ -31,8 +31,8 @@ struct JimmyApp: App {
                         // Start background services after UI is loaded
                         updateService.startPeriodicUpdates()
                         
-                        // Setup background task scheduler for refresh
-                        backgroundTaskManager.scheduleBackgroundRefresh()
+                        // DISABLED: Don't schedule background refresh on startup to prevent Signal 9 crashes
+                        // backgroundTaskManager.scheduleBackgroundRefresh()
                         
                         // Setup shake detection for undo functionality
                         undoManager.setupShakeDetection()

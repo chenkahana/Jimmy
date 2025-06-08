@@ -253,11 +253,22 @@ struct SettingsView: View {
         .fileImporter(isPresented: $isImporting, allowedContentTypes: [.json]) { result in
             switch result {
             case .success(let url):
-                do {
-                    let data = try Data(contentsOf: url)
-                    try AppDataDocument.importData(data)
-                } catch {
-                    importError = error.localizedDescription
+                // PERFORMANCE FIX: Move file operations to background thread
+                DispatchQueue.global(qos: .userInitiated).async {
+                    do {
+                        let data = try Data(contentsOf: url)
+                        DispatchQueue.main.async {
+                            do {
+                                try AppDataDocument.importData(data)
+                            } catch {
+                                importError = error.localizedDescription
+                            }
+                        }
+                    } catch {
+                        DispatchQueue.main.async {
+                            importError = error.localizedDescription
+                        }
+                    }
                 }
             case .failure(let error):
                 importError = error.localizedDescription
@@ -418,27 +429,38 @@ struct SettingsView: View {
         let _ = url.startAccessingSecurityScopedResource()
         defer { url.stopAccessingSecurityScopedResource() }
 
-        guard let data = try? Data(contentsOf: url) else {
-            appleJSONImportMessage = "Could not read file"
-            return
-        }
+        // PERFORMANCE FIX: Move file operations to background thread
+        DispatchQueue.global(qos: .userInitiated).async {
+            guard let data = try? Data(contentsOf: url) else {
+                DispatchQueue.main.async {
+                    self.appleJSONImportMessage = "Could not read file"
+                }
+                return
+            }
 
-        do {
-            let podcasts = try AppleBulkImportParser.parse(data: data)
-            var current = PodcastService.shared.loadPodcasts()
-            var newCount = 0
-            for p in podcasts {
-                if !current.contains(where: { $0.feedURL == p.feedURL }) {
-                    current.append(p)
-                    newCount += 1
+            do {
+                let podcasts = try AppleBulkImportParser.parse(data: data)
+                
+                DispatchQueue.main.async {
+                    var current = PodcastService.shared.loadPodcasts()
+                    var newCount = 0
+                    for p in podcasts {
+                        if !current.contains(where: { $0.feedURL == p.feedURL }) {
+                            current.append(p)
+                            newCount += 1
+                        }
+                    }
+                    PodcastService.shared.savePodcasts(current)
+                    self.appleJSONImportMessage = "🎉 Imported \(newCount) podcast(s)"
+                    self.activeAlert = .appleBulkImport(self.appleJSONImportMessage ?? "Import finished")
+                }
+            } catch {
+                DispatchQueue.main.async {
+                    self.appleJSONImportMessage = "Import failed: \(error.localizedDescription)"
+                    self.activeAlert = .appleBulkImport(self.appleJSONImportMessage ?? "Import finished")
                 }
             }
-            PodcastService.shared.savePodcasts(current)
-            appleJSONImportMessage = "🎉 Imported \(newCount) podcast(s)" 
-        } catch {
-            appleJSONImportMessage = "Import failed: \(error.localizedDescription)"
         }
-        activeAlert = .appleBulkImport(appleJSONImportMessage ?? "Import finished")
     }
 
     private func importSpotifyFile(from url: URL) {
@@ -446,43 +468,54 @@ struct SettingsView: View {
         let _ = url.startAccessingSecurityScopedResource()
         defer { url.stopAccessingSecurityScopedResource() }
 
-        guard let data = try? Data(contentsOf: url) else {
-            spotifyImportMessage = "Could not read file"
-            activeAlert = .spotifyImport(spotifyImportMessage ?? "")
-            return
-        }
+        // PERFORMANCE FIX: Move file operations to background thread
+        DispatchQueue.global(qos: .userInitiated).async {
+            guard let data = try? Data(contentsOf: url) else {
+                DispatchQueue.main.async {
+                    self.spotifyImportMessage = "Could not read file"
+                    self.activeAlert = .spotifyImport(self.spotifyImportMessage ?? "")
+                }
+                return
+            }
 
-        let urls = SpotifyListParser.parse(data: data)
-        guard !urls.isEmpty else {
-            spotifyImportMessage = "No URLs found in file"
-            activeAlert = .spotifyImport(spotifyImportMessage ?? "")
-            return
-        }
+            let urls = SpotifyListParser.parse(data: data)
+            guard !urls.isEmpty else {
+                DispatchQueue.main.async {
+                    self.spotifyImportMessage = "No URLs found in file"
+                    self.activeAlert = .spotifyImport(self.spotifyImportMessage ?? "")
+                }
+                return
+            }
 
-        var current = PodcastService.shared.loadPodcasts()
-        var newCount = 0
-        let group = DispatchGroup()
-        for url in urls {
-            group.enter()
-            PodcastURLResolver.shared.resolveToRSSFeed(from: url.absoluteString) { feedURL in
-                if let feedURL = feedURL, !current.contains(where: { $0.feedURL == feedURL }) {
-                    PodcastService.shared.addPodcast(from: feedURL) { podcast, _ in
-                        if let podcast = podcast {
-                            current.append(podcast)
-                            newCount += 1
+            // Move back to main thread for podcast operations
+            DispatchQueue.main.async {
+                var current = PodcastService.shared.loadPodcasts()
+                var newCount = 0
+                let group = DispatchGroup()
+                
+                for url in urls {
+                    group.enter()
+                    PodcastURLResolver.shared.resolveToRSSFeed(from: url.absoluteString) { feedURL in
+                        if let feedURL = feedURL, !current.contains(where: { $0.feedURL == feedURL }) {
+                            PodcastService.shared.addPodcast(from: feedURL) { podcast, _ in
+                                if let podcast = podcast {
+                                    current.append(podcast)
+                                    newCount += 1
+                                }
+                                group.leave()
+                            }
+                        } else {
+                            group.leave()
                         }
-                        group.leave()
                     }
-                } else {
-                    group.leave()
+                }
+
+                group.notify(queue: .main) {
+                    PodcastService.shared.savePodcasts(current)
+                    self.spotifyImportMessage = "🎉 Imported \(newCount) podcast(s)"
+                    self.activeAlert = .spotifyImport(self.spotifyImportMessage ?? "")
                 }
             }
-        }
-
-        group.notify(queue: .main) {
-            PodcastService.shared.savePodcasts(current)
-            self.spotifyImportMessage = "🎉 Imported \(newCount) podcast(s)" 
-            self.activeAlert = .spotifyImport(self.spotifyImportMessage ?? "")
         }
     }
     

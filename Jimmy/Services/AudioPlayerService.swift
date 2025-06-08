@@ -18,9 +18,10 @@ class AudioPlayerService: NSObject, ObservableObject {
     private var player: AVPlayer?
     private var timeObserver: Any?
     
-    // Cache for prepared AVPlayerItems to reduce loading time
+    // Cache for prepared AVPlayerItems to reduce loading time (with size limit)
     private var playerItemCache: [String: AVPlayerItem] = [:]
     private let cacheQueue = DispatchQueue(label: "player.cache", qos: .utility)
+    private let maxCacheSize = 5 // Limit cache to prevent memory issues
     
     private override init() {
         super.init()
@@ -227,6 +228,9 @@ class AudioPlayerService: NSObject, ObservableObject {
             EpisodeViewModel.shared.updatePlaybackPosition(for: currentEpisode, position: playbackPosition)
         }
         
+        // Clear cache to free memory in background
+        clearPlayerItemCache()
+        
         // Only keep audio session active if we're actually playing
         if isPlaying {
             do {
@@ -406,15 +410,30 @@ class AudioPlayerService: NSObject, ObservableObject {
         }
     }
     
-    private func cleanupOldCacheItems() {
-        // Keep only the 3 most recently used items
-        let maxCacheSize = 3
-        if playerItemCache.count > maxCacheSize {
-            let keysToRemove = Array(playerItemCache.keys.prefix(playerItemCache.count - maxCacheSize))
-            for key in keysToRemove {
-                playerItemCache.removeValue(forKey: key)
+    private func clearPlayerItemCache() {
+        cacheQueue.async { [weak self] in
+            self?.playerItemCache.removeAll()
+            print("🧹 Cleared player item cache to free memory")
+        }
+    }
+    
+    private func manageCacheSize() {
+        cacheQueue.async { [weak self] in
+            guard let self = self else { return }
+            
+            if self.playerItemCache.count > self.maxCacheSize {
+                // Remove oldest entries (simple FIFO approach)
+                let keysToRemove = Array(self.playerItemCache.keys).prefix(self.playerItemCache.count - self.maxCacheSize)
+                for key in keysToRemove {
+                    self.playerItemCache.removeValue(forKey: key)
+                }
+                print("🧹 Trimmed player cache to \(self.maxCacheSize) items")
             }
         }
+    }
+    
+    private func cleanupOldCacheItems() {
+        manageCacheSize()
     }
     
     /// Preload episodes for faster playback

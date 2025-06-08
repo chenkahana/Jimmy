@@ -40,6 +40,7 @@ class EpisodeCacheService: ObservableObject {
     private var episodeCache: [UUID: CacheEntry] = [:]
     private let cacheQueue = DispatchQueue(label: "episode-cache-queue", qos: .userInitiated, attributes: .concurrent)
     private let persistenceKey = "episodeCacheData"
+    private let maxCacheEntries = 20 // Limit cache size to prevent memory issues
 #if canImport(OSLog)
     private let logger = Logger(subsystem: "com.jimmy.app", category: "cache")
 #endif
@@ -337,6 +338,9 @@ class EpisodeCacheService: ObservableObject {
             
             self.episodeCache[podcastID] = entry
             
+            // Manage cache size to prevent memory issues
+            self.manageCacheSize()
+            
             // PERFORMANCE FIX: Save to disk asynchronously
             DispatchQueue.global(qos: .utility).async {
                 self.saveCacheToDisk()
@@ -398,6 +402,9 @@ class EpisodeCacheService: ObservableObject {
                 }
             }
             
+            // Manage cache size after loading
+            self.manageCacheSize()
+            
             #if canImport(OSLog)
             self.logger.info("Loaded \(container.entries.count) cached podcast episodes from disk")
             #else
@@ -411,6 +418,25 @@ class EpisodeCacheService: ObservableObject {
     private func startCacheCleanupTimer() {
         Timer.scheduledTimer(withTimeInterval: 60 * 5, repeats: true) { [weak self] _ in
             self?.cleanupExpiredEntries()
+        }
+    }
+    
+    private func manageCacheSize() {
+        // This should be called from within cacheQueue.async(flags: .barrier)
+        if episodeCache.count > maxCacheEntries {
+            // Remove oldest entries based on timestamp
+            let sortedEntries = episodeCache.sorted { $0.value.timestamp < $1.value.timestamp }
+            let entriesToRemove = sortedEntries.prefix(episodeCache.count - maxCacheEntries)
+            
+            for (podcastID, _) in entriesToRemove {
+                episodeCache.removeValue(forKey: podcastID)
+            }
+            
+            #if canImport(OSLog)
+            logger.info("Trimmed cache to \(self.maxCacheEntries) entries to prevent memory issues")
+            #else
+            print("🧹 Trimmed cache to \(self.maxCacheEntries) entries to prevent memory issues")
+            #endif
         }
     }
     

@@ -489,15 +489,12 @@ private class DownloadOperation: Operation, @unchecked Sendable {
     override func main() {
         guard !isCancelled else { return }
         
-        let semaphore = DispatchSemaphore(value: 0)
-        
+        // PERFORMANCE FIX: Use async completion instead of blocking semaphore
         var request = URLRequest(url: url)
         request.timeoutInterval = ImageCache.CacheConfig.downloadTimeout
         request.cachePolicy = .useProtocolCachePolicy
         
         let task = URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
-            defer { semaphore.signal() }
-            
             guard let self = self, !self.isCancelled else { return }
             
             if let error = error {
@@ -515,7 +512,9 @@ private class DownloadOperation: Operation, @unchecked Sendable {
         }
         
         task.resume()
-        semaphore.wait()
+        
+        // PERFORMANCE FIX: Don't block with semaphore.wait() - let the task complete asynchronously
+        // The completion handler will be called when the task finishes
     }
     
     private func optimizeImageForCache(_ image: UIImage) -> UIImage {

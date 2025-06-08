@@ -22,14 +22,33 @@ class EpisodeViewModel: ObservableObject {
     
     private init() {
         loadPlayedIDs()
-        // PERFORMANCE FIX: Load episodes asynchronously to avoid blocking startup
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            self?.loadEpisodes()
+        
+        // PERFORMANCE FIX: Load cached episodes immediately for instant app startup
+        // First try synchronous load from cache for immediate display
+        if let cachedEpisodes: [Episode] = FileStorage.shared.load([Episode].self, from: "episodes.json") {
+            episodes = cachedEpisodes
+            applyPlayedIDsSync() // Apply played status immediately
+            print("⚡ Loaded \(cachedEpisodes.count) cached episodes instantly")
+        } else {
+            // No cached episodes - start with empty array for immediate UI display
+            episodes = []
+            print("📱 Starting with empty episodes - will load fresh data")
         }
         
-        // Also check for recovery after a brief delay to ensure UI is ready
+        // Recovery check after a brief delay to ensure UI is ready
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
             self?.checkAndRecoverIfNeeded()
+        }
+    }
+    
+    // MARK: - Synchronous Helper for Startup
+    
+    private func applyPlayedIDsSync() {
+        // Apply played IDs immediately for startup performance
+        episodes = episodes.map { ep in
+            var e = ep
+            e.played = playedEpisodeIDs.contains(ep.id)
+            return e
         }
     }
     

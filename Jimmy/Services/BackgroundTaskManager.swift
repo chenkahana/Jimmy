@@ -12,8 +12,8 @@ class BackgroundTaskManager: ObservableObject {
     
     private struct Config {
         static let backgroundRefreshIdentifier = "com.chenkahana.Jimmy.refresh"
-        static let refreshInterval: TimeInterval = 30 * 60 // 30 minutes
-        static let maxBackgroundTime: TimeInterval = 25 // 25 seconds max for background processing
+        static let refreshInterval: TimeInterval = 60 * 60 // Increased to 60 minutes to reduce background load
+        static let maxBackgroundTime: TimeInterval = 15 // Reduced to 15 seconds max for background processing
     }
     
     // MARK: - Properties
@@ -100,33 +100,17 @@ class BackgroundTaskManager: ObservableObject {
         let startTime = Date()
         
         do {
-            // Create a task group to run operations concurrently
-            return try await withThrowingTaskGroup(of: Bool.self) { group in
-                var results: [Bool] = []
-                
-                // Add podcast refresh task
-                group.addTask { [weak self] in
-                    await self?.refreshPodcastData() ?? false
-                }
-                
-                // Add episode update task
-                group.addTask { [weak self] in
-                    await self?.refreshEpisodeData() ?? false
-                }
-                
-                // Collect results with timeout
-                for try await result in group {
-                    results.append(result)
-                    
-                    // Check if we're running out of time
-                    if Date().timeIntervalSince(startTime) > Config.maxBackgroundTime {
-                        print("⏰ Background refresh timeout reached")
-                        break
-                    }
-                }
-                
-                return results.allSatisfy { $0 }
+            // REDUCED SCOPE: Only refresh podcast data, not episodes, to reduce memory pressure
+            // Episodes will be updated when app is active through EpisodeUpdateService
+            let result = await refreshPodcastData()
+            
+            // Check if we exceeded time limit
+            if Date().timeIntervalSince(startTime) > Config.maxBackgroundTime {
+                print("⏰ Background refresh timeout reached")
+                return false
             }
+            
+            return result
         } catch {
             print("❌ Background refresh failed: \(error.localizedDescription)")
             return false
@@ -148,24 +132,21 @@ class BackgroundTaskManager: ObservableObject {
     }
     
     private func setupAppStateObservers() {
-        // Schedule background refresh when app enters background
+        // DISABLED: Don't schedule background refresh automatically to prevent Signal 9 crashes
+        // Background refresh will only be scheduled manually when needed
+        
+        // Cancel background refresh when app goes to background to reduce memory pressure
         NotificationCenter.default.addObserver(
             forName: UIApplication.didEnterBackgroundNotification,
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            self?.scheduleBackgroundRefresh()
+            // Cancel to prevent excessive background processing
+            self?.cancelBackgroundRefresh()
         }
         
-        // Cancel background refresh when app becomes active
-        NotificationCenter.default.addObserver(
-            forName: UIApplication.didBecomeActiveNotification,
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            // Don't cancel - let background refresh continue for better user experience
-            // self?.cancelBackgroundRefresh()
-        }
+        // Don't automatically restart background tasks when app becomes active
+        // This prevents aggressive background processing that leads to Signal 9 crashes
     }
     
     deinit {

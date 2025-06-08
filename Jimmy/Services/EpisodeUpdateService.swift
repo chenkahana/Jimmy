@@ -15,15 +15,39 @@ class EpisodeUpdateService: ObservableObject {
     // RSS feeds don't "push" updates - we need to poll them periodically
     // Most podcast apps check every 15-30 minutes for new episodes
     // RSS is a pull-based protocol, not push-based like modern APIs
-    private let updateInterval: TimeInterval = 900 // 15 minutes
+    private let updateInterval: TimeInterval = 1800 // Increased to 30 minutes to reduce background load
     
     private init() {
         // REMOVED: Don't start periodic updates automatically to avoid blocking app launch  
         // startPeriodicUpdates() - This will be called manually from JimmyApp.onAppear
+        setupAppStateObservers()
     }
     
     deinit {
         stopPeriodicUpdates()
+        NotificationCenter.default.removeObserver(self)
+    }
+    
+    // MARK: - App State Management
+    
+    private func setupAppStateObservers() {
+        // Stop updates when app goes to background to prevent Signal 9 crashes
+        NotificationCenter.default.addObserver(
+            forName: UIApplication.didEnterBackgroundNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.stopPeriodicUpdates()
+        }
+        
+        // Resume updates when app becomes active
+        NotificationCenter.default.addObserver(
+            forName: UIApplication.didBecomeActiveNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.startPeriodicUpdates()
+        }
     }
     
     // MARK: - Public Interface
@@ -41,6 +65,12 @@ class EpisodeUpdateService: ObservableObject {
         // Schedule recurring updates
         updateTimer = Timer.scheduledTimer(withTimeInterval: updateInterval, repeats: true) { [weak self] _ in
             guard let self = self else { return }
+            
+            // Only update if app is active to prevent background crashes
+            guard UIApplication.shared.applicationState == .active else {
+                return
+            }
+            
             Task {
                 await self.updateAllEpisodes()
             }
@@ -80,43 +110,51 @@ class EpisodeUpdateService: ObservableObject {
         
         print("🔄 Starting background episode update for \(podcasts.count) podcasts")
         
-        // Update episodes concurrently
-        await withTaskGroup(of: (Podcast, [Episode]).self) { group in
-            var allNewEpisodes: [Episode] = []
-            var episodesByPodcast: [UUID: [Episode]] = [:]
-            var completedCount = 0
-            let totalPodcasts = Double(podcasts.count)
-            var updatedPodcasts: [Podcast] = []
-            
-            for podcast in podcasts {
-                group.addTask {
-                    await self.fetchEpisodesForPodcast(podcast)
-                }
-            }
-            
-            for await (podcast, episodes) in group {
-                let currentCount = completedCount + 1
-                completedCount = currentCount
-                await MainActor.run {
-                    self.updateProgress = Double(currentCount) / totalPodcasts
+        // Limit concurrent operations to prevent memory pressure
+        let maxConcurrentOperations = min(podcasts.count, 3) // Max 3 concurrent operations
+        let batches = podcasts.chunked(into: maxConcurrentOperations)
+        
+        var allNewEpisodes: [Episode] = []
+        var episodesByPodcast: [UUID: [Episode]] = [:]
+        var updatedPodcasts: [Podcast] = []
+        var completedCount = 0
+        let totalPodcasts = Double(podcasts.count)
+        
+        // Process podcasts in batches to control memory usage
+        for batch in batches {
+            await withTaskGroup(of: (Podcast, [Episode]).self) { group in
+                for podcast in batch {
+                    group.addTask {
+                        await self.fetchEpisodesForPodcast(podcast)
+                    }
                 }
                 
-                if !episodes.isEmpty {
-                    allNewEpisodes.append(contentsOf: episodes)
-                    episodesByPodcast[podcast.id] = episodes
-                    
-                    // Update podcast's lastEpisodeDate
-                    var updatedPodcast = podcast
-                    if let latestDate = episodes.compactMap({ $0.publishedDate }).max() {
-                        updatedPodcast.lastEpisodeDate = latestDate
+                for await (podcast, episodes) in group {
+                    completedCount += 1
+                    await MainActor.run {
+                        self.updateProgress = Double(completedCount) / totalPodcasts
                     }
-                    updatedPodcasts.append(updatedPodcast)
+                    
+                    if !episodes.isEmpty {
+                        allNewEpisodes.append(contentsOf: episodes)
+                        episodesByPodcast[podcast.id] = episodes
+                        
+                        // Update podcast's lastEpisodeDate
+                        var updatedPodcast = podcast
+                        if let latestDate = episodes.compactMap({ $0.publishedDate }).max() {
+                            updatedPodcast.lastEpisodeDate = latestDate
+                        }
+                        updatedPodcasts.append(updatedPodcast)
+                    }
                 }
             }
             
-            // Process all new episodes on sorting queue
-            await processNewEpisodes(allNewEpisodes, updatedPodcasts: updatedPodcasts, episodesByPodcast: episodesByPodcast)
+            // Small delay between batches to prevent overwhelming the system
+            try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
         }
+        
+        // Process all new episodes
+        await processNewEpisodes(allNewEpisodes, updatedPodcasts: updatedPodcasts, episodesByPodcast: episodesByPodcast)
         
         await MainActor.run {
             isUpdating = false
@@ -232,9 +270,6 @@ class EpisodeUpdateService: ObservableObject {
     
     private func updatePodcastArtwork(_ podcasts: [Podcast]) async {
         guard !podcasts.isEmpty else { return }
-        
-        return await withCheckedContinuation { continuation in
-            updateQueue.async {
                 var allPodcasts = PodcastService.shared.loadPodcasts()
                 var hasUpdates = false
                 
@@ -244,7 +279,7 @@ class EpisodeUpdateService: ObservableObject {
                         var updatedPodcast = allPodcasts[index]
                         
                         // ALWAYS fetch artwork from RSS feed to ensure it's up-to-date.
-                        if let artworkURL = EpisodeUpdateService.fetchPodcastArtworkFromRSS_Background(updatedPodcast.feedURL) {
+                        if let artworkURL = await EpisodeUpdateService.fetchPodcastArtworkFromRSS_Background(updatedPodcast.feedURL) {
                             // Only update if the new URL is different from the old one
                             if updatedPodcast.artworkURL != artworkURL {
                                 updatedPodcast.artworkURL = artworkURL
@@ -265,23 +300,12 @@ class EpisodeUpdateService: ObservableObject {
                     PodcastService.shared.savePodcasts(allPodcasts)
                     print("📸 Saved \(podcasts.count) podcast artwork updates")
                 }
-                
-                continuation.resume()
-            }
-        }
     }
     
-    private static func fetchPodcastArtworkFromRSS_Background(_ feedURL: URL) -> URL? {
-        // Create a synchronous request (we're already in background queue)
-        var result: URL? = nil
-        let semaphore = DispatchSemaphore(value: 0)
-        
-        let task = URLSession.shared.dataTask(with: feedURL) { data, response, error in
-            defer { semaphore.signal() }
-            
-            guard let data = data, error == nil else {
-                return
-            }
+    private static func fetchPodcastArtworkFromRSS_Background(_ feedURL: URL) async -> URL? {
+        do {
+            // PERFORMANCE FIX: Use proper async/await instead of blocking operations
+            let (data, _) = try await URLSession.shared.data(from: feedURL)
             
             // Parse RSS to extract artwork URL
             let parser = RSSParser()
@@ -289,14 +313,13 @@ class EpisodeUpdateService: ObservableObject {
             
             if let artworkURLString = parser.getPodcastArtworkURL(),
                let artworkURL = URL(string: artworkURLString) {
-                result = artworkURL
+                return artworkURL
             }
+        } catch {
+            print("⚠️ Artwork fetch failed for URL: \(feedURL), error: \(error)")
         }
         
-        task.resume()
-        semaphore.wait() // Wait for completion
-        
-        return result
+        return nil
     }
     
     private func sortAndNotifyUI() async {
@@ -340,4 +363,14 @@ class EpisodeUpdateService: ObservableObject {
 
 extension Notification.Name {
     static let episodesUpdated = Notification.Name("episodesUpdated")
+}
+
+// MARK: - Array Extension for Batching
+
+extension Array {
+    func chunked(into size: Int) -> [[Element]] {
+        return stride(from: 0, to: count, by: size).map {
+            Array(self[$0..<Swift.min($0 + size, count)])
+        }
+    }
 } 

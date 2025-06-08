@@ -37,20 +37,12 @@ struct LibraryView: View {
     
     // INSTANT DISPLAY: Always return cached data immediately for fast tab switching
     var filteredPodcasts: [Podcast] {
-        // Return cached display data immediately, update in background if needed
-        if isCacheReady && (searchText != lastSearchText || subscribedPodcasts.count != lastSubscribedPodcastsHash) {
-            updateCachedFilteredPodcastsAsync()
-        }
+        // PERFORMANCE FIX: Only update cache if data has actually changed, not on every access
         return displayPodcasts
     }
-    
+
     var allEpisodes: [Episode] {
-        // Return cached display data immediately, update in background if needed
-        if isCacheReady && (searchText != lastSearchText || 
-           episodeViewModel.episodes.count != lastEpisodesHash || 
-           subscribedPodcasts.count != lastSubscribedPodcastsHash) {
-            updateCachedAllEpisodesAsync()
-        }
+        // PERFORMANCE FIX: Only update cache if data has actually changed, not on every access
         return displayEpisodes
     }
     
@@ -289,19 +281,26 @@ struct LibraryView: View {
             }
         }
         .onAppear {
-            // INSTANT CACHE: Load everything synchronously for immediate display
+            // PERFORMANCE FIX: Make all loading operations asynchronous to prevent UI freeze
             if isInitialLoad {
                 isInitialLoad = false
                 
-                // 1. Load basic data first (podcasts) - synchronous for immediate display
+                // 1. Load basic data first (podcasts) - keep minimal for immediate display
                 loadSubscribedPodcasts()
                 
-                // 2. Build initial cache synchronously - essential for instant tab switching
-                updateCachedFilteredPodcastsSync()
-                updateCachedAllEpisodesSync()
-                
-                // 3. Mark cache as ready for instant display
+                // 2. Provide immediate empty display data to prevent UI waiting
+                displayPodcasts = subscribedPodcasts
+                displayEpisodes = []
                 isCacheReady = true
+                
+                // 3. Start building proper cache asynchronously - prevents UI freeze
+                DispatchQueue.global(qos: .userInitiated).async {
+                    // Build cache on background thread, then update UI
+                    DispatchQueue.main.async {
+                        self.updateCachedFilteredPodcastsAsync()
+                        self.updateCachedAllEpisodesAsync()
+                    }
+                }
                 
                 // 4. Setup background operations (non-blocking)
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
@@ -329,9 +328,11 @@ struct LibraryView: View {
                     }
                 }
             }
-            // Trigger episode update if enough time has passed
+            // Trigger episode update if enough time has passed - but don't block UI
             if updateService.needsUpdate() {
-                updateService.forceUpdate()
+                DispatchQueue.global(qos: .background).async {
+                    updateService.forceUpdate()
+                }
             }
             // INSTANT DISPLAY: Cache is ready, no additional work needed on subsequent appearances
         }
@@ -346,9 +347,22 @@ struct LibraryView: View {
             isEditMode = false
         }
         .onChange(of: searchText) {
-            // INSTANT UPDATE: Update display data immediately for search
-            if isCacheReady {
+            // PERFORMANCE FIX: Update display data only when search actually changes
+            if isCacheReady && searchText != lastSearchText {
                 updateCachedFilteredPodcastsAsync()
+                updateCachedAllEpisodesAsync()
+            }
+        }
+        .onChange(of: subscribedPodcasts.count) {
+            // PERFORMANCE FIX: Update display data when podcasts change
+            if isCacheReady && subscribedPodcasts.count != lastSubscribedPodcastsHash {
+                updateCachedFilteredPodcastsAsync()
+                updateCachedAllEpisodesAsync()
+            }
+        }
+        .onChange(of: episodeViewModel.episodes.count) {
+            // PERFORMANCE FIX: Update display data when episodes change
+            if isCacheReady && episodeViewModel.episodes.count != lastEpisodesHash {
                 updateCachedAllEpisodesAsync()
             }
         }
@@ -368,16 +382,51 @@ struct LibraryView: View {
     }
     
     private func loadAllEpisodesForPodcasts() {
-        // If we already have episodes, don't reload unless forced
-        guard episodeViewModel.episodes.isEmpty else { 
-            // Update cached episodes if we have data
+        // PERFORMANCE FIX: Always show cached episodes immediately, never wait for network
+        
+        // 1. First, check if we have any episodes already (from cache loading)
+        if !episodeViewModel.episodes.isEmpty {
+            // We have cached episodes - just update the display cache
             DispatchQueue.main.async {
                 self.updateCachedAllEpisodesAsync()
             }
             return 
         }
         
-        // If we have real podcasts but no episodes, trigger episode fetch immediately
+        // 2. If no cached episodes, load from disk immediately (non-blocking)
+        DispatchQueue.global(qos: .userInitiated).async {
+            
+            // Try to load episodes from disk cache first
+            if let cachedEpisodes: [Episode] = FileStorage.shared.load([Episode].self, from: "episodes.json"),
+               !cachedEpisodes.isEmpty {
+                
+                // Show cached episodes immediately on main thread
+                DispatchQueue.main.async {
+                    episodeViewModel.episodes = cachedEpisodes
+                    updateCachedAllEpisodesAsync()
+                    print("📱 Loaded \(cachedEpisodes.count) cached episodes from disk")
+                }
+                
+                // Schedule background refresh after UI is ready (much later)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+                    scheduleBackgroundEpisodeRefresh()
+                }
+                return
+            }
+            
+            // 3. If no cached episodes exist, only then consider fresh fetch
+            // But still defer it to prevent startup blocking
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+                handleFirstTimeEpisodeLoad()
+            }
+        }
+        
+        // 4. Always clean up and add sample data if needed (for testing)
+        cleanupSampleEpisodesFromRealPodcasts()
+        addSampleEpisodesForTesting()
+    }
+    
+    private func scheduleBackgroundEpisodeRefresh() {
         let realPodcasts = subscribedPodcasts.filter { podcast in
             let feedURLString = podcast.feedURL.absoluteString
             let artworkURLString = podcast.artworkURL?.absoluteString ?? ""
@@ -386,16 +435,29 @@ struct LibraryView: View {
         }
         
         if !realPodcasts.isEmpty {
-            DispatchQueue.main.async {
+            print("🔄 Scheduling background episode refresh for \(realPodcasts.count) podcasts")
+            // Background refresh - completely non-blocking
+            DispatchQueue.global(qos: .background).async {
                 EpisodeUpdateService.shared.forceUpdate()
             }
         }
+    }
+    
+    private func handleFirstTimeEpisodeLoad() {
+        let realPodcasts = subscribedPodcasts.filter { podcast in
+            let feedURLString = podcast.feedURL.absoluteString
+            let artworkURLString = podcast.artworkURL?.absoluteString ?? ""
+            return !feedURLString.contains("example.com") && 
+                   !artworkURLString.contains("picsum.photos")
+        }
         
-        // Clean up any sample episodes that might have been incorrectly added to real podcasts
-        cleanupSampleEpisodesFromRealPodcasts()
-        
-        // Add sample episodes for testing if needed
-        addSampleEpisodesForTesting()
+        if !realPodcasts.isEmpty {
+            print("🌟 First time setup - fetching episodes for \(realPodcasts.count) podcasts")
+            // Even first-time loading should be non-blocking
+            DispatchQueue.global(qos: .utility).async {
+                EpisodeUpdateService.shared.forceUpdate()
+            }
+        }
     }
     
     private func cleanupSampleEpisodesFromRealPodcasts() {
