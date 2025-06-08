@@ -455,9 +455,22 @@ class QueueViewModel: ObservableObject {
         // Cancel any pending reload
         carPlayReloadWorkItem?.cancel()
         
-        // Schedule a new reload with debouncing
+        // Schedule a new reload with debouncing and error handling
         carPlayReloadWorkItem = DispatchWorkItem { [weak self] in
-            CarPlayManager.shared.reloadData()
+            guard let self = self else { return }
+            
+            // Only reload CarPlay if we have episodes and app is not backgrounded
+            guard !self.queue.isEmpty,
+                  UIApplication.shared.applicationState != .background else {
+                return
+            }
+            
+            // Safely reload CarPlay data
+            do {
+                CarPlayManager.shared.reloadData()
+            } catch {
+                print("CarPlay: Failed to reload data: \(error)")
+            }
         }
         
         if let workItem = carPlayReloadWorkItem {
