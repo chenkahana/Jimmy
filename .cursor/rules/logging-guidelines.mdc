@@ -1,0 +1,55 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Logging Guidelines
+
+## Debug Print Policy
+- **AVOID** excessive debug prints that clutter the console
+- **REMOVE** temporary debug prints after debugging is complete
+- **NO** print statements for normal app flow or state changes
+
+## Allowed Logging
+Only use print statements for:
+
+### Critical Errors
+```swift
+// ❌ BAD - Too verbose
+print("📱 LibraryView.onAppear called - episodes count: \(episodeViewModel.episodes.count)")
+print("📱 LibraryView: Initial load detected")
+print("📱 LibraryView: Episodes count changed to \(episodeViewModel.episodes.count)")
+
+// ✅ GOOD - Critical errors only
+print("❌ CRITICAL: Failed to load episodes from cache: \(error)")
+print("❌ CRITICAL: Network request failed: \(error.localizedDescription)")
+```
+
+### Performance Issues
+```swift
+// ✅ GOOD - Performance warnings
+print("⚠️ PERFORMANCE: Tab switch took \(switchTime)s (threshold: 0.5s)")
+print("⚠️ MEMORY: High memory usage detected: \(memoryUsage)MB")
+```
+
+### Data Corruption
+```swift
+// ✅ GOOD - Data integrity issues
+print("🚨 DATA CORRUPTION: Episode cache is corrupted, rebuilding...")
+print("🚨 MIGRATION: User data migration failed, using defaults")
+```
+
+## Preferred Logging
+Use proper logging frameworks instead of print:
+- `Logger` from `os.log` for structured logging
+- `NSLog` for system-level logging
+- Custom logging service with log levels
+
+## Files to Clean Up
+Remove excessive prints from:
+- [LibraryView.swift](mdc:Jimmy/Views/LibraryView.swift)
+- [EpisodeViewModel.swift](mdc:Jimmy/ViewModels/EpisodeViewModel.swift)
+- [UIPerformanceManager.swift](mdc:Jimmy/Services/UIPerformanceManager.swift)
+
+## Exception
+Keep existing critical error prints that help with crash debugging and data integrity issues.

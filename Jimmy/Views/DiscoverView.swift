@@ -126,8 +126,8 @@ struct DiscoverView: View {
     }
 
     private func loadData() {
+        guard isLoading else { return }
         subscribed = PodcastService.shared.loadPodcasts()
-        isLoading = true
         RecommendationService.shared.getRecommendations(basedOn: subscribed) { results in
             recommended = results
             isLoading = false

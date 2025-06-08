@@ -3,6 +3,7 @@ import UniformTypeIdentifiers
 
 struct AppData: Codable {
     var podcasts: [Podcast]
+    var episodes: [Episode]
     var queue: [Episode]
     var settings: [String: AnyCodable]
 }
@@ -36,6 +37,7 @@ struct AppDataDocument: FileDocument {
     init(appData: AppData) { self.appData = appData }
     init() {
         let podcasts = PodcastService.shared.loadPodcasts()
+        let episodes = EpisodeViewModel.shared.episodes
         let queue = QueueViewModel.shared.queue
         let settings: [String: AnyCodable] = [
             "playbackSpeed": AnyCodable(UserDefaults.standard.double(forKey: "playbackSpeed")),
@@ -43,7 +45,7 @@ struct AppDataDocument: FileDocument {
             "episodeSwipeAction": AnyCodable(UserDefaults.standard.string(forKey: "episodeSwipeAction") ?? "addToQueue"),
             "queueSwipeAction": AnyCodable(UserDefaults.standard.string(forKey: "queueSwipeAction") ?? "markAsPlayed")
         ]
-        self.appData = AppData(podcasts: podcasts, queue: queue, settings: settings)
+        self.appData = AppData(podcasts: podcasts, episodes: episodes, queue: queue, settings: settings)
     }
     init(configuration: ReadConfiguration) throws {
         guard let data = configuration.file.regularFileContents else {
@@ -61,13 +63,18 @@ struct AppDataDocument: FileDocument {
     static func importData(_ data: Data) throws {
         let decoder = JSONDecoder()
         let appData = try decoder.decode(AppData.self, from: data)
+        print("🔄 iCloud Import: Restoring \(appData.podcasts.count) podcasts, \(appData.episodes.count) episodes, \(appData.queue.count) queue items")
+        
         PodcastService.shared.savePodcasts(appData.podcasts)
+        EpisodeViewModel.shared.addEpisodes(appData.episodes)
         QueueViewModel.shared.queue = appData.queue
         for (key, value) in appData.settings {
             if let double = value.value as? Double { UserDefaults.standard.set(double, forKey: key) }
             else if let bool = value.value as? Bool { UserDefaults.standard.set(bool, forKey: key) }
             else if let string = value.value as? String { UserDefaults.standard.set(string, forKey: key) }
         }
+        
+        print("✅ iCloud Import: Successfully restored data from iCloud")
     }
 }
 

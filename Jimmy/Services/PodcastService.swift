@@ -3,18 +3,23 @@ import OSLog
 
 class PodcastService: ObservableObject {
     static let shared = PodcastService()
+    private(set) var hasAttemptedLoad: Bool = false
     private let podcastsKey = "podcastsKey"
+    private let fileQueue = DispatchQueue(label: "com.jimmy.podcastService.fileQueue", qos: .background)
     
     // Save podcasts to UserDefaults
     func savePodcasts(_ podcasts: [Podcast]) {
-        if let data = try? JSONEncoder().encode(podcasts) {
-            UserDefaults.standard.set(data, forKey: podcastsKey)
-            AppDataDocument.saveToICloudIfEnabled()
+        fileQueue.async {
+            if let data = try? JSONEncoder().encode(podcasts) {
+                UserDefaults.standard.set(data, forKey: self.podcastsKey)
+                AppDataDocument.saveToICloudIfEnabled()
+            }
         }
     }
     
     // Load podcasts from UserDefaults
     func loadPodcasts() -> [Podcast] {
+        hasAttemptedLoad = true
         if let data = UserDefaults.standard.data(forKey: podcastsKey),
            let podcasts = try? JSONDecoder().decode([Podcast].self, from: data) {
             return podcasts
@@ -22,8 +27,40 @@ class PodcastService: ObservableObject {
         return []
     }
     
+    // Load podcasts from UserDefaults - async version
+    func loadPodcastsAsync(completion: @escaping ([Podcast]) -> Void) {
+        hasAttemptedLoad = true
+        fileQueue.async {
+            if let data = UserDefaults.standard.data(forKey: self.podcastsKey),
+               let podcasts = try? JSONDecoder().decode([Podcast].self, from: data) {
+                DispatchQueue.main.async {
+                    completion(podcasts)
+                }
+            } else {
+                DispatchQueue.main.async {
+                    completion([])
+                }
+            }
+        }
+    }
+    
+    // Load podcasts from UserDefaults - async/await version
+    func loadPodcastsAsync() async -> [Podcast] {
+        await withCheckedContinuation { continuation in
+            loadPodcastsAsync { podcasts in
+                continuation.resume(returning: podcasts)
+            }
+        }
+    }
+    
     // Fetch episodes from a podcast RSS feed
     func fetchEpisodes(for podcast: Podcast, completion: @escaping ([Episode]) -> Void) {
+        // Use optimized service if available, fallback to original implementation
+        if OptimizedPodcastService.shared.hasAttemptedLoad {
+            OptimizedPodcastService.shared.fetchEpisodes(for: podcast, completion: completion)
+            return
+        }
+        
         let url = podcast.feedURL
 
         // Create URLRequest with timeout configuration
@@ -106,33 +143,37 @@ class PodcastService: ObservableObject {
 
     // Update podcast artwork in saved podcasts
     private func updatePodcastArtwork(podcast: Podcast, artworkURL: URL) {
-        var podcasts = loadPodcasts()
-        if let index = podcasts.firstIndex(where: { $0.id == podcast.id }) {
-            let oldURL = podcasts[index].artworkURL?.absoluteString ?? "nil"
-            let newURL = artworkURL.absoluteString
-            
-            // Always update, even if URLs are the same (in case the image changed)
-            podcasts[index].artworkURL = artworkURL
-            savePodcasts(podcasts)
-            
-            if oldURL != newURL {
-                print("🎨 ✅ Updated artwork for '\(podcast.title)'")
-                print("   Old: \(oldURL)")
-                print("   New: \(newURL)")
+        loadPodcastsAsync { podcasts in
+            var mutablePodcasts = podcasts
+            if let index = mutablePodcasts.firstIndex(where: { $0.id == podcast.id }) {
+                let oldURL = mutablePodcasts[index].artworkURL?.absoluteString ?? "nil"
+                let newURL = artworkURL.absoluteString
+                
+                // Always update, even if URLs are the same (in case the image changed)
+                mutablePodcasts[index].artworkURL = artworkURL
+                self.savePodcasts(mutablePodcasts)
+                
+                if oldURL != newURL {
+                    print("🎨 ✅ Updated artwork for '\(podcast.title)'")
+                    print("   Old: \(oldURL)")
+                    print("   New: \(newURL)")
+                } else {
+                    print("🎨 ℹ️ Refreshed artwork for '\(podcast.title)' (same URL)")
+                }
             } else {
-                print("🎨 ℹ️ Refreshed artwork for '\(podcast.title)' (same URL)")
+                print("⚠️ Podcast not found for artwork update: \(podcast.title)")
             }
-        } else {
-            print("⚠️ Podcast not found for artwork update: \(podcast.title)")
         }
     }
 
     // Update podcast's last episode date in saved podcasts
     private func updatePodcastLastEpisodeDate(podcast: Podcast, lastEpisodeDate: Date) {
-        var podcasts = loadPodcasts()
-        if let index = podcasts.firstIndex(where: { $0.id == podcast.id }) {
-            podcasts[index].lastEpisodeDate = lastEpisodeDate
-            savePodcasts(podcasts)
+        loadPodcastsAsync { podcasts in
+            var mutablePodcasts = podcasts
+            if let index = mutablePodcasts.firstIndex(where: { $0.id == podcast.id }) {
+                mutablePodcasts[index].lastEpisodeDate = lastEpisodeDate
+                self.savePodcasts(mutablePodcasts)
+            }
         }
     }
 
@@ -154,56 +195,58 @@ class PodcastService: ObservableObject {
             let parser = RSSParser()
             _ = parser.parseRSS(data: data, podcastID: podcast.id)
             
-            var podcasts = self.loadPodcasts()
-            guard let index = podcasts.firstIndex(where: { $0.id == podcast.id }) else {
-                print("❌ Podcast not found in saved podcasts: \(podcast.title)")
-                DispatchQueue.main.async { completion(false) }
-                return
+            self.loadPodcastsAsync { podcasts in
+                var mutablePodcasts = podcasts
+                guard let index = mutablePodcasts.firstIndex(where: { $0.id == podcast.id }) else {
+                    print("❌ Podcast not found in saved podcasts: \(podcast.title)")
+                    DispatchQueue.main.async { completion(false) }
+                    return
+                }
+                
+                var wasUpdated = false
+                
+                // Update artwork if available (ALWAYS update, even if current artwork exists)
+                if let artworkURLString = parser.getPodcastArtworkURL(),
+                   let artworkURL = URL(string: artworkURLString) {
+                    let oldArtwork = mutablePodcasts[index].artworkURL?.absoluteString ?? "nil"
+                    mutablePodcasts[index].artworkURL = artworkURL
+                    wasUpdated = true
+                    print("🎨 Updated artwork for \(podcast.title)")
+                    print("   Old: \(oldArtwork)")
+                    print("   New: \(artworkURL.absoluteString)")
+                } else {
+                    print("⚠️ No artwork URL found in RSS for \(podcast.title)")
+                }
+                
+                // Update title if different
+                if let newTitle = parser.getPodcastTitle(), newTitle != mutablePodcasts[index].title {
+                    mutablePodcasts[index].title = newTitle
+                    wasUpdated = true
+                    print("📝 Updated title for \(podcast.title) -> \(newTitle)")
+                }
+                
+                // Update author if different
+                if let newAuthor = parser.getPodcastAuthor(), newAuthor != mutablePodcasts[index].author {
+                    mutablePodcasts[index].author = newAuthor
+                    wasUpdated = true
+                    print("👤 Updated author for \(podcast.title) -> \(newAuthor)")
+                }
+                
+                // Update description if different
+                if let newDescription = parser.getPodcastDescription(), newDescription != mutablePodcasts[index].description {
+                    mutablePodcasts[index].description = newDescription
+                    wasUpdated = true
+                    print("📄 Updated description for \(podcast.title)")
+                }
+                
+                if wasUpdated {
+                    self.savePodcasts(mutablePodcasts)
+                } else {
+                    print("ℹ️ No changes needed for \(podcast.title)")
+                }
+                
+                DispatchQueue.main.async { completion(wasUpdated) }
             }
-            
-            var wasUpdated = false
-            
-            // Update artwork if available (ALWAYS update, even if current artwork exists)
-            if let artworkURLString = parser.getPodcastArtworkURL(),
-               let artworkURL = URL(string: artworkURLString) {
-                let oldArtwork = podcasts[index].artworkURL?.absoluteString ?? "nil"
-                podcasts[index].artworkURL = artworkURL
-                wasUpdated = true
-                print("🎨 Updated artwork for \(podcast.title)")
-                print("   Old: \(oldArtwork)")
-                print("   New: \(artworkURL.absoluteString)")
-            } else {
-                print("⚠️ No artwork URL found in RSS for \(podcast.title)")
-            }
-            
-            // Update title if different
-            if let newTitle = parser.getPodcastTitle(), newTitle != podcasts[index].title {
-                podcasts[index].title = newTitle
-                wasUpdated = true
-                print("📝 Updated title for \(podcast.title) -> \(newTitle)")
-            }
-            
-            // Update author if different  
-            if let newAuthor = parser.getPodcastAuthor(), newAuthor != podcasts[index].author {
-                podcasts[index].author = newAuthor
-                wasUpdated = true
-                print("👤 Updated author for \(podcast.title) -> \(newAuthor)")
-            }
-            
-            // Update description if different
-            if let newDescription = parser.getPodcastDescription(), newDescription != podcasts[index].description {
-                podcasts[index].description = newDescription
-                wasUpdated = true
-                print("📄 Updated description for \(podcast.title)")
-            }
-            
-            if wasUpdated {
-                self.savePodcasts(podcasts)
-            } else {
-                print("ℹ️ No changes needed for \(podcast.title)")
-            }
-            
-            DispatchQueue.main.async { completion(wasUpdated) }
         }
     }
 
@@ -294,18 +337,20 @@ class PodcastService: ObservableObject {
             )
             
             // Add to saved podcasts
-            var podcasts = self.loadPodcasts()
-            podcasts.append(podcast)
-            self.savePodcasts(podcasts)
-            
-            // Record this operation for undo
-            ShakeUndoManager.shared.recordOperation(
-                .podcastSubscribed(podcast: podcast),
-                description: "Subscribed to \"\(podcast.title)\""
-            )
-            
-            DispatchQueue.main.async {
-                completion(podcast, nil)
+            self.loadPodcastsAsync { podcasts in
+                var mutablePodcasts = podcasts
+                mutablePodcasts.append(podcast)
+                self.savePodcasts(mutablePodcasts)
+                
+                // Record this operation for undo
+                ShakeUndoManager.shared.recordOperation(
+                    .podcastSubscribed(podcast: podcast),
+                    description: "Subscribed to \"\(podcast.title)\""
+                )
+                
+                DispatchQueue.main.async {
+                    completion(podcast, nil)
+                }
             }
         }
     }
@@ -348,12 +393,14 @@ class PodcastService: ObservableObject {
                 if let artworkURLString = parser.getPodcastArtworkURL(),
                    let artworkURL = URL(string: artworkURLString) {
                     
-                    var podcasts = self.loadPodcasts()
-                    if let index = podcasts.firstIndex(where: { $0.id == podcast.id }) {
-                        let oldURL = podcasts[index].artworkURL?.absoluteString ?? "nil"
-                        podcasts[index].artworkURL = artworkURL
-                        self.savePodcasts(podcasts)
-                        updatedCount += 1
+                    self.loadPodcastsAsync { podcasts in
+                        var mutablePodcasts = podcasts
+                        if let index = mutablePodcasts.firstIndex(where: { $0.id == podcast.id }) {
+                            let oldURL = mutablePodcasts[index].artworkURL?.absoluteString ?? "nil"
+                            mutablePodcasts[index].artworkURL = artworkURL
+                            self.savePodcasts(mutablePodcasts)
+                            updatedCount += 1
+                        }
                     }
                 } else {
                     print("⚠️ No artwork found for \(podcast.title)")

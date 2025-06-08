@@ -1,0 +1,47 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Jimmy Podcast App - Project Overview
+
+Jimmy is a sophisticated iOS podcast application built with SwiftUI. The app focuses on performance optimization, crash prevention, and user experience.
+
+## Core Architecture
+
+### Main Entry Point
+- [JimmyApp.swift](mdc:Jimmy/JimmyApp.swift) - Main app entry point with initialization of all core services
+- [ContentView.swift](mdc:Jimmy/ContentView.swift) - Primary app interface and navigation
+
+### Key Directories Structure
+- **Jimmy/** - Main app source code
+  - **Views/** - SwiftUI views and UI components
+  - **Services/** - Business logic and data management
+  - **Models/** - Data structures and entities
+  - **ViewModels/** - MVVM pattern view models
+  - **Utilities/** - Helper functions and extensions
+  - **CarPlay/** - CarPlay integration
+  - **Assets.xcassets/** - App assets and resources
+
+### Core Services (Initialized in JimmyApp.swift)
+- `EpisodeUpdateService` - Handles podcast episode updates
+- `ShakeUndoManager` - Shake-to-undo functionality
+- `BackgroundTaskManager` - Background task scheduling
+- `OptimizedPodcastService` - Performance-optimized podcast operations
+- `UIPerformanceManager` - UI performance monitoring
+- `CrashPreventionManager` - App stability and crash prevention
+
+### Key Features
+- Podcast discovery and subscription management
+- Episode playback with queue management
+- CarPlay integration
+- Background updates and caching
+- Import from various sources (Spotify, Apple, Google Takeout, OPML)
+- Performance optimization and crash prevention
+- Watch app connectivity
+
+### Documentation
+- [docs/](mdc:docs) - Comprehensive project documentation
+- [CarPlay_Debugging_Guide.md](mdc:CarPlay_Debugging_Guide.md) - CarPlay debugging
+- [Signal9_Crash_Fixes.md](mdc:Signal9_Crash_Fixes.md) - Crash prevention strategies
+- [Performance_Optimization_Plan.md](mdc:Performance_Optimization_Plan.md) - Performance guidelines

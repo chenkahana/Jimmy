@@ -41,7 +41,7 @@ final class WatchPlayerManager: NSObject, ObservableObject, WCSessionDelegate {
     func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {}
 
     func session(_ session: WCSession, didReceiveMessage message: [String : Any]) {
-        DispatchQueue.main.async {
+        Task { @MainActor in
             if let data = message["episode"] as? Data {
                 self.currentEpisode = try? JSONDecoder().decode(Episode.self, from: data)
             }

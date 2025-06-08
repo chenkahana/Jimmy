@@ -1,12 +1,12 @@
 import Foundation
 import SwiftUI
 
-class EpisodeUpdateService: ObservableObject {
+class EpisodeUpdateService {
     static let shared = EpisodeUpdateService()
     
-    @Published var isUpdating = false
-    @Published var lastUpdateTime: Date?
-    @Published var updateProgress: Double = 0.0
+    private(set) var isUpdating = false
+    private(set) var lastUpdateTime: Date?
+    private(set) var updateProgress: Double = 0.0
     
     private let updateQueue = DispatchQueue(label: "episode-update-queue", qos: .background, attributes: .concurrent)
     private let sortingQueue = DispatchQueue(label: "episode-sorting-queue", qos: .userInitiated)
@@ -15,7 +15,8 @@ class EpisodeUpdateService: ObservableObject {
     // RSS feeds don't "push" updates - we need to poll them periodically
     // Most podcast apps check every 15-30 minutes for new episodes
     // RSS is a pull-based protocol, not push-based like modern APIs
-    private let updateInterval: TimeInterval = 1800 // Increased to 30 minutes to reduce background load
+    // PERFORMANCE FIX: Increased from 30 minutes to 60 minutes to reduce CPU usage
+    private let updateInterval: TimeInterval = 3600 // 60 minutes to reduce background load
     
     private init() {
         // REMOVED: Don't start periodic updates automatically to avoid blocking app launch  
@@ -66,8 +67,15 @@ class EpisodeUpdateService: ObservableObject {
         updateTimer = Timer.scheduledTimer(withTimeInterval: updateInterval, repeats: true) { [weak self] _ in
             guard let self = self else { return }
             
-            // Only update if app is active to prevent background crashes
+            // PERFORMANCE FIX: Only update if app is active to prevent background crashes and reduce CPU usage
             guard UIApplication.shared.applicationState == .active else {
+                print("⏸️ Skipping episode update - app not active")
+                return
+            }
+            
+            // Additional check: Don't update if already updating
+            guard !self.isUpdating else {
+                print("⏸️ Skipping episode update - already in progress")
                 return
             }
             
@@ -85,7 +93,14 @@ class EpisodeUpdateService: ObservableObject {
     
     /// Manually trigger an update
     func forceUpdate() {
+        // WORLD-CLASS NAVIGATION: Prevent background updates from interfering with navigation
         Task {
+            // Only add delay if we already have episodes (to prevent interference with navigation)
+            // If no episodes exist, update immediately for first-time users
+            let episodeCount = EpisodeViewModel.shared.episodes.count
+            if episodeCount > 0 {
+                try? await Task.sleep(nanoseconds: 15_000_000_000) // 15 seconds
+            }
             await updateAllEpisodes()
         }
     }
@@ -93,18 +108,14 @@ class EpisodeUpdateService: ObservableObject {
     // MARK: - Background Update Logic
     
     private func updateAllEpisodes() async {
-        // Ensure UI updates happen on main thread
-        await MainActor.run {
-            guard !isUpdating else { return }
-            isUpdating = true
-            updateProgress = 0.0
-        }
+        // Simple property updates - no SwiftUI publishing needed
+        guard !isUpdating else { return }
+        isUpdating = true
+        updateProgress = 0.0
         
         let podcasts = PodcastService.shared.loadPodcasts()
         guard !podcasts.isEmpty else {
-            await MainActor.run {
-                isUpdating = false
-            }
+            isUpdating = false
             return
         }
         
@@ -117,10 +128,10 @@ class EpisodeUpdateService: ObservableObject {
         var allNewEpisodes: [Episode] = []
         var episodesByPodcast: [UUID: [Episode]] = [:]
         var updatedPodcasts: [Podcast] = []
-        var completedCount = 0
         let totalPodcasts = Double(podcasts.count)
         
         // Process podcasts in batches to control memory usage
+        var completedCount = 0
         for batch in batches {
             await withTaskGroup(of: (Podcast, [Episode]).self) { group in
                 for podcast in batch {
@@ -131,9 +142,8 @@ class EpisodeUpdateService: ObservableObject {
                 
                 for await (podcast, episodes) in group {
                     completedCount += 1
-                    await MainActor.run {
-                        self.updateProgress = Double(completedCount) / totalPodcasts
-                    }
+                    let currentProgress = Double(completedCount) / totalPodcasts
+                    self.updateProgress = currentProgress
                     
                     if !episodes.isEmpty {
                         allNewEpisodes.append(contentsOf: episodes)
@@ -154,12 +164,10 @@ class EpisodeUpdateService: ObservableObject {
         }
         
         // Process all new episodes
-        await processNewEpisodes(allNewEpisodes, updatedPodcasts: updatedPodcasts, episodesByPodcast: episodesByPodcast)
+        await processNewEpisodes(allNewEpisodes, allPodcasts: podcasts, updatedPodcasts: updatedPodcasts, episodesByPodcast: episodesByPodcast)
         
-        await MainActor.run {
-            isUpdating = false
-            lastUpdateTime = Date()
-        }
+        isUpdating = false
+        lastUpdateTime = Date()
         print("✅ Background episode update completed")
     }
     
@@ -171,7 +179,7 @@ class EpisodeUpdateService: ObservableObject {
         }
     }
     
-    private func processNewEpisodes(_ newEpisodes: [Episode], updatedPodcasts: [Podcast], episodesByPodcast: [UUID: [Episode]]) async {
+    private func processNewEpisodes(_ newEpisodes: [Episode], allPodcasts: [Podcast], updatedPodcasts: [Podcast], episodesByPodcast: [UUID: [Episode]]) async {
         await withTaskGroup(of: Void.self) { group in
             // Task 1: Update episodes in background
             group.addTask {
@@ -180,12 +188,12 @@ class EpisodeUpdateService: ObservableObject {
             
             // Task 2: Update podcasts with new lastEpisodeDate and artwork
             group.addTask {
-                await self.updatePodcastsDatabase(updatedPodcasts)
+                await self.updatePodcastsDatabase(allPodcasts, updatedPodcasts: updatedPodcasts)
             }
             
             // Task 3: Fetch and update podcast artwork in background
             group.addTask {
-                await self.updatePodcastArtwork(updatedPodcasts)
+                await self.updatePodcastArtwork(allPodcasts, podcastsToUpdate: updatedPodcasts)
             }
             
             // Task 4: Refresh episode cache with latest data
@@ -203,103 +211,91 @@ class EpisodeUpdateService: ObservableObject {
     private func updateEpisodesDatabase(_ newEpisodes: [Episode]) async {
         guard !newEpisodes.isEmpty else { return }
         
-        return await withCheckedContinuation { continuation in
-            sortingQueue.async {
-                let episodeViewModel = EpisodeViewModel.shared
-                let existingEpisodes = episodeViewModel.episodes
-                
-                // Create lookup sets for efficient deduplication
-                let existingIDs = Set(existingEpisodes.map { $0.id })
-                let existingTitlePodcastPairs = Set(existingEpisodes.compactMap { episode -> String? in
-                    guard let podcastID = episode.podcastID else { return nil }
-                    return "\(episode.title)-\(podcastID.uuidString)"
-                })
-                
-                // Filter out episodes that already exist (by ID or title+podcast combination)
-                let episodesToAdd = newEpisodes.filter { episode in
-                    // Skip if ID already exists
-                    if existingIDs.contains(episode.id) {
-                        return false
-                    }
-                    
-                    // Skip if same title and podcast already exists (prevents duplicates from re-parsing)
-                    if let podcastID = episode.podcastID {
-                        let titlePodcastKey = "\(episode.title)-\(podcastID.uuidString)"
-                        return !existingTitlePodcastPairs.contains(titlePodcastKey)
-                    }
-                    
-                    return true
+        // This operation can be slow, so keep it off the main thread
+        sortingQueue.async {
+            let episodeViewModel = EpisodeViewModel.shared
+            let existingEpisodes = episodeViewModel.episodes
+            
+            // Create lookup sets for efficient deduplication
+            let existingIDs = Set(existingEpisodes.map { $0.id })
+            let existingTitlePodcastPairs = Set(existingEpisodes.compactMap { episode -> String? in
+                guard let podcastID = episode.podcastID else { return nil }
+                return "\(episode.title)-\(podcastID.uuidString)"
+            })
+            
+            // Filter out episodes that already exist (by ID or title+podcast combination)
+            let episodesToAdd = newEpisodes.filter { episode in
+                // Skip if ID already exists
+                if existingIDs.contains(episode.id) {
+                    return false
                 }
                 
-                if !episodesToAdd.isEmpty {
-                    print("📥 Adding \(episodesToAdd.count) new episodes to database (filtered from \(newEpisodes.count) total)")
-                    
-                    DispatchQueue.main.async {
-                        episodeViewModel.addEpisodes(episodesToAdd)
-                    }
-                } else {
-                    print("📥 No new episodes to add (all \(newEpisodes.count) episodes already exist)")
+                // Skip if same title and podcast already exists (prevents duplicates from re-parsing)
+                if let podcastID = episode.podcastID {
+                    let titlePodcastKey = "\(episode.title)-\(podcastID.uuidString)"
+                    return !existingTitlePodcastPairs.contains(titlePodcastKey)
                 }
                 
-                continuation.resume()
+                return true
+            }
+            
+            if !episodesToAdd.isEmpty {
+                print("📥 Adding \(episodesToAdd.count) new episodes to database (filtered from \(newEpisodes.count) total)")
+                episodeViewModel.addEpisodes(episodesToAdd)
+            } else {
+                print("📥 No new episodes to add (all \(newEpisodes.count) episodes already exist)")
             }
         }
     }
     
-    private func updatePodcastsDatabase(_ updatedPodcasts: [Podcast]) async {
+    private func updatePodcastsDatabase(_ allPodcasts: [Podcast], updatedPodcasts: [Podcast]) async {
         guard !updatedPodcasts.isEmpty else { return }
         
-        return await withCheckedContinuation { continuation in
-            updateQueue.async {
-                var allPodcasts = PodcastService.shared.loadPodcasts()
-                
-                // Update existing podcasts with new lastEpisodeDate
-                for updatedPodcast in updatedPodcasts {
-                    if let index = allPodcasts.firstIndex(where: { $0.id == updatedPodcast.id }) {
-                        allPodcasts[index].lastEpisodeDate = updatedPodcast.lastEpisodeDate
-                    }
+        updateQueue.async {
+            var mutablePodcasts = allPodcasts
+            
+            // Update existing podcasts with new lastEpisodeDate
+            for updatedPodcast in updatedPodcasts {
+                if let index = mutablePodcasts.firstIndex(where: { $0.id == updatedPodcast.id }) {
+                    mutablePodcasts[index].lastEpisodeDate = updatedPodcast.lastEpisodeDate
                 }
-                
-                // Save back to storage
-                PodcastService.shared.savePodcasts(allPodcasts)
-                
-                continuation.resume()
             }
+            
+            // Save back to storage
+            PodcastService.shared.savePodcasts(mutablePodcasts)
         }
     }
     
-    private func updatePodcastArtwork(_ podcasts: [Podcast]) async {
-        guard !podcasts.isEmpty else { return }
-                var allPodcasts = PodcastService.shared.loadPodcasts()
-                var hasUpdates = false
-                
-                for podcast in podcasts {
-                    // Find the podcast in our saved list
-                    if let index = allPodcasts.firstIndex(where: { $0.id == podcast.id }) {
-                        var updatedPodcast = allPodcasts[index]
-                        
-                        // ALWAYS fetch artwork from RSS feed to ensure it's up-to-date.
-                        if let artworkURL = await EpisodeUpdateService.fetchPodcastArtworkFromRSS_Background(updatedPodcast.feedURL) {
-                            // Only update if the new URL is different from the old one
-                            if updatedPodcast.artworkURL != artworkURL {
-                                updatedPodcast.artworkURL = artworkURL
-                                allPodcasts[index] = updatedPodcast
-                                hasUpdates = true
-                                print("📸 Updated artwork for podcast: \\(updatedPodcast.title) to \\(artworkURL.absoluteString)")
-                            } else {
-                                print("ℹ️ Artwork for podcast: \\(updatedPodcast.title) is already up-to-date.")
-                            }
-                        } else {
-                            print("⚠️ Could not fetch artwork for podcast: \\(updatedPodcast.title) from feed: \\(updatedPodcast.feedURL)")
-                        }
+    private func updatePodcastArtwork(_ allPodcasts: [Podcast], podcastsToUpdate: [Podcast]) async {
+        guard !podcastsToUpdate.isEmpty else { return }
+        
+        var mutablePodcasts = allPodcasts
+        var hasUpdates = false
+        
+        for podcast in podcastsToUpdate {
+            // Find the podcast in our saved list
+            if let index = mutablePodcasts.firstIndex(where: { $0.id == podcast.id }) {
+                // ALWAYS fetch artwork from RSS feed to ensure it's up-to-date.
+                if let artworkURL = await EpisodeUpdateService.fetchPodcastArtworkFromRSS_Background(mutablePodcasts[index].feedURL) {
+                    // Only update if the new URL is different from the old one
+                    if mutablePodcasts[index].artworkURL != artworkURL {
+                        mutablePodcasts[index].artworkURL = artworkURL
+                        hasUpdates = true
+                        print("📸 Updated artwork for podcast: \(mutablePodcasts[index].title) to \(artworkURL.absoluteString)")
+                    } else {
+                        print("ℹ️ Artwork for podcast: \(mutablePodcasts[index].title) is already up-to-date.")
                     }
+                } else {
+                    print("⚠️ Could not fetch artwork for podcast: \(mutablePodcasts[index].title) from feed: \(mutablePodcasts[index].feedURL)")
                 }
-                
-                // Save if we have updates
-                if hasUpdates {
-                    PodcastService.shared.savePodcasts(allPodcasts)
-                    print("📸 Saved \(podcasts.count) podcast artwork updates")
-                }
+            }
+        }
+        
+        // Save if we have updates
+        if hasUpdates {
+            PodcastService.shared.savePodcasts(mutablePodcasts)
+            print("📸 Saved \(podcastsToUpdate.count) podcast artwork updates")
+        }
     }
     
     private static func fetchPodcastArtworkFromRSS_Background(_ feedURL: URL) async -> URL? {
@@ -323,21 +319,19 @@ class EpisodeUpdateService: ObservableObject {
     }
     
     private func sortAndNotifyUI() async {
-        await MainActor.run {
-            // Force UI refresh by notifying observers
+        // Force UI refresh by notifying observers
+        DispatchQueue.main.async {
             NotificationCenter.default.post(name: .episodesUpdated, object: nil)
         }
     }
     
     private func refreshEpisodeCache(_ episodesByPodcast: [UUID: [Episode]]) async {
-        await MainActor.run {
-            let episodeCacheService = EpisodeCacheService.shared
+        let episodeCacheService = EpisodeCacheService.shared
 
-            for (podcastID, episodes) in episodesByPodcast {
-                guard !episodes.isEmpty else { continue }
-                episodeCacheService.updateCache(episodes, for: podcastID)
-                print("💾 Updated cache for podcast: \(podcastID) with \(episodes.count) episodes")
-            }
+        for (podcastID, episodes) in episodesByPodcast {
+            guard !episodes.isEmpty else { continue }
+            episodeCacheService.updateCache(episodes, for: podcastID)
+            print("💾 Updated cache for podcast: \(podcastID) with \(episodes.count) episodes")
         }
     }
     

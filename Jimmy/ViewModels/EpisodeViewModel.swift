@@ -5,6 +5,7 @@ class EpisodeViewModel: ObservableObject {
     static let shared = EpisodeViewModel()
     
     @Published var episodes: [Episode] = []
+    @Published var hasAttemptedLoad: Bool = false
     private let episodesKey = "episodesKey"
     
     // Persisted list of played episode IDs
@@ -15,27 +16,41 @@ class EpisodeViewModel: ObservableObject {
     private let dataProcessingQueue = DispatchQueue(label: "episode-data-processing", qos: .userInitiated, attributes: .concurrent)
     private let persistenceQueue = DispatchQueue(label: "episode-persistence", qos: .utility)
     
+    // Debouncing for episode saves
+    private var saveWorkItem: DispatchWorkItem?
+    private let saveDebounceInterval: TimeInterval = 2.0
+    
     // PERFORMANCE FIX: Add operation tracking to prevent concurrent modifications
     private var isLoading = false
     private var pendingUpdates: [Episode] = []
     private let updateQueue = DispatchQueue(label: "episode-updates", qos: .userInitiated)
     
     private init() {
-        loadPlayedIDs()
-        
-        // PERFORMANCE FIX: Load cached episodes immediately for instant app startup
-        // First try synchronous load from cache for immediate display
-        if let cachedEpisodes: [Episode] = FileStorage.shared.load([Episode].self, from: "episodes.json") {
-            episodes = cachedEpisodes
-            applyPlayedIDsSync() // Apply played status immediately
-            print("⚡ Loaded \(cachedEpisodes.count) cached episodes instantly")
+        // Load data synchronously during initialization to avoid background thread publishing warnings
+        // These FileStorage.load calls are fast enough for synchronous execution
+        if let ids: [UUID] = FileStorage.shared.load([UUID].self, from: self.playedIDsFilename) {
+            self.playedEpisodeIDs = Set(ids)
+        }
+
+        if var loadedEpisodes: [Episode] = FileStorage.shared.load([Episode].self, from: "episodes.json") {
+            // Apply played status to the loaded episodes
+            for i in loadedEpisodes.indices {
+                if self.playedEpisodeIDs.contains(loadedEpisodes[i].id) {
+                    loadedEpisodes[i].played = true
+                }
+            }
+            self.episodes = loadedEpisodes
+            print("⚡ EpisodeViewModel: Loaded \(loadedEpisodes.count) cached episodes instantly")
         } else {
             // No cached episodes - start with empty array for immediate UI display
-            episodes = []
+            self.episodes = []
             print("📱 Starting with empty episodes - will load fresh data")
         }
-        
-        // Recovery check after a brief delay to ensure UI is ready
+
+        self.hasAttemptedLoad = true
+        print("📊 EpisodeViewModel: Episodes array now has \(self.episodes.count) episodes")
+
+        // Schedule recovery check for later (not during init)
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
             self?.checkAndRecoverIfNeeded()
         }
@@ -64,15 +79,16 @@ class EpisodeViewModel: ObservableObject {
         updateQueue.async { [weak self] in
             guard let self = self else { return }
             
-            DispatchQueue.main.async {
+            // Update UI state on main actor
+            Task { @MainActor in
                 if let index = self.episodes.firstIndex(where: { $0.id == episode.id }) {
                     self.episodes[index] = episode
                 }
-            }
-            
-            // Save episodes on background thread to avoid blocking UI
-            self.persistenceQueue.async { [weak self] in
-                self?.saveEpisodes()
+                
+                // Save episodes on background thread to avoid blocking UI
+                Task.detached(priority: .utility) { [weak self] in
+                    self?.saveEpisodes()
+                }
             }
         }
     }
@@ -90,8 +106,8 @@ class EpisodeViewModel: ObservableObject {
             }
             
             // Save played IDs on background thread
-            self.persistenceQueue.async {
-                self.savePlayedIDs()
+            Task.detached(priority: .utility) { [weak self] in
+                self?.savePlayedIDs()
             }
             
             // Update episode in memory and persistence
@@ -100,7 +116,7 @@ class EpisodeViewModel: ObservableObject {
             self.updateEpisode(updatedEpisode)
             
             // Show haptic feedback on main thread
-            DispatchQueue.main.async {
+            Task { @MainActor in
                 FeedbackManager.shared.markAsPlayed()
             }
         }
@@ -114,22 +130,16 @@ class EpisodeViewModel: ObservableObject {
             var updatedEpisode = episode
             updatedEpisode.playbackPosition = position
             
-            DispatchQueue.main.async {
+            Task { @MainActor in
                 if let index = self.episodes.firstIndex(where: { $0.id == episode.id }) {
                     self.episodes[index] = updatedEpisode
                 }
-            }
-            
-            // Debounce saves for position updates - simplified approach
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                self.persistenceQueue.async {
-                    self.saveEpisodes()
-                }
+                
+                // Debounce saves for position updates
+                self.debouncedSave()
             }
         }
     }
-    
-
     
     func updateEpisodeDuration(_ episode: Episode, duration: TimeInterval) {
         updateQueue.async { [weak self] in
@@ -168,7 +178,7 @@ class EpisodeViewModel: ObservableObject {
             }
             
             // Update UI on main thread
-            DispatchQueue.main.async {
+            Task { @MainActor in
                 for updatedEpisode in updatedEpisodes {
                     if let index = self.episodes.firstIndex(where: { $0.id == updatedEpisode.id }) {
                         self.episodes[index] = updatedEpisode
@@ -207,7 +217,7 @@ class EpisodeViewModel: ObservableObject {
             }
             
             // Update UI on main thread
-            DispatchQueue.main.async {
+            Task { @MainActor in
                 for updatedEpisode in updatedEpisodes {
                     if let index = self.episodes.firstIndex(where: { $0.id == updatedEpisode.id }) {
                         self.episodes[index] = updatedEpisode
@@ -234,30 +244,67 @@ class EpisodeViewModel: ObservableObject {
         AppDataDocument.saveToICloudIfEnabled()
     }
     
-    private func loadEpisodes() {
+    private func debouncedSave() {
+        // Cancel any pending save work item
+        saveWorkItem?.cancel()
+        
+        // Create a new work item
+        let workItem = DispatchWorkItem { [weak self] in
+            self?.persistenceQueue.async {
+                self?.saveEpisodes()
+            }
+        }
+        
+        // Schedule it after the debounce interval
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: UInt64(saveDebounceInterval * 1_000_000_000))
+            workItem.perform()
+        }
+        
+        // Store the new work item
+        saveWorkItem = workItem
+    }
+    
+    /// Immediately saves any pending changes. Call this when the app is about to be suspended.
+    func saveImmediately() {
+        saveWorkItem?.cancel()
+        persistenceQueue.async { [weak self] in
+            self?.saveEpisodes()
+        }
+    }
+    
+    private func loadEpisodes() async {
         // PERFORMANCE FIX: Prevent concurrent loading
-        guard !isLoading else { return }
-        isLoading = true
+        await MainActor.run {
+            guard !isLoading else { return }
+            isLoading = true
+        }
         
         // Try to migrate from UserDefaults first, then load from file
         if let migratedEpisodes = FileStorage.shared.migrateFromUserDefaults([Episode].self, userDefaultsKey: episodesKey, filename: "episodes.json") {
-            DispatchQueue.main.async { [weak self] in
+            await MainActor.run { [weak self] in
                 guard let self = self else { return }
                 self.episodes = migratedEpisodes
                 self.applyPlayedIDs()
                 self.isLoading = false
             }
         } else {
-            FileStorage.shared.loadAsync([Episode].self, from: "episodes.json") { [weak self] saved in
-                DispatchQueue.main.async {
-                    guard let self = self else { return }
-                    if let saved = saved {
-                        self.episodes = saved
-                        self.applyPlayedIDs()
-                    } else {
-                        self.attemptAutomaticRecovery()
+            await withCheckedContinuation { continuation in
+                FileStorage.shared.loadAsync([Episode].self, from: "episodes.json") { [weak self] saved in
+                    Task { @MainActor in
+                        guard let self = self else { 
+                            continuation.resume()
+                            return 
+                        }
+                        if let saved = saved {
+                            self.episodes = saved
+                            self.applyPlayedIDs()
+                        } else {
+                            self.attemptAutomaticRecovery()
+                        }
+                        self.isLoading = false
+                        continuation.resume()
                     }
-                    self.isLoading = false
                 }
             }
         }
@@ -265,19 +312,16 @@ class EpisodeViewModel: ObservableObject {
     
     private func attemptAutomaticRecovery() {
         // Ensure this runs on main thread since it might update @Published properties
-        DispatchQueue.main.async {
+        Task { @MainActor in
             // Check if we have any podcasts but no episodes - this suggests corrupted episode data
             let podcasts = PodcastService.shared.loadPodcasts()
             
             if !podcasts.isEmpty {
-                // PERFORMANCE FIX: Clear corrupted file on background thread
+                // CRITICAL FIX: Don't trigger forceUpdate during recovery as it can interfere with navigation
+                // Instead, just clear the corrupted file and let the natural update cycle handle it
                 DispatchQueue.global(qos: .utility).async {
                     _ = FileStorage.shared.delete("episodes.json")
-                    
-                    // Trigger episode update service immediately
-                    DispatchQueue.main.async {
-                        EpisodeUpdateService.shared.forceUpdate()
-                    }
+                    print("🔧 EpisodeViewModel: Cleared corrupted episodes.json file, letting natural update cycle handle recovery")
                 }
             }
         }
@@ -306,7 +350,7 @@ class EpisodeViewModel: ObservableObject {
                 return e
             }
             
-            DispatchQueue.main.async {
+            Task { @MainActor in
                 self.episodes = updatedEpisodes
             }
         }
@@ -370,7 +414,7 @@ class EpisodeViewModel: ObservableObject {
             }
             
             // Update UI on main thread
-            DispatchQueue.main.async {
+            Task { @MainActor in
                 // Add new episodes
                 self.episodes.append(contentsOf: episodesToAdd)
                 
@@ -402,31 +446,30 @@ class EpisodeViewModel: ObservableObject {
                     self.saveEpisodes()
                 }
                 
-                print("📥 Added \(episodesToAdd.count) new episodes, updated \(episodesToUpdate.count) existing episodes")
+                print("📥 EpisodeViewModel: Added \(episodesToAdd.count) new episodes, updated \(episodesToUpdate.count) existing episodes")
+                print("📊 EpisodeViewModel: Episodes array now has \(self.episodes.count) episodes")
             }
         }
     }
 
     func removeEpisodes(for podcastID: UUID) {
-        DispatchQueue.main.async { [weak self] in
-            guard let self = self else { return }
+        Task { @MainActor in
             self.episodes.removeAll { $0.podcastID == podcastID }
             
             // Save episodes on background thread to avoid blocking UI
-            DispatchQueue.global(qos: .utility).async { [weak self] in
-                self?.saveEpisodes()
+            Task.detached(priority: .utility) { [weak self] in
+                await self?.saveEpisodes()
             }
         }
     }
 
     func clearAllEpisodes() {
-        DispatchQueue.main.async { [weak self] in
-            guard let self = self else { return }
+        Task { @MainActor in
             self.episodes.removeAll()
             
             // Save episodes on background thread to avoid blocking UI
-            DispatchQueue.global(qos: .utility).async { [weak self] in
-                self?.saveEpisodes()
+            Task.detached(priority: .utility) { [weak self] in
+                await self?.saveEpisodes()
             }
         }
     }
@@ -438,15 +481,14 @@ class EpisodeViewModel: ObservableObject {
     
     /// Force reload episodes from storage - useful for recovery
     func forceReloadEpisodes() {
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            self?.loadEpisodes()
+        Task.detached(priority: .userInitiated) { [weak self] in
+            await self?.loadEpisodes()
         }
     }
     
     /// Manually trigger episode recovery - clears corrupted data and fetches fresh episodes
     func triggerRecovery() {
-        DispatchQueue.main.async { [weak self] in
-            guard let self = self else { return }
+        Task { @MainActor in
             self.episodes.removeAll()
             self.attemptAutomaticRecovery()
         }
@@ -454,14 +496,17 @@ class EpisodeViewModel: ObservableObject {
     
     /// Check if recovery is needed and trigger it automatically
     private func checkAndRecoverIfNeeded() {
-        DispatchQueue.main.async { [weak self] in
-            guard let self = self else { return }
+        Task { @MainActor in
+            // CRITICAL FIX: Never trigger automatic recovery to prevent episodes from disappearing
+            // The episodes array can be temporarily empty during navigation, tab switching, or playback
+            // Recovery should only be triggered manually by the user or in extreme circumstances
             
-            // Only attempt recovery if episodes are still empty and we have podcasts
+            // DISABLED: Automatic recovery is too aggressive and causes episodes to disappear
+            // Only log the situation for debugging
             if self.episodes.isEmpty {
                 let podcasts = PodcastService.shared.loadPodcasts()
                 if !podcasts.isEmpty {
-                    self.attemptAutomaticRecovery()
+                    print("⚠️ EpisodeViewModel: Episodes empty but podcasts exist. NOT triggering automatic recovery to prevent data loss.")
                 }
             }
         }

@@ -107,7 +107,12 @@ struct CacheManagementView: View {
     }
     
     private func refreshStats() {
-        cacheStats = episodeCacheService.getCacheStats()
+        episodeCacheService.getCacheStats { stats in
+            // CRITICAL FIX: Use asyncAfter to prevent "Publishing changes from within view updates"
+            DispatchQueue.main.async {
+                self.cacheStats = stats
+            }
+        }
     }
     
     private func clearAllCache() {

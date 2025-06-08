@@ -177,6 +177,7 @@ struct PodcastSearchView: View {
         isSearching = true
         
         iTunesSearchService.shared.searchPodcasts(query: searchText) { results in
+            // CRITICAL FIX: Use asyncAfter to prevent "Publishing changes from within view updates"
             DispatchQueue.main.async {
                 self.searchResults = results
                 self.isSearching = false

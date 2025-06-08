@@ -1,0 +1,52 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Key Views & Navigation Structure
+
+## Main Navigation Views
+
+### Primary Interface
+- [ContentView.swift](mdc:Jimmy/ContentView.swift) - Main app container with tab navigation
+- [LibraryView.swift](mdc:Jimmy/Views/LibraryView.swift) - User's podcast library and subscriptions
+- [DiscoverView.swift](mdc:Jimmy/Views/DiscoverView.swift) - Podcast discovery and search
+- [QueueView.swift](mdc:Jimmy/Views/QueueView.swift) - Episode playback queue management
+
+### Podcast & Episode Views
+- [PodcastDetailView.swift](mdc:Jimmy/Views/PodcastDetailView.swift) - Individual podcast details and episodes
+- [EpisodeDetailView.swift](mdc:Jimmy/Views/EpisodeDetailView.swift) - Episode details and playback options
+- [EpisodeListView.swift](mdc:Jimmy/Views/EpisodeListView.swift) - List of episodes for a podcast
+- [EpisodeRowView.swift](mdc:Jimmy/Views/EpisodeRowView.swift) - Individual episode row component
+
+### Audio Player Views
+- [CurrentPlayView.swift](mdc:Jimmy/Views/CurrentPlayView.swift) - Full-screen now playing interface
+- [MiniPlayerView.swift](mdc:Jimmy/Views/MiniPlayerView.swift) - Compact player at bottom of screen
+- [AudioPlayerView.swift](mdc:Jimmy/Views/AudioPlayerView.swift) - Audio player controls
+- [EpisodePlayerView.swift](mdc:Jimmy/Views/EpisodePlayerView.swift) - Episode-specific player interface
+
+### Search & Discovery
+- [PodcastSearchView.swift](mdc:Jimmy/Views/PodcastSearchView.swift) - Podcast search functionality
+- [RecommendedPodcastItem.swift](mdc:Jimmy/Views/RecommendedPodcastItem.swift) - Recommended podcast card
+- [LargeRecommendedPodcastItem.swift](mdc:Jimmy/Views/LargeRecommendedPodcastItem.swift) - Large recommendation card
+- [DiscoverGenreSectionView.swift](mdc:Jimmy/Views/DiscoverGenreSectionView.swift) - Genre-based discovery
+
+### Settings & Management
+- [SettingsView.swift](mdc:Jimmy/Views/SettingsView.swift) - App settings and preferences
+- [CacheManagementView.swift](mdc:Jimmy/Views/CacheManagementView.swift) - Storage and cache management
+- [StorageDebugView.swift](mdc:Jimmy/Views/StorageDebugView.swift) - Storage debugging tools
+- [AnalyticsView.swift](mdc:Jimmy/Views/AnalyticsView.swift) - App analytics and usage stats
+
+### Utility Views
+- [DocumentationView.swift](mdc:Jimmy/Views/DocumentationView.swift) - In-app documentation
+- [FeedbackFormView.swift](mdc:Jimmy/Views/FeedbackFormView.swift) - User feedback collection
+- [AppLoadingView.swift](mdc:Jimmy/Views/AppLoadingView.swift) - App loading screen
+
+### Reusable Components
+Components are located in [Jimmy/Views/Components/](mdc:Jimmy/Views/Components) for shared UI elements.
+
+## Navigation Flow
+1. **App Launch** → [AppLoadingView.swift](mdc:Jimmy/Views/AppLoadingView.swift) → [ContentView.swift](mdc:Jimmy/ContentView.swift)
+2. **Main Tabs** → Library, Discover, Queue, Settings
+3. **Podcast Selection** → [PodcastDetailView.swift](mdc:Jimmy/Views/PodcastDetailView.swift) → [EpisodeDetailView.swift](mdc:Jimmy/Views/EpisodeDetailView.swift)
+4. **Audio Playback** → [MiniPlayerView.swift](mdc:Jimmy/Views/MiniPlayerView.swift) → [CurrentPlayView.swift](mdc:Jimmy/Views/CurrentPlayView.swift)

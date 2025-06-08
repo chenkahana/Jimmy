@@ -13,14 +13,26 @@ class SubscriptionImportService {
     
     /// Parse the subscription text file and import podcasts
     func importFromSubscriptionFile(filePath: String, completion: @escaping ([Podcast], Error?) -> Void) {
-        guard let fileURL = URL(string: filePath),
-              let data = try? Data(contentsOf: fileURL),
-              let content = String(data: data, encoding: .utf8) else {
+        guard let fileURL = URL(string: filePath) else {
             completion([], SubscriptionImportError.fileReadError)
             return
         }
         
-        parseSubscriptions(content: content, completion: completion)
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            do {
+                let data = try Data(contentsOf: fileURL)
+                guard let content = String(data: data, encoding: .utf8) else {
+                    DispatchQueue.main.async { completion([], SubscriptionImportError.fileReadError) }
+                    return
+                }
+                
+                DispatchQueue.main.async {
+                    self?.parseSubscriptions(content: content, completion: completion)
+                }
+            } catch {
+                DispatchQueue.main.async { completion([], error) }
+            }
+        }
     }
     
     /// Parse subscription content directly from string

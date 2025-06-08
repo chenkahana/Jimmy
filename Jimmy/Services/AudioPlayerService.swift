@@ -10,6 +10,7 @@ class AudioPlayerService: NSObject, ObservableObject {
     @Published var isLoading = false
     @Published var currentEpisode: Episode?
     @Published var playbackPosition: TimeInterval = 0
+    private var _internalPlaybackPosition: TimeInterval = 0
     @Published var duration: TimeInterval = 0
     @Published var playbackSpeed: Float = 1.0
     @Published var canSeekForward = true
@@ -17,6 +18,12 @@ class AudioPlayerService: NSObject, ObservableObject {
     
     private var player: AVPlayer?
     private var timeObserver: Any?
+    private var lastSaveTime: Date = Date()
+    private let saveInterval: TimeInterval = 15.0 // Save progress every 15 seconds
+    
+    // Debouncing for UI updates to prevent view update conflicts
+    private var updateWorkItem: DispatchWorkItem?
+    private let updateDebounceInterval: TimeInterval = 0.1
     
     // Cache for prepared AVPlayerItems to reduce loading time (with size limit)
     private var playerItemCache: [String: AVPlayerItem] = [:]
@@ -25,6 +32,9 @@ class AudioPlayerService: NSObject, ObservableObject {
     
     private override init() {
         super.init()
+        
+        // Initialize crash prevention first
+        CrashPreventionManager.shared.startCrashPrevention()
         
         // Initialize playback speed from saved value
         let storedSpeed = UserDefaults.standard.float(forKey: "playbackSpeed")
@@ -44,27 +54,14 @@ class AudioPlayerService: NSObject, ObservableObject {
     }
     
     private func setupAudioSession() {
-        do {
-            let audioSession = AVAudioSession.sharedInstance()
-            
-            // Configure audio session for background playback
-            try audioSession.setCategory(
-                .playback,
-                mode: .default,
-                options: [.allowAirPlay, .allowBluetooth, .allowBluetoothA2DP]
-            )
-            
-            // Only activate when we actually need to play audio
-            // Don't activate immediately on app launch
-        } catch {
-            print("⚠️ Failed to configure audio session: \(error)")
-            
-            // Fallback to basic playback category without options
-            do {
-                try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
-            } catch {
-                print("❌ Failed to set even basic audio session category: \(error)")
-            }
+        // Use crash prevention manager for safe audio session setup
+        // The .playback category alone is sufficient for most podcast apps.
+        // It supports background audio, AirPlay, and Bluetooth devices automatically.
+        // Adding specific options like .allowBluetooth can sometimes cause conflicts (OSStatus error -50).
+        let success = CrashPreventionManager.shared.safeConfigureAudioSession(category: .playback)
+        
+        if !success {
+            print("⚠️ Failed to configure audio session.")
         }
     }
     
@@ -225,7 +222,8 @@ class AudioPlayerService: NSObject, ObservableObject {
     @objc private func appDidEnterBackground() {
         // Save current playback position before going to background
         if let currentEpisode = currentEpisode {
-            EpisodeViewModel.shared.updatePlaybackPosition(for: currentEpisode, position: playbackPosition)
+            EpisodeViewModel.shared.updatePlaybackPosition(for: currentEpisode, position: _internalPlaybackPosition)
+            updateQueuePosition(for: currentEpisode, position: _internalPlaybackPosition)
         }
         
         // Clear cache to free memory in background
@@ -258,16 +256,34 @@ class AudioPlayerService: NSObject, ObservableObject {
     @objc private func appWillTerminate() {
         // Save current playback position and episode ID before app terminates
         if let currentEpisode = currentEpisode {
-            EpisodeViewModel.shared.updatePlaybackPosition(for: currentEpisode, position: playbackPosition)
+            EpisodeViewModel.shared.updatePlaybackPosition(for: currentEpisode, position: _internalPlaybackPosition)
+            updateQueuePosition(for: currentEpisode, position: _internalPlaybackPosition)
             saveLastPlayingEpisodeId(currentEpisode.id.uuidString)
+        }
+        
+        // CRITICAL: Stop audio playback and deactivate audio session on app termination
+        // This prevents audio from continuing to play after the app is closed
+        if isPlaying {
+            player?.pause()
+            isPlaying = false
+            
+            // Deactivate audio session to completely stop background audio
+            do {
+                try AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+            } catch {
+                print("⚠️ Failed to deactivate audio session on termination: \(error)")
+            }
+            
+            // Clear now playing info from control center
+            MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
         }
     }
     
     func loadEpisode(_ episode: Episode) {
         guard let audioURL = episode.audioURL else { return }
         
-        // Set loading state immediately
-        DispatchQueue.main.async {
+        // Set loading state on main actor to avoid threading issues
+        Task { @MainActor in
             self.isLoading = true
             LoadingStateManager.shared.setEpisodeLoading(episode.id, isLoading: true)
         }
@@ -308,8 +324,8 @@ class AudioPlayerService: NSObject, ObservableObject {
     }
     
     private func setupPlayerForEpisode(_ episode: Episode, playerItem: AVPlayerItem) {
-        // Observe player item status for loading completion
-        playerItem.addObserver(self, forKeyPath: "status", options: [.new], context: nil)
+        // Observe player item status for loading completion using crash prevention
+        CrashPreventionManager.shared.safeAddObserver(self, to: playerItem, forKeyPath: "status", options: [.new])
 
         // Set up time observer for the new player
         setupTimeObserver()
@@ -324,7 +340,7 @@ class AudioPlayerService: NSObject, ObservableObject {
         )
         
         // Get duration and update UI when ready
-        DispatchQueue.main.async {
+        Task { @MainActor in
             if let asset = self.player?.currentItem?.asset {
                 Task {
                     do {
@@ -349,9 +365,10 @@ class AudioPlayerService: NSObject, ObservableObject {
             if episode.playbackPosition > 0 {
                 let seekTime = CMTime(seconds: episode.playbackPosition, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
                 self.player?.seek(to: seekTime) { [weak self] _ in
-                    DispatchQueue.main.async {
-                        // Set the playback position property after seek completes to ensure UI shows correct position
+                    Task { @MainActor in
+                        // Set both playback positions after seek completes
                         self?.playbackPosition = episode.playbackPosition
+                        self?._internalPlaybackPosition = episode.playbackPosition
                         self?.isLoading = false
                         LoadingStateManager.shared.setEpisodeLoading(episode.id, isLoading: false)
                         // Update now playing info after seeking to show correct position
@@ -359,8 +376,9 @@ class AudioPlayerService: NSObject, ObservableObject {
                     }
                 }
             } else {
-                // Set playback position to 0 for new episodes
+                // Set both playback positions to 0 for new episodes
                 self.playbackPosition = 0
+                self._internalPlaybackPosition = 0
                 self.isLoading = false
                 LoadingStateManager.shared.setEpisodeLoading(episode.id, isLoading: false)
                 // Update now playing info immediately since no seeking needed
@@ -370,47 +388,61 @@ class AudioPlayerService: NSObject, ObservableObject {
     }
     
     override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey: Any]?, context: UnsafeMutableRawPointer?) {
-        if keyPath == "status", let playerItem = object as? AVPlayerItem {
-            DispatchQueue.main.async {
-                switch playerItem.status {
-                case .readyToPlay:
-                    self.isLoading = false
-                    if let currentEpisode = self.currentEpisode {
-                        LoadingStateManager.shared.setEpisodeLoading(currentEpisode.id, isLoading: false)
-                    }
-                    Task {
-                        do {
-                            let duration = try await playerItem.asset.load(.duration)
-                            if !duration.isIndefinite {
-                                await MainActor.run {
-                                    self.duration = CMTimeGetSeconds(duration)
-                                    
-                                    // Save duration to episode if it's not already set
-                                    if let currentEpisode = self.currentEpisode, currentEpisode.episodeDuration == 0 {
-                                        EpisodeViewModel.shared.updateEpisodeDuration(currentEpisode, duration: self.duration)
-                                    }
-                                }
-                            }
-                        } catch {
-                            print("⚠️ Failed to load asset duration: \(error)")
-                        }
-                    }
-                case .failed:
-                    self.isLoading = false
-                    if let currentEpisode = self.currentEpisode {
-                        LoadingStateManager.shared.setEpisodeLoading(currentEpisode.id, isLoading: false)
-                    }
-                    print("⚠️ Player item failed to load: \(playerItem.error?.localizedDescription ?? "Unknown error")")
-                case .unknown:
-                    break
-                @unknown default:
-                    break
-                }
+        guard keyPath == "status", let playerItem = object as? AVPlayerItem else {
+            super.observeValue(forKeyPath: keyPath, of: object, change: change, context: context)
+            return
+        }
+
+        // CRITICAL FIX: Execute immediately to prevent main thread queue buildup
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+
+            switch playerItem.status {
+            case .readyToPlay:
+                self.handlePlayerReadyToPlay(playerItem)
+            case .failed:
+                self.handlePlayerFailed(playerItem)
+            case .unknown:
+                // Nothing to do here, but we've handled the case.
+                break
+            @unknown default:
+                break
             }
         }
     }
     
-    private func clearPlayerItemCache() {
+    private func handlePlayerReadyToPlay(_ playerItem: AVPlayerItem) {
+        isLoading = false
+        if let episode = currentEpisode {
+            LoadingStateManager.shared.setEpisodeLoading(episode.id, isLoading: false)
+        }
+
+        Task {
+            do {
+                let duration = try await playerItem.asset.load(.duration)
+                if !duration.isIndefinite {
+                    await MainActor.run {
+                        self.duration = CMTimeGetSeconds(duration)
+                        if let currentEpisode = self.currentEpisode, currentEpisode.episodeDuration == 0 {
+                            EpisodeViewModel.shared.updateEpisodeDuration(currentEpisode, duration: self.duration)
+                        }
+                    }
+                }
+            } catch {
+                print("⚠️ Failed to load asset duration: \(error)")
+            }
+        }
+    }
+
+    private func handlePlayerFailed(_ playerItem: AVPlayerItem) {
+        isLoading = false
+        if let episode = currentEpisode {
+            LoadingStateManager.shared.setEpisodeLoading(episode.id, isLoading: false)
+        }
+        print("⚠️ Player item failed to load: \(playerItem.error?.localizedDescription ?? "Unknown error")")
+    }
+    
+    func clearPlayerItemCache() {
         cacheQueue.async { [weak self] in
             self?.playerItemCache.removeAll()
             print("🧹 Cleared player item cache to free memory")
@@ -464,8 +496,8 @@ class AudioPlayerService: NSObject, ObservableObject {
                 object: currentPlayerItem
             )
             
-            // Remove status observer (wrap in try-catch in case observer wasn't added)
-            currentPlayerItem.removeObserver(self, forKeyPath: "status")
+            // Remove status observer safely using crash prevention manager
+            CrashPreventionManager.shared.safeRemoveObserver(self, from: currentPlayerItem, forKeyPath: "status")
         }
         
         // Clear the player reference
@@ -482,13 +514,83 @@ class AudioPlayerService: NSObject, ObservableObject {
             timeObserver = nil
         }
         
+        // Use a background queue for the time observer to avoid blocking the main thread
+        let timeObserverQueue = DispatchQueue(label: "audio-time-observer", qos: .utility)
+        
         // Add new observer to the current player
         timeObserver = player.addPeriodicTimeObserver(
             forInterval: CMTime(seconds: 1, preferredTimescale: CMTimeScale(NSEC_PER_SEC)),
-            queue: .main
+            queue: timeObserverQueue
         ) { [weak self] time in
-            self?.playbackPosition = CMTimeGetSeconds(time)
-            self?.updatePlaybackProgress()
+            let currentTime = CMTimeGetSeconds(time)
+            self?.debouncedUpdatePlaybackPosition(currentTime)
+        }
+    }
+    
+    private func debouncedUpdatePlaybackPosition(_ currentTime: TimeInterval) {
+        // Update internal position immediately (non-published)
+        _internalPlaybackPosition = currentTime
+        
+        // Cancel any pending UI update
+        updateWorkItem?.cancel()
+        
+        // Create new work item for UI updates only
+        let workItem = DispatchWorkItem { [weak self] in
+            guard let self = self else { return }
+            
+            // CRITICAL FIX: Update published property immediately to prevent main thread blocking
+            self.playbackPosition = self._internalPlaybackPosition
+        }
+        
+        // Store the work item
+        updateWorkItem = workItem
+        
+        // CRITICAL FIX: Execute immediately instead of scheduling to prevent main thread queue buildup
+        DispatchQueue.main.async(execute: workItem)
+        
+        // Handle non-UI updates immediately on background queue
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            self?.handleProgressUpdates()
+        }
+    }
+    
+    private func handleProgressUpdates() {
+        guard let episode = currentEpisode else { return }
+        let currentPosition = _internalPlaybackPosition
+
+        // Automatically mark episode as played when less than 5 seconds remain
+        if !episode.played && duration > 0 && (duration - currentPosition) <= 5 {
+            // CRITICAL FIX: Execute immediately to prevent main thread queue buildup
+            DispatchQueue.main.async { [weak self] in
+                EpisodeViewModel.shared.markEpisodeAsPlayed(episode, played: true)
+                self?.currentEpisode?.played = true
+            }
+        }
+        
+        // Debounced saving of playback position to avoid excessive writes
+        if Date().timeIntervalSince(lastSaveTime) > saveInterval {
+            // CRITICAL FIX: Execute immediately to prevent main thread queue buildup
+            DispatchQueue.main.async {
+                EpisodeViewModel.shared.updatePlaybackPosition(for: episode, position: currentPosition)
+            }
+            lastSaveTime = Date()
+        }
+        
+        // Note: Queue position updates removed from time observer to prevent view update conflicts
+        // Queue positions will be updated when episodes are saved/loaded instead
+        
+        // Update now playing info (this is safe as it doesn't publish to SwiftUI)
+        updateNowPlayingInfo()
+    }
+    
+    private func updateQueuePosition(for episode: Episode, position: TimeInterval) {
+        // CRITICAL FIX: Execute immediately to prevent main thread queue buildup
+        DispatchQueue.main.async {
+            if let queueViewModel = QueueViewModel.shared as QueueViewModel?,
+               let index = queueViewModel.queue.firstIndex(where: { $0.id == episode.id }) {
+                queueViewModel.queue[index].playbackPosition = position
+                queueViewModel.debouncedSaveQueue()
+            }
         }
     }
     
@@ -498,117 +600,58 @@ class AudioPlayerService: NSObject, ObservableObject {
         var nowPlayingInfo = [String: Any]()
         nowPlayingInfo[MPMediaItemPropertyTitle] = episode.title
         
-        // Add podcast title as artist if available
-        if let podcast = getPodcast(for: episode) {
-            nowPlayingInfo[MPMediaItemPropertyArtist] = podcast.title
-        }
-        
-        nowPlayingInfo[MPMediaItemPropertyPlaybackDuration] = duration
-        nowPlayingInfo[MPNowPlayingInfoPropertyElapsedPlaybackTime] = playbackPosition
-        nowPlayingInfo[MPNowPlayingInfoPropertyPlaybackRate] = isPlaying ? playbackSpeed : 0.0
-        
-        // Try episode artwork first, then podcast artwork, then placeholder
-        let artworkURL = episode.artworkURL ?? getPodcast(for: episode)?.artworkURL
-        
-        if let artworkURL = artworkURL {
-            loadArtwork(from: artworkURL) { artwork in
-                DispatchQueue.main.async {
-                    nowPlayingInfo[MPMediaItemPropertyArtwork] = artwork
-                    MPNowPlayingInfoCenter.default().nowPlayingInfo = nowPlayingInfo
-                }
+        getPodcast(for: episode) { podcast in
+            if let podcast = podcast {
+                nowPlayingInfo[MPMediaItemPropertyArtist] = podcast.title
             }
-        } else {
-            // Set info without artwork for immediate display
-            MPNowPlayingInfoCenter.default().nowPlayingInfo = nowPlayingInfo
+            
+            nowPlayingInfo[MPMediaItemPropertyPlaybackDuration] = self.duration
+            nowPlayingInfo[MPNowPlayingInfoPropertyElapsedPlaybackTime] = self._internalPlaybackPosition
+            nowPlayingInfo[MPNowPlayingInfoPropertyPlaybackRate] = self.isPlaying ? self.playbackSpeed : 0.0
+            
+            let artworkURL = episode.artworkURL ?? podcast?.artworkURL
+            
+            if let artworkURL = artworkURL {
+                self.loadArtwork(from: artworkURL) { artwork in
+                    // CRITICAL FIX: Execute immediately to prevent main thread queue buildup
+                    DispatchQueue.main.async {
+                        nowPlayingInfo[MPMediaItemPropertyArtwork] = artwork
+                        MPNowPlayingInfoCenter.default().nowPlayingInfo = nowPlayingInfo
+                    }
+                }
+            } else {
+                // Set info without artwork for immediate display
+                MPNowPlayingInfoCenter.default().nowPlayingInfo = nowPlayingInfo
+            }
         }
     }
     
-    private func getPodcast(for episode: Episode) -> Podcast? {
-        return PodcastService.shared.loadPodcasts().first { $0.id == episode.podcastID }
+    private func getPodcast(for episode: Episode, completion: @escaping (Podcast?) -> Void) {
+        PodcastService.shared.loadPodcastsAsync { podcasts in
+            let matchingPodcast = podcasts.first { $0.id == episode.podcastID }
+            completion(matchingPodcast)
+        }
     }
     
     private func loadArtwork(from url: URL, completion: @escaping (MPMediaItemArtwork?) -> Void) {
-        // Create a URL session with timeout
-        let config = URLSessionConfiguration.default
-        config.timeoutIntervalForRequest = 10.0 // 10 second timeout
-        let session = URLSession(configuration: config)
-        
-        session.dataTask(with: url) { data, response, error in
-            // Check for errors
-            if let error = error {
-                print("⚠️ Failed to load artwork from \(url): \(error.localizedDescription)")
+        ImageCache.shared.loadImage(from: url) { image in
+            guard let image = image else {
                 completion(nil)
                 return
             }
             
-            // Check for valid data and create image
-            guard let data = data, 
-                  let image = UIImage(data: data) else {
-                print("⚠️ Invalid artwork data from \(url)")
-                completion(nil)
-                return
-            }
-            
-            // Ensure image has reasonable size (not too large for memory)
-            let maxSize: CGFloat = 600
-            let finalImage: UIImage
-            
-            if max(image.size.width, image.size.height) > maxSize {
-                // Resize image to prevent memory issues
-                let aspectRatio = image.size.width / image.size.height
-                let newSize: CGSize
-                
-                if image.size.width > image.size.height {
-                    newSize = CGSize(width: maxSize, height: maxSize / aspectRatio)
-                } else {
-                    newSize = CGSize(width: maxSize * aspectRatio, height: maxSize)
-                }
-                
-                UIGraphicsBeginImageContextWithOptions(newSize, false, 0.0)
-                image.draw(in: CGRect(origin: .zero, size: newSize))
-                finalImage = UIGraphicsGetImageFromCurrentImageContext() ?? image
-                UIGraphicsEndImageContext()
-            } else {
-                finalImage = image
-            }
-            
-            // Create artwork with proper bounds
-            let artwork = MPMediaItemArtwork(boundsSize: finalImage.size) { _ in finalImage }
+            let artwork = MPMediaItemArtwork(boundsSize: image.size) { _ in image }
             completion(artwork)
-        }.resume()
+        }
     }
     
-    private func updatePlaybackProgress() {
-        guard let episode = currentEpisode else { return }
 
-        // Automatically mark episode as played when less than 5 seconds remain
-        if !episode.played && duration > 0 && (duration - playbackPosition) <= 5 {
-            EpisodeViewModel.shared.markEpisodeAsPlayed(episode, played: true)
-            currentEpisode?.played = true
-        }
-        
-        // Update episode in queue - ensure this happens on main thread since we're updating @Published properties
-        DispatchQueue.main.async {
-            if let queueViewModel = QueueViewModel.shared as QueueViewModel?,
-               let index = queueViewModel.queue.firstIndex(where: { $0.id == episode.id }) {
-                queueViewModel.queue[index].playbackPosition = self.playbackPosition
-                queueViewModel.saveQueue()
-            }
-        }
-        
-        // Update now playing info
-        updateNowPlayingInfo()
-    }
     
     func play() {
-        // Activate audio session before playing (only if not already active)
+        // Activate audio session safely before playing
         let audioSession = AVAudioSession.sharedInstance()
         if !audioSession.isOtherAudioPlaying {
-            do {
-                try audioSession.setActive(true)
-            } catch {
-                print("⚠️ Failed to activate audio session: \(error)")
-            }
+            _ = CrashPreventionManager.shared.safeActivateAudioSession()
         }
 
         player?.play()
@@ -623,7 +666,9 @@ class AudioPlayerService: NSObject, ObservableObject {
         
         // Save current playback position when pausing
         if let currentEpisode = currentEpisode {
-            EpisodeViewModel.shared.updatePlaybackPosition(for: currentEpisode, position: playbackPosition)
+            EpisodeViewModel.shared.updatePlaybackPosition(for: currentEpisode, position: _internalPlaybackPosition)
+            // Update queue position when pausing (safe time to update)
+            updateQueuePosition(for: currentEpisode, position: _internalPlaybackPosition)
         }
         
         updateNowPlayingInfo()
@@ -674,7 +719,8 @@ class AudioPlayerService: NSObject, ObservableObject {
     func stop() {
         // Save current playback position before stopping
         if let currentEpisode = currentEpisode {
-            EpisodeViewModel.shared.updatePlaybackPosition(for: currentEpisode, position: playbackPosition)
+            EpisodeViewModel.shared.updatePlaybackPosition(for: currentEpisode, position: _internalPlaybackPosition)
+            updateQueuePosition(for: currentEpisode, position: _internalPlaybackPosition)
         }
         
         player?.pause()
@@ -685,6 +731,7 @@ class AudioPlayerService: NSObject, ObservableObject {
         currentEpisode = nil
         isPlaying = false
         playbackPosition = 0
+        _internalPlaybackPosition = 0
         duration = 0
         
         // Deactivate audio session when completely stopping
@@ -708,16 +755,46 @@ class AudioPlayerService: NSObject, ObservableObject {
         return UserDefaults.standard.string(forKey: "lastPlayingEpisodeId")
     }
     
-    private func restoreLastPlayingEpisode() {
+    /// Manually restore the last playing episode (useful when auto-restore is disabled)
+    func manuallyRestoreLastEpisode() {
         guard let lastEpisodeId = getLastPlayingEpisodeId(),
               let episode = EpisodeViewModel.shared.findEpisode(by: lastEpisodeId) else {
+            print("🎵 No previous episode to restore")
+            return
+        }
+        
+        if episode.playbackPosition > 0 {
+            print("🎵 Manually restoring episode: \(episode.title) at position \(Int(episode.playbackPosition))s")
+            loadEpisode(episode)
+        } else {
+            print("🎵 Episode \(episode.title) has no saved position, loading from beginning")
+            loadEpisode(episode)
+        }
+    }
+    
+    private func restoreLastPlayingEpisode() {
+        // Check if user has enabled auto-restore
+        let autoRestoreEnabled = UserDefaults.standard.bool(forKey: "autoRestoreLastEpisode")
+        
+        guard autoRestoreEnabled else {
+            print("🎵 Auto-restore disabled by user - not restoring last episode")
+            return
+        }
+        
+        guard let lastEpisodeId = getLastPlayingEpisodeId(),
+              let episode = EpisodeViewModel.shared.findEpisode(by: lastEpisodeId) else {
+            print("🎵 No previous episode to restore")
             return
         }
         
         // Only restore if there was a saved playback position (meaning it was actually being played)
         if episode.playbackPosition > 0 {
-            // Load the episode but don't start playing
+            print("🎵 Restoring episode: \(episode.title) at position \(Int(episode.playbackPosition))s")
+            // Load the episode but don't start playing - user must manually resume
             loadEpisode(episode)
+            print("🎵 Episode loaded but not playing - ready for manual resume")
+        } else {
+            print("🎵 Episode \(episode.title) has no saved position, not restoring")
         }
     }
 } 

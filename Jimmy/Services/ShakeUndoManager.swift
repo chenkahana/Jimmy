@@ -40,13 +40,12 @@ class ShakeUndoManager: ObservableObject {
     // MARK: - Operation Tracking
     
     func recordOperation(_ operation: UndoableOperation, description: String) {
-        DispatchQueue.main.async {
-            self.lastAction = UndoableAction(
-                operation: operation,
-                timestamp: Date(),
-                description: description
-            )
-        }
+        // PERFORMANCE FIX: Direct assignment to prevent publishing warnings
+        self.lastAction = UndoableAction(
+            operation: operation,
+            timestamp: Date(),
+            description: description
+        )
         
         print("🔄 Recorded undoable operation: \(description)")
     }
@@ -88,10 +87,8 @@ class ShakeUndoManager: ObservableObject {
             undoBulkEpisodeRemovalFromQueue(episodes, removedFromIndex: removedFromIndex, targetEpisode: targetEpisode)
         }
         
-        // Clear the last action after undo
-        DispatchQueue.main.async {
-            self.lastAction = nil
-        }
+        // Clear the last action after undo - PERFORMANCE FIX: Direct assignment to prevent publishing warnings
+        self.lastAction = nil
     }
     
     // MARK: - Undo Implementations
@@ -243,10 +240,20 @@ class ShakeUndoManager: ObservableObject {
     private func showUndoNotification() {
         guard let action = lastAction else { return }
         
-        // Show toast notification
-        DispatchQueue.main.async {
-            self.undoToastMessage = "Undid: \(action.description)"
-            self.showUndoToast = true
+        // Show toast notification - PERFORMANCE FIX: Direct assignment to prevent publishing warnings
+        self.undoToastMessage = "Undid: \(action.description)"
+        self.showUndoToast = true
+    }
+    
+    func showUndoToast(message: String) {
+        // PERFORMANCE FIX: Direct assignment to prevent publishing warnings
+        self.undoToastMessage = message
+        self.showUndoToast = true
+        
+        // Auto-hide after 3 seconds
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: 3_000_000_000) // 3 seconds
+            self?.showUndoToast = false
         }
     }
     

@@ -7,8 +7,7 @@ struct LibraryView: View {
     @State private var selectedViewType: LibraryViewType = .episodes
     @ObservedObject private var audioPlayer = AudioPlayerService.shared
     @ObservedObject private var episodeViewModel = EpisodeViewModel.shared
-    // CRITICAL FIX: Remove @ObservedObject to prevent cascade of updates during tab switching
-    // @ObservedObject private var updateService = EpisodeUpdateService.shared
+    @ObservedObject private var updateService = EpisodeUpdateService.shared
     @ObservedObject private var episodeCacheService = EpisodeCacheService.shared
     @State private var episodesUpdatedObserver: NSObjectProtocol?
     
@@ -24,6 +23,9 @@ struct LibraryView: View {
     // INSTANT DISPLAY: Pre-computed data ready for immediate display
     @State private var displayEpisodes: [Episode] = []
     @State private var displayPodcasts: [Podcast] = []
+    
+    // DEBUG: Track view creation
+    private let viewID = UUID()
     
     enum LibraryViewType: String, CaseIterable {
         case shows = "Shows"
@@ -84,17 +86,14 @@ struct LibraryView: View {
     // BACKGROUND UPDATE: Async update for subsequent changes
     private func updateCachedFilteredPodcastsAsync() {
         DispatchQueue.global(qos: .userInitiated).async {
-            let currentSearchText = self.searchText
-            let currentPodcasts = self.subscribedPodcasts
-            
             let podcastsToFilter: [Podcast]
             
-            if currentSearchText.isEmpty {
-                podcastsToFilter = currentPodcasts
+            if self.searchText.isEmpty {
+                podcastsToFilter = self.subscribedPodcasts
             } else {
-                podcastsToFilter = currentPodcasts.filter { 
-                    $0.title.localizedCaseInsensitiveContains(currentSearchText) || 
-                    $0.author.localizedCaseInsensitiveContains(currentSearchText) 
+                podcastsToFilter = self.subscribedPodcasts.filter { 
+                    $0.title.localizedCaseInsensitiveContains(self.searchText) || 
+                    $0.author.localizedCaseInsensitiveContains(self.searchText) 
                 }
             }
             
@@ -112,12 +111,12 @@ struct LibraryView: View {
                 }
             }
             
-            // CRITICAL FIX: Use asyncAfter to ensure we're not in a view update cycle
-            DispatchQueue.main.async {
+            // Update display data on main thread - FIX: Use Task instead of DispatchQueue.main.async
+            Task { @MainActor in
                 self.cachedFilteredPodcasts = sortedPodcasts
                 self.displayPodcasts = sortedPodcasts
-                self.lastSearchText = currentSearchText
-                self.lastSubscribedPodcastsHash = currentPodcasts.count
+                self.lastSearchText = self.searchText
+                self.lastSubscribedPodcastsHash = self.subscribedPodcasts.count
             }
         }
     }
@@ -159,29 +158,26 @@ struct LibraryView: View {
         lastSearchText = searchText
         lastEpisodesHash = episodeViewModel.episodes.count
         lastSubscribedPodcastsHash = subscribedPodcasts.count
+        
+
     }
     
     // BACKGROUND UPDATE: Async update for subsequent changes
     private func updateCachedAllEpisodesAsync() {
         DispatchQueue.global(qos: .userInitiated).async {
-            let currentSearchText = self.searchText
-            let currentPodcasts = self.subscribedPodcasts
-            let currentEpisodes = self.episodeViewModel.episodes
-            
-            let subscribedPodcastIDs = Set(currentPodcasts.map { $0.id })
-            let episodes = currentEpisodes.filter { episode in
+            let subscribedPodcastIDs = Set(self.subscribedPodcasts.map { $0.id })
+            let episodes = self.episodeViewModel.episodes.filter { episode in
                 guard let podcastID = episode.podcastID else { return false }
                 return subscribedPodcastIDs.contains(podcastID)
             }
             
             // Filter by search text if provided
-            let filteredEpisodes = currentSearchText.isEmpty ? episodes : episodes.filter { episode in
-                // Create a local podcast lookup to avoid accessing self
-                let podcast = currentPodcasts.first { $0.id == episode.podcastID }
-                return episode.title.localizedCaseInsensitiveContains(currentSearchText) ||
-                       episode.description?.localizedCaseInsensitiveContains(currentSearchText) == true ||
-                       podcast?.title.localizedCaseInsensitiveContains(currentSearchText) == true ||
-                       podcast?.author.localizedCaseInsensitiveContains(currentSearchText) == true
+            let filteredEpisodes = self.searchText.isEmpty ? episodes : episodes.filter { episode in
+                let podcast = self.getPodcast(for: episode)
+                return episode.title.localizedCaseInsensitiveContains(self.searchText) ||
+                       episode.description?.localizedCaseInsensitiveContains(self.searchText) == true ||
+                       podcast?.title.localizedCaseInsensitiveContains(self.searchText) == true ||
+                       podcast?.author.localizedCaseInsensitiveContains(self.searchText) == true
             }
             
             // Sort by publication date (most recent first)
@@ -198,13 +194,15 @@ struct LibraryView: View {
                 }
             }
             
-            // CRITICAL FIX: Use asyncAfter to ensure we're not in a view update cycle
-            DispatchQueue.main.async {
+            // Update display data on main thread - FIX: Use Task instead of DispatchQueue.main.async
+            Task { @MainActor in
                 self.cachedAllEpisodes = sortedEpisodes
                 self.displayEpisodes = sortedEpisodes
-                self.lastSearchText = currentSearchText
-                self.lastEpisodesHash = currentEpisodes.count
-                self.lastSubscribedPodcastsHash = currentPodcasts.count
+                self.lastSearchText = self.searchText
+                self.lastEpisodesHash = self.episodeViewModel.episodes.count
+                self.lastSubscribedPodcastsHash = self.subscribedPodcasts.count
+                
+
             }
         }
     }
@@ -265,9 +263,9 @@ struct LibraryView: View {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     HStack(spacing: 12) {
                         // Update button (only for episodes view)
-                        if selectedViewType == .episodes && EpisodeUpdateService.shared.lastUpdateTime != nil {
+                        if selectedViewType == .episodes && updateService.lastUpdateTime != nil {
                             Button(action: {
-                                EpisodeUpdateService.shared.forceUpdate()
+                                updateService.forceUpdate()
                             }) {
                                 Image(systemName: "arrow.clockwise")
                                     .font(.system(size: 16))
@@ -290,32 +288,68 @@ struct LibraryView: View {
             }
         }
         .onAppear {
-            // CRITICAL FIX: Only run initialization once per view instance
-            guard isInitialLoad else {
-                // Just update caches if already initialized
-                updateCachedFilteredPodcastsSync()
+            // PERFORMANCE FIX: Make all loading operations asynchronous to prevent UI freeze
+            if isInitialLoad {
+                isInitialLoad = false
+                
+                // 1. Provide immediate display data to prevent UI waiting - INSTANT DISPLAY
+                // Initialize with current episode data if available
                 updateCachedAllEpisodesSync()
-                return
+                updateCachedFilteredPodcastsSync()
+                isCacheReady = true
+                
+                // 2. Load all data asynchronously - prevents UI freeze
+                PodcastService.shared.loadPodcastsAsync { loadedPodcasts in
+                    // Update state on main thread - FIX: Use Task instead of DispatchQueue.main.async
+                    Task { @MainActor in
+                        self.subscribedPodcasts = loadedPodcasts
+                        self.displayPodcasts = loadedPodcasts
+                        
+                        // Build cache asynchronously - prevents UI freeze
+                        self.updateCachedFilteredPodcastsAsync()
+                        self.updateCachedAllEpisodesAsync()
+                    }
+                    
+                    // Setup background operations (non-blocking)
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        // Setup notification observer
+                        self.setupEpisodesUpdatedObserver()
+                        
+                        // Load additional episodes in background if needed
+                        DispatchQueue.global(qos: .userInitiated).async {
+                            self.loadAllEpisodesForPodcasts()
+                        }
+                    }
+                    
+                    // Defer cleanup and maintenance operations
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                        DispatchQueue.global(qos: .utility).async {
+                            // Clean up large UserDefaults data that has been migrated to file storage
+                            UserDefaultsCleanup.shared.performCleanup()
+                            
+                            // Fix artwork URLs for sample podcasts and refresh real ones
+                            if UserDefaults.standard.bool(forKey: "artworkFixApplied") == false {
+                                print("🎨 Applying one-time artwork fix...")
+                                self.fixPodcastArtwork()
+                                UserDefaults.standard.set(true, forKey: "artworkFixApplied")
+                            }
+                        }
+                    }
+                }
+                
+                // Trigger episode update if enough time has passed - but don't block UI
+                if updateService.needsUpdate() {
+                    DispatchQueue.global(qos: .background).async {
+                        updateService.forceUpdate()
+                    }
+                }
+            } else {
+                // FIX: When returning to Library tab, ensure episodes are properly displayed
+                if displayEpisodes.isEmpty && !episodeViewModel.episodes.isEmpty {
+                    updateCachedAllEpisodesSync()
+                    updateCachedFilteredPodcastsSync()
+                }
             }
-            
-            isInitialLoad = false
-            
-            // Load podcasts synchronously for immediate display
-            let loadedPodcasts = PodcastService.shared.loadPodcasts()
-            subscribedPodcasts = loadedPodcasts
-            isCacheReady = true
-            
-            // If no podcasts exist, add sample data for testing
-            if loadedPodcasts.isEmpty {
-                addSampleDataForTesting()
-            }
-            
-            // Update caches synchronously for immediate display
-            updateCachedFilteredPodcastsSync()
-            updateCachedAllEpisodesSync()
-            
-            // Set up observer only once
-            setupEpisodesUpdatedObserver()
         }
         .onDisappear {
             if let observer = episodesUpdatedObserver {
@@ -328,42 +362,78 @@ struct LibraryView: View {
             isEditMode = false
         }
         .onChange(of: searchText) {
-            // CRITICAL FIX: Use asyncAfter to prevent "Publishing changes from within view updates"
-            DispatchQueue.main.async {
-                if self.isCacheReady && self.searchText != self.lastSearchText {
-                    self.updateCachedFilteredPodcastsAsync()
-                    self.updateCachedAllEpisodesAsync()
-                }
+            // PERFORMANCE FIX: Update display data only when search actually changes
+            if isCacheReady && searchText != lastSearchText {
+                updateCachedFilteredPodcastsAsync()
+                updateCachedAllEpisodesAsync()
             }
         }
         .onChange(of: subscribedPodcasts.count) {
-            // CRITICAL FIX: Use asyncAfter to prevent "Publishing changes from within view updates"
-            DispatchQueue.main.async {
-                if self.isCacheReady && self.subscribedPodcasts.count != self.lastSubscribedPodcastsHash {
-                    self.updateCachedFilteredPodcastsAsync()
-                    self.updateCachedAllEpisodesAsync()
-                }
+            // PERFORMANCE FIX: Update display data when podcasts change
+            if isCacheReady && subscribedPodcasts.count != lastSubscribedPodcastsHash {
+                updateCachedFilteredPodcastsAsync()
+                updateCachedAllEpisodesAsync()
             }
         }
         .onChange(of: episodeViewModel.episodes.count) {
-            // CRITICAL FIX: Use asyncAfter to prevent "Publishing changes from within view updates"
-            DispatchQueue.main.async {
-                if self.isCacheReady && self.episodeViewModel.episodes.count != self.lastEpisodesHash {
-                    self.updateCachedAllEpisodesAsync()
-                }
+            // PERFORMANCE FIX: Update display data when episodes change
+            if isCacheReady && episodeViewModel.episodes.count != lastEpisodesHash {
+                updateCachedAllEpisodesAsync()
             }
         }
         .keyboardDismissToolbar()
     }
     
-    private func loadAllEpisodesForPodcasts() async {
-        // This function now runs asynchronously without blocking the main thread
+
+    
+
+    
+    private func loadAllEpisodesForPodcasts() {
+        // PERFORMANCE FIX: Always show cached episodes immediately, never wait for network
         
-        // Update the display cache with whatever episodes we have
-        self.updateCachedAllEpisodesAsync()
+        // 1. First, check if we have any episodes already (from cache loading)
+        if !episodeViewModel.episodes.isEmpty {
+            // We have cached episodes - just update the display cache
+            Task { @MainActor in
+                self.updateCachedAllEpisodesAsync()
+            }
+            return 
+        }
         
-        // Always trigger episode loading to ensure we have fresh data
-        // EpisodeUpdateService will handle checking if episodes need updating
+        // 2. If no cached episodes, load from disk immediately (non-blocking)
+        DispatchQueue.global(qos: .userInitiated).async {
+            
+            // Try to load episodes from disk cache first
+            if let cachedEpisodes: [Episode] = FileStorage.shared.load([Episode].self, from: "episodes.json"),
+               !cachedEpisodes.isEmpty {
+                
+                // Show cached episodes immediately on main thread - FIX: Use Task instead of DispatchQueue.main.async
+                Task { @MainActor in
+                    self.episodeViewModel.episodes = cachedEpisodes
+                    self.updateCachedAllEpisodesAsync()
+                    print("📱 Loaded \(cachedEpisodes.count) cached episodes from disk")
+                }
+                
+                // Schedule background refresh after UI is ready (much later)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+                    scheduleBackgroundEpisodeRefresh()
+                }
+                return
+            }
+            
+            // 3. If no cached episodes exist, only then consider fresh fetch
+            // But still defer it to prevent startup blocking
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+                handleFirstTimeEpisodeLoad()
+            }
+        }
+        
+        // 4. Always clean up and add sample data if needed (for testing)
+        cleanupSampleEpisodesFromRealPodcasts()
+        addSampleEpisodesForTesting()
+    }
+    
+    private func scheduleBackgroundEpisodeRefresh() {
         let realPodcasts = subscribedPodcasts.filter { podcast in
             let feedURLString = podcast.feedURL.absoluteString
             let artworkURLString = podcast.artworkURL?.absoluteString ?? ""
@@ -372,34 +442,32 @@ struct LibraryView: View {
         }
         
         if !realPodcasts.isEmpty {
-            // CRITICAL FIX: Don't trigger forceUpdate during navigation as it can clear episodes
-            // Instead, let the natural update cycle handle episode loading
-            print("📱 LibraryView: Real podcasts detected, letting natural update cycle handle episodes")
-        } else {
-            if episodeViewModel.episodes.isEmpty {
-                // No real podcasts but also no episodes - add sample episodes for testing
-                addSampleEpisodesForTesting()
+            print("🔄 Scheduling background episode refresh for \(realPodcasts.count) podcasts")
+            // Background refresh - completely non-blocking
+            DispatchQueue.global(qos: .background).async {
+                EpisodeUpdateService.shared.forceUpdate()
             }
         }
     }
     
-
-    
-    private func cleanupSampleEpisodesFromRealPodcasts() {
-        // ONLY cleanup if we have episodes and they appear to be sample episodes
-        // Don't cleanup real episodes that have been properly loaded
-        guard !episodeViewModel.episodes.isEmpty else { return }
-        
-        // Check if we have any sample episodes (episodes with example.com or soundhelix URLs)
-        let hasSampleEpisodes = episodeViewModel.episodes.contains { episode in
-            guard let audioURL = episode.audioURL else { return false }
-            let urlString = audioURL.absoluteString
-            return urlString.contains("example.com") || urlString.contains("soundhelix.com")
+    private func handleFirstTimeEpisodeLoad() {
+        let realPodcasts = subscribedPodcasts.filter { podcast in
+            let feedURLString = podcast.feedURL.absoluteString
+            let artworkURLString = podcast.artworkURL?.absoluteString ?? ""
+            return !feedURLString.contains("example.com") && 
+                   !artworkURLString.contains("picsum.photos")
         }
         
-        // Only cleanup if we actually have sample episodes
-        guard hasSampleEpisodes else { return }
-        
+        if !realPodcasts.isEmpty {
+            print("🌟 First time setup - fetching episodes for \(realPodcasts.count) podcasts")
+            // Even first-time loading should be non-blocking
+            DispatchQueue.global(qos: .utility).async {
+                EpisodeUpdateService.shared.forceUpdate()
+            }
+        }
+    }
+    
+    private func cleanupSampleEpisodesFromRealPodcasts() {
         // Get all real podcasts (non-sample ones)
         let realPodcasts = subscribedPodcasts.filter { podcast in
             let feedURLString = podcast.feedURL.absoluteString
@@ -410,24 +478,13 @@ struct LibraryView: View {
                    !artworkURLString.contains("picsum.photos")
         }
         
-        // Only remove sample episodes for real podcasts, not all episodes
+        // Remove episodes for real podcasts so they can be properly fetched from RSS
         for podcast in realPodcasts {
-            let episodesToRemove = episodeViewModel.episodes.filter { episode in
-                episode.podcastID == podcast.id && 
-                (episode.audioURL?.absoluteString.contains("soundhelix.com") == true ||
-                 episode.audioURL?.absoluteString.contains("example.com") == true)
-            }
-            
-             if !episodesToRemove.isEmpty {
-                 // CRITICAL FIX: Use asyncAfter to prevent "Publishing changes from within view updates"
-                 DispatchQueue.main.async {
-                     for episode in episodesToRemove {
-                         if let index = self.episodeViewModel.episodes.firstIndex(where: { $0.id == episode.id }) {
-                             self.episodeViewModel.episodes.remove(at: index)
-                         }
-                     }
-                 }
-             }
+            episodeViewModel.removeEpisodes(for: podcast.id)
+        }
+        
+        if !realPodcasts.isEmpty {
+            print("🧹 Cleaned up episodes for \(realPodcasts.count) real podcasts")
         }
     }
     
@@ -690,14 +747,11 @@ struct LibraryView: View {
         
         if needsUpdate {
             PodcastService.shared.savePodcasts(podcasts)
-            // CRITICAL FIX: Use asyncAfter to prevent "Publishing changes from within view updates"
             DispatchQueue.main.async {
                 PodcastService.shared.loadPodcastsAsync { loadedPodcasts in
-                    DispatchQueue.main.async {
-                        self.subscribedPodcasts = loadedPodcasts
-                        self.displayPodcasts = loadedPodcasts
-                        self.updateCachedFilteredPodcastsAsync()
-                    }
+                    self.subscribedPodcasts = loadedPodcasts
+                    self.displayPodcasts = loadedPodcasts
+                    self.updateCachedFilteredPodcastsAsync()
                 }
             }
         }
@@ -721,14 +775,11 @@ struct LibraryView: View {
                     podcasts[index].artworkURL = artworkURL
                     PodcastService.shared.savePodcasts(podcasts)
                     
-                    // CRITICAL FIX: Use asyncAfter to prevent "Publishing changes from within view updates"
                     DispatchQueue.main.async {
                         PodcastService.shared.loadPodcastsAsync { loadedPodcasts in
-                            DispatchQueue.main.async {
-                                self.subscribedPodcasts = loadedPodcasts
-                                self.displayPodcasts = loadedPodcasts
-                                self.updateCachedFilteredPodcastsAsync()
-                            }
+                            self.subscribedPodcasts = loadedPodcasts
+                            self.displayPodcasts = loadedPodcasts
+                            self.updateCachedFilteredPodcastsAsync()
                         }
                     }
                 }
@@ -737,35 +788,25 @@ struct LibraryView: View {
     }
     
     private func setupEpisodesUpdatedObserver() {
-        // Avoid adding duplicate observers
-        guard episodesUpdatedObserver == nil else { return }
-        
         // Start listening for episode updates
         episodesUpdatedObserver = NotificationCenter.default.addObserver(
             forName: .episodesUpdated,
             object: nil,
             queue: .main
         ) { _ in
-            // CRITICAL FIX: Defer all state updates to prevent "Publishing changes from within view updates"
-            DispatchQueue.main.async {
-                // Refresh podcast data and cache when episodes are updated
-                PodcastService.shared.loadPodcastsAsync { loadedPodcasts in
-                    // Use another asyncAfter to ensure we're completely out of any view update cycle
-                    DispatchQueue.main.async {
-                        self.subscribedPodcasts = loadedPodcasts
-                        self.displayPodcasts = loadedPodcasts
-                        
-                        // Update cache with new episode data
-                        if self.isCacheReady {
-                            self.updateCachedFilteredPodcastsAsync()
-                            self.updateCachedAllEpisodesAsync()
-                        }
-                    }
+            // Refresh podcast data and cache when episodes are updated
+            PodcastService.shared.loadPodcastsAsync { loadedPodcasts in
+                self.subscribedPodcasts = loadedPodcasts
+                self.displayPodcasts = loadedPodcasts
+                
+                // Update cache with new episode data
+                if self.isCacheReady {
+                    self.updateCachedFilteredPodcastsAsync()
+                    self.updateCachedAllEpisodesAsync()
                 }
             }
         }
     }
-}
 
 // MARK: - Search Bar Component
 struct SearchBarView: View {
@@ -991,8 +1032,7 @@ struct EpisodesListView: View {
     @ObservedObject private var audioPlayer = AudioPlayerService.shared
     @ObservedObject private var queueViewModel = QueueViewModel.shared
     @ObservedObject private var episodeViewModel = EpisodeViewModel.shared
-    // CRITICAL FIX: Remove @ObservedObject to prevent cascade of updates during tab switching
-    // @ObservedObject private var updateService = EpisodeUpdateService.shared
+    @ObservedObject private var updateService = EpisodeUpdateService.shared
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -1009,8 +1049,8 @@ struct EpisodesListView: View {
                                 .font(.system(size: 11))
                                 .foregroundColor(.secondary)
 
-                            if EpisodeUpdateService.shared.lastUpdateTime != nil {
-                                Text("• Updated \(EpisodeUpdateService.shared.lastUpdateTimeString())")
+                            if updateService.lastUpdateTime != nil {
+                                Text("• Updated \(updateService.lastUpdateTimeString())")
                                     .font(.system(size: 11))
                                     .foregroundColor(.secondary)
                             }
@@ -1098,10 +1138,7 @@ struct EpisodeLibraryRowView: View {
                 .id("\(episode.id.uuidString)_\(episode.artworkURL?.absoluteString ?? podcast.artworkURL?.absoluteString ?? "")")
                 .onTapGesture {
                     // Play episode when artwork is tapped
-                    // CRITICAL FIX: Use asyncAfter to prevent "Publishing changes from within view updates"
-                    DispatchQueue.main.async {
-                        queueViewModel.playEpisodeFromLibrary(episode)
-                    }
+                    queueViewModel.playEpisodeFromLibrary(episode)
                 }
                 
                 // Episode info - tap to show details

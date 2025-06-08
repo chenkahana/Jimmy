@@ -40,7 +40,7 @@ class PodcastDataManager: ObservableObject {
             
             let loadedPodcasts = self.podcastService.loadPodcasts()
             
-            DispatchQueue.main.async {
+            Task { @MainActor in
                 self.podcasts = loadedPodcasts
                 
                 // Prefetch artwork for visible podcasts
@@ -59,7 +59,7 @@ class PodcastDataManager: ObservableObject {
             return
         }
         
-        DispatchQueue.main.async {
+        Task { @MainActor in
             self.isLoading = true
             self.error = nil
         }
@@ -71,7 +71,7 @@ class PodcastDataManager: ObservableObject {
             
             // Update metadata for all podcasts
             self.refreshPodcastMetadata(podcasts: currentPodcasts) { [weak self] updatedPodcasts, errors in
-                DispatchQueue.main.async {
+                Task { @MainActor in
                     self?.isLoading = false
                     self?.lastRefreshTime = Date()
                     
@@ -111,21 +111,22 @@ class PodcastDataManager: ObservableObject {
             // Clear caches
             self.episodeCacheService.clearCache(for: podcast.id)
             
-            DispatchQueue.main.async {
+            Task { @MainActor in
                 self.podcasts.removeAll { $0.id == podcast.id }
             }
         }
     }
     
     /// Get cache statistics
-    func getCacheInfo() -> (episodes: String, images: String) {
-        let episodeStats = episodeCacheService.getCacheStats()
-        let imageStats = imageCache.getCacheStats()
-        
-        let episodeInfo = "Episodes: \(episodeStats.totalPodcasts) podcasts cached, \(String(format: "%.1f", episodeStats.totalSizeKB / 1024))MB"
-        let imageInfo = "Images: \(imageStats.memoryCount) in memory, \(String(format: "%.1f", imageStats.diskSizeMB))MB on disk"
-        
-        return (episodeInfo, imageInfo)
+    func getCacheInfo(completion: @escaping ((episodes: String, images: String)) -> Void) {
+        episodeCacheService.getCacheStats { episodeStats in
+            let imageStats = self.imageCache.getCacheStats()
+            
+            let episodeInfo = "Episodes: \(episodeStats.totalPodcasts) podcasts cached, \(String(format: "%.1f", episodeStats.totalSizeKB / 1024))MB"
+            let imageInfo = "Images: \(imageStats.memoryCount) in memory, \(String(format: "%.1f", imageStats.diskSizeMB))MB on disk"
+            
+            completion((episodeInfo, imageInfo))
+        }
     }
     
     /// Clear all caches
@@ -187,7 +188,8 @@ class PodcastDataManager: ObservableObject {
             refreshPodcasts(force: true)
             
             // Wait for completion with timeout
-            DispatchQueue.main.asyncAfter(deadline: .now() + 15) {
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 15_000_000_000) // 15 seconds
                 continuation.resume(returning: !self.isLoading)
             }
         }

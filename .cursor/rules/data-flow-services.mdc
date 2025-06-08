@@ -1,0 +1,71 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Data Flow & Service Interactions
+
+## Core Data Services
+
+### Podcast Management
+- [PodcastService.swift](mdc:Jimmy/Services/PodcastService.swift) - Primary podcast CRUD operations
+- [OptimizedPodcastService.swift](mdc:Jimmy/Services/OptimizedPodcastService.swift) - Performance-optimized podcast operations
+- [PodcastDataManager.swift](mdc:Jimmy/Services/PodcastDataManager.swift) - Data persistence and management
+
+### Audio Playback Chain
+1. [AudioPlayerService.swift](mdc:Jimmy/Services/AudioPlayerService.swift) - Core audio playback control
+2. [EpisodeCacheService.swift](mdc:Jimmy/Services/EpisodeCacheService.swift) - Episode caching and local storage
+3. [SharedAudioImporter.swift](mdc:Jimmy/Services/SharedAudioImporter.swift) - Import audio files from external sources
+
+### Network & Updates
+- [OptimizedNetworkManager.swift](mdc:Jimmy/Services/OptimizedNetworkManager.swift) - Network request handling
+- [EpisodeUpdateService.swift](mdc:Jimmy/Services/EpisodeUpdateService.swift) - Background episode updates
+- [PodcastURLResolver.swift](mdc:Jimmy/Services/PodcastURLResolver.swift) - URL resolution for podcast feeds
+
+### Import Services
+- [SubscriptionImportService.swift](mdc:Jimmy/Services/SubscriptionImportService.swift) - Import subscriptions from various sources
+- [ApplePodcastService.swift](mdc:Jimmy/Services/ApplePodcastService.swift) - Apple Podcasts integration
+- [iTunesSearchService.swift](mdc:Jimmy/Services/iTunesSearchService.swift) - iTunes search API integration
+
+## Data Flow Patterns
+
+### Podcast Discovery Flow
+1. User searches → [iTunesSearchService.swift](mdc:Jimmy/Services/iTunesSearchService.swift)
+2. Results displayed → [PodcastSearchView.swift](mdc:Jimmy/Views/PodcastSearchView.swift)
+3. User subscribes → [PodcastService.swift](mdc:Jimmy/Services/PodcastService.swift)
+4. Data persisted → [PodcastDataManager.swift](mdc:Jimmy/Services/PodcastDataManager.swift)
+
+### Episode Playback Flow
+1. Episode selected → [EpisodeDetailView.swift](mdc:Jimmy/Views/EpisodeDetailView.swift)
+2. Cache check → [EpisodeCacheService.swift](mdc:Jimmy/Services/EpisodeCacheService.swift)
+3. Audio playback → [AudioPlayerService.swift](mdc:Jimmy/Services/AudioPlayerService.swift)
+4. UI updates → [MiniPlayerView.swift](mdc:Jimmy/Views/MiniPlayerView.swift) / [CurrentPlayView.swift](mdc:Jimmy/Views/CurrentPlayView.swift)
+
+### Background Updates Flow
+1. Scheduled task → [BackgroundTaskManager.swift](mdc:Jimmy/Services/BackgroundTaskManager.swift)
+2. Episode updates → [EpisodeUpdateService.swift](mdc:Jimmy/Services/EpisodeUpdateService.swift)
+3. Network requests → [OptimizedNetworkManager.swift](mdc:Jimmy/Services/OptimizedNetworkManager.swift)
+4. Cache updates → [EpisodeCacheService.swift](mdc:Jimmy/Services/EpisodeCacheService.swift)
+
+## Performance & Stability Services
+
+### Performance Monitoring
+- [UIPerformanceManager.swift](mdc:Jimmy/Services/UIPerformanceManager.swift) - UI performance tracking
+- [LoadingStateManager.swift](mdc:Jimmy/Services/LoadingStateManager.swift) - Loading state management
+
+### Crash Prevention
+- [CrashPreventionManager.swift](mdc:Jimmy/Services/CrashPreventionManager.swift) - Crash prevention and stability
+- [ShakeUndoManager.swift](mdc:Jimmy/Services/ShakeUndoManager.swift) - Undo functionality with shake gesture
+
+### External Integrations
+- [WatchConnectivityService.swift](mdc:Jimmy/Services/WatchConnectivityService.swift) - Apple Watch integration
+- [FeedbackService.swift](mdc:Jimmy/Services/FeedbackService.swift) - User feedback collection
+- [RecommendationService.swift](mdc:Jimmy/Services/RecommendationService.swift) - Podcast recommendations
+
+## Service Initialization Order
+As defined in [JimmyApp.swift](mdc:Jimmy/JimmyApp.swift):
+1. Crash prevention (highest priority)
+2. Optimized services for performance
+3. UI performance manager
+4. Background services
+5. Utility services (shake detection, file import)

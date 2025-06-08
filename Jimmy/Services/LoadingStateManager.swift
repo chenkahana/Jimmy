@@ -12,7 +12,7 @@ class LoadingStateManager: ObservableObject {
     // MARK: - Public Interface
     
     func setLoading(_ key: String, isLoading: Bool, message: String? = nil) {
-        DispatchQueue.main.async {
+        Task { @MainActor in
             self.loadingStates[key] = isLoading
             if let message = message {
                 self.loadingMessages[key] = message
@@ -37,7 +37,7 @@ class LoadingStateManager: ObservableObject {
     }
     
     func clearAllLoading() {
-        DispatchQueue.main.async {
+        Task { @MainActor in
             self.loadingStates.removeAll()
             self.loadingMessages.removeAll()
         }

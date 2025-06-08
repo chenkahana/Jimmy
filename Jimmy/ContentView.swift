@@ -6,46 +6,65 @@
 //
 
 import SwiftUI
+import AVFoundation
+
+// MARK: - Notification Extensions
+extension Notification.Name {
+    static let appInitializationComplete = Notification.Name("appInitializationComplete")
+}
 
 struct ContentView: View {
-    @AppStorage("darkMode") private var darkMode: Bool = false
-    @AppStorage("highContrastMode") private var highContrastMode: Bool = false
-    @State private var selectedTab: Int = 3
+    @StateObject private var episodeViewModel = EpisodeViewModel.shared
+    @StateObject private var podcastService = PodcastService.shared
+    @StateObject private var audioPlayer = AudioPlayerService.shared
+    @StateObject private var queueViewModel = QueueViewModel.shared
+    @StateObject private var undoManager = ShakeUndoManager.shared
+    @StateObject private var uiPerformanceManager = UIPerformanceManager.shared
+    
+    @AppStorage("darkMode") private var darkMode = false
     @State private var isInitializing = true
-    @ObservedObject private var updateService = EpisodeUpdateService.shared
-    @ObservedObject private var undoManager = ShakeUndoManager.shared
-
-    // PERFORMANCE FIX: Track which tabs have been loaded to prevent unnecessary reloads
-    @State private var loadedTabs: Set<Int> = []
     @State private var isTabSwitching = false
+    
+    // WORLD-CLASS NAVIGATION: Pre-instantiated views for instant switching
+    @State private var discoverView = AnyView(NavigationView { DiscoverView() })
+    @State private var queueView = AnyView(NavigationView { QueueView() })
+    @State private var currentPlayView = AnyView(CurrentPlayView())
+    @State private var libraryView = AnyView(LibraryView())
+    @State private var settingsView = AnyView(NavigationView { SettingsView() })
+    
+    private var selectedTab: Int { uiPerformanceManager.currentTab }
     
     var body: some View {
         ZStack {
             if isInitializing {
-                // Simple loading view during initialization
+                // Loading screen
                 ZStack {
-                    Color(.systemBackground)
+                    Color("DarkBackground")
                         .ignoresSafeArea()
                     
                     VStack(spacing: 20) {
                         Image(systemName: "waveform.circle.fill")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 80, height: 80)
-                            .foregroundStyle(Color.accentColor)
+                            .font(.system(size: 60))
+                            .foregroundColor(.accentColor)
+                            .scaleEffect(1.2)
                         
                         Text("Jimmy")
-                            .font(.title)
-                            .fontWeight(.semibold)
+                            .font(.largeTitle)
+                            .fontWeight(.bold)
                             .foregroundColor(.primary)
+                        
+                        ProgressView()
+                            .scaleEffect(1.2)
+                            .tint(.accentColor)
                     }
                 }
                 .onAppear {
-                    // Hide loading view after brief delay to allow background initialization
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
-                        withAnimation(.easeInOut(duration: 0.3)) {
-                            isInitializing = false
-                        }
+                    checkInitializationStatus()
+                }
+                .onReceive(NotificationCenter.default.publisher(for: .appInitializationComplete)) { _ in
+                    // Hide loading screen when initialization is actually complete
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        isInitializing = false
                     }
                 }
             } else {
@@ -56,73 +75,76 @@ struct ContentView: View {
         .preferredColorScheme(darkMode ? .dark : .light)
     }
     
+    private func checkInitializationStatus() {
+        // Check if core services are ready using async/await instead of blocking
+        Task {
+            var isReady = false
+            var attempts = 0
+            let maxAttempts = 20 // 2 seconds max (20 * 0.1s)
+            
+            while !isReady && attempts < maxAttempts {
+                // Check if essential services are initialized
+                let episodesLoaded = !episodeViewModel.episodes.isEmpty || episodeViewModel.hasAttemptedLoad
+                let podcastsLoaded = !podcastService.loadPodcasts().isEmpty || podcastService.hasAttemptedLoad
+                
+                isReady = episodesLoaded && podcastsLoaded
+                
+                if !isReady {
+                    // Use Task.sleep instead of Thread.sleep to avoid blocking
+                    try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+                    attempts += 1
+                }
+            }
+            
+            await MainActor.run {
+                if isReady || attempts >= maxAttempts {
+                    NotificationCenter.default.post(name: .appInitializationComplete, object: nil)
+                }
+            }
+        }
+    }
+    
     private var mainAppContent: some View {
         ZStack {
             ZStack(alignment: .bottom) {
-                // Main content area with tab bar
+                // WORLD-CLASS NAVIGATION: Instant tab switching with pre-loaded views
                 VStack(spacing: 0) {
-                    // PERFORMANCE FIX: Lazy tab loading with background queue preparation
-                    // Main content area - Custom tab switching without intermediate glimpses
-                    ZStack {
-                        // Show only the selected tab content with lazy loading
-                        if selectedTab == 0 {
-                            LazyTabContentView(tabIndex: 0, isSelected: selectedTab == 0, loadedTabs: $loadedTabs) {
-                                NavigationView {
-                                    DiscoverView()
-                                }
-                            }
-                            .transition(.opacity)
-                        } else if selectedTab == 1 {
-                            LazyTabContentView(tabIndex: 1, isSelected: selectedTab == 1, loadedTabs: $loadedTabs) {
-                                NavigationView {
-                                    QueueView()
-                                }
-                            }
-                            .transition(.opacity)
-                        } else if selectedTab == 2 {
-                            LazyTabContentView(tabIndex: 2, isSelected: selectedTab == 2, loadedTabs: $loadedTabs) {
-                                CurrentPlayView()
-                            }
-                            .transition(.opacity)
-                        } else if selectedTab == 3 {
-                            LazyTabContentView(tabIndex: 3, isSelected: selectedTab == 3, loadedTabs: $loadedTabs) {
-                                LibraryView()
-                            }
-                            .transition(.opacity)
-                        } else if selectedTab == 4 {
-                            LazyTabContentView(tabIndex: 4, isSelected: selectedTab == 4, loadedTabs: $loadedTabs) {
-                                NavigationView {
-                                    SettingsView()
-                                }
-                            }
-                            .transition(.opacity)
+                    // CRITICAL FIX: Only load the current view to prevent background processing
+                    Group {
+                        switch selectedTab {
+                        case 0:
+                            discoverView
+                        case 1:
+                            queueView
+                        case 2:
+                            currentPlayView
+                        case 3:
+                            libraryView
+                        case 4:
+                            settingsView
+                        default:
+                            libraryView
                         }
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .clipped() // Ensure no content leaks outside bounds
+                    .clipped()
                     
-                    // Custom Tab Bar with Enhanced 3D
-                    CustomTabBar(selectedTab: $selectedTab, isTabSwitching: $isTabSwitching)
+                    // Custom Tab Bar - Optimized for speed
+                    CustomTabBar()
                 }
                 .ignoresSafeArea(.keyboard, edges: .bottom)
                     
-                // Floating Mini Player - Above tab bar with enhanced 3D effect
+                // Floating Mini Player
                 VStack {
                     Spacer()
                     FloatingMiniPlayerView(
                         onTap: {
-                            // PERFORMANCE FIX: Prevent rapid tab switching
-                            guard !isTabSwitching else { return }
-                            
-                            // Switch to "Now Playing" tab when mini player is tapped
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                selectedTab = 2
-                            }
+                            uiPerformanceManager.switchToTab(2)
                         },
                         currentTab: selectedTab
                     )
                     .padding(.horizontal, 16)
-                    .padding(.bottom, 88) // Position above tab bar (tab bar height ~76px + spacing)
+                    .padding(.bottom, 88)
                 }
             }
             
@@ -132,16 +154,15 @@ struct ContentView: View {
                     message: undoManager.undoToastMessage,
                     isShowing: $undoManager.showUndoToast
                 )
-                .zIndex(1000) // Ensure it appears above everything
+                .zIndex(1000)
             }
         }
     }
     
-
-    
     struct CustomTabBar: View {
-        @Binding var selectedTab: Int
-        @Binding var isTabSwitching: Bool
+        @ObservedObject private var uiPerformanceManager = UIPerformanceManager.shared
+        
+        private var selectedTab: Int { uiPerformanceManager.currentTab }
         
         let tabs = [
             TabItem(title: "Discover", icon: "globe", selectedIcon: "globe"),
@@ -163,22 +184,9 @@ struct ContentView: View {
                         TabBarButton(
                             tab: tabs[index],
                             isSelected: selectedTab == index,
-                            isTabSwitching: isTabSwitching,
                             onTap: {
-                                // PERFORMANCE FIX: Simple debounce without blocking UI
-                                guard selectedTab != index else { return }
-                                
-                                isTabSwitching = true
-                                
-                                // Fast, smooth tab switching
-                                withAnimation(.easeInOut(duration: 0.15)) {
-                                    selectedTab = index
-                                }
-                                
-                                // Quick reset to allow next tab switch
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                                    isTabSwitching = false
-                                }
+                                // INSTANT tab switching - no delays or debouncing
+                                uiPerformanceManager.switchToTab(index)
                             }
                         )
                     }
@@ -189,38 +197,16 @@ struct ContentView: View {
             }
             .background {
                 ZStack {
-                    // Enhanced 3D background with depth
                     Rectangle()
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color("SurfaceElevated"),
-                                    Color("SurfaceElevated").opacity(0.95),
-                                    Color("DarkBackground").opacity(0.1)
-                                ],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                        )
+                        .fill(Color("SurfaceElevated"))
                     
-                    // Top highlight line for 3D effect
                     Rectangle()
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color("SurfaceHighlighted").opacity(0.3),
-                                    Color("SurfaceHighlighted").opacity(0.1),
-                                    Color.clear
-                                ],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
+                        .fill(Color("SurfaceHighlighted").opacity(0.1))
                         .frame(height: 0.5)
                         .offset(y: -44)
                 }
                 .ignoresSafeArea(.all, edges: .bottom)
-                .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: -4)
+                .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: -2)
             }
         }
     }
@@ -228,120 +214,51 @@ struct ContentView: View {
     struct TabBarButton: View {
         let tab: TabItem
         let isSelected: Bool
-        let isTabSwitching: Bool
         let onTap: () -> Void
         
         var body: some View {
             Button(action: onTap) {
                 VStack(spacing: 2) {
                     ZStack {
-                        // Enhanced 3D background indicator for selected state
+                        // Minimal selected state indicator
                         if isSelected {
-                            ZStack {
-                                RoundedRectangle(cornerRadius: 16)
-                                    .fill(
-                                        LinearGradient(
-                                            gradient: Gradient(colors: [
-                                                Color.accentColor.opacity(0.2),
-                                                Color.accentColor.opacity(0.1),
-                                                Color.accentColor.opacity(0.05)
-                                            ]),
-                                            startPoint: .topLeading,
-                                            endPoint: .bottomTrailing
-                                        )
-                                    )
-                                    .frame(width: 64, height: 32)
-                                
-                                // Inner highlight for 3D effect
-                                RoundedRectangle(cornerRadius: 16)
-                                    .stroke(
-                                        LinearGradient(
-                                            gradient: Gradient(colors: [
-                                                Color.accentColor.opacity(0.4),
-                                                Color.accentColor.opacity(0.1)
-                                            ]),
-                                            startPoint: .top,
-                                            endPoint: .bottom
-                                        ),
-                                        lineWidth: 0.5
-                                    )
-                                    .frame(width: 64, height: 32)
-                            }
-                            .shadow(color: Color.accentColor.opacity(0.2), radius: 4, x: 0, y: 2)
-                            .transition(.asymmetric(
-                                insertion: .opacity.combined(with: .scale(scale: 0.8)),
-                                removal: .opacity.combined(with: .scale(scale: 0.8))
-                            ))
-                            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(Color.accentColor.opacity(0.15))
+                                .frame(width: 56, height: 28)
                         }
                         
-                        // Tab icon
+                        // Tab icon - no complex animations
                         Image(systemName: isSelected ? tab.selectedIcon : tab.icon)
                             .font(.system(size: 20, weight: isSelected ? .semibold : .medium))
-                            .foregroundStyle(
-                                isSelected ?
-                                LinearGradient(
-                                    gradient: Gradient(colors: [
-                                        Color.accentColor,
-                                        Color.accentColor.opacity(0.8)
-                                    ]),
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                ) :
-                                LinearGradient(
-                                    gradient: Gradient(colors: [
-                                        Color(.systemGray2),
-                                        Color(.systemGray3)
-                                    ]),
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                            .scaleEffect(isSelected ? 1.1 : 1.0)
-                            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
+                            .foregroundColor(isSelected ? .accentColor : .secondary)
                     }
                     
-                    // Tab title (only show for selected tab)
+                    // Tab title (only for selected)
                     if isSelected {
                         Text(tab.title)
                             .font(.caption2)
                             .fontWeight(.medium)
-                            .foregroundStyle(
-                                LinearGradient(
-                                    gradient: Gradient(colors: [
-                                        Color.accentColor,
-                                        Color.accentColor.opacity(0.8)
-                                    ]),
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                            .transition(.asymmetric(
-                                insertion: .opacity.combined(with: .scale(scale: 0.8)).combined(with: .move(edge: .bottom)),
-                                removal: .opacity.combined(with: .scale(scale: 0.8)).combined(with: .move(edge: .bottom))
-                            ))
-                            .animation(.spring(response: 0.4, dampingFraction: 0.8), value: isSelected)
+                            .foregroundColor(.accentColor)
                     } else {
                         Text("")
                             .font(.caption2)
                             .opacity(0)
-                            .frame(height: 12) // Maintain consistent spacing
+                            .frame(height: 12)
                     }
                 }
                 .frame(maxWidth: .infinity)
                 .frame(height: 60)
                 .contentShape(Rectangle())
             }
-            .buttonStyle(TabBarButtonStyle())
+            .buttonStyle(InstantButtonStyle())
         }
     }
     
-    struct TabBarButtonStyle: ButtonStyle {
+    struct InstantButtonStyle: ButtonStyle {
         func makeBody(configuration: Configuration) -> some View {
             configuration.label
-                .scaleEffect(configuration.isPressed ? 0.95 : 1.0)
-                .opacity(configuration.isPressed ? 0.8 : 1.0)
-                .animation(.easeInOut(duration: 0.1), value: configuration.isPressed)
+                .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
+                .opacity(configuration.isPressed ? 0.9 : 1.0)
         }
     }
     
@@ -354,33 +271,6 @@ struct ContentView: View {
     struct ContentView_Previews: PreviewProvider {
         static var previews: some View {
             ContentView()
-        }
-    }
-    
-}
-
-// PERFORMANCE FIX: Optimized lazy tab content view for fast switching
-struct LazyTabContentView<Content: View>: View {
-    let tabIndex: Int
-    let isSelected: Bool
-    @Binding var loadedTabs: Set<Int>
-    let content: () -> Content
-    
-    var body: some View {
-        Group {
-            if isSelected || loadedTabs.contains(tabIndex) {
-                content()
-                    .opacity(isSelected ? 1 : 0)
-                    .onAppear {
-                        // Mark this tab as loaded once
-                        if !loadedTabs.contains(tabIndex) {
-                            loadedTabs.insert(tabIndex)
-                        }
-                    }
-            } else {
-                // Minimal placeholder for unloaded tabs
-                Color.clear
-            }
         }
     }
 }

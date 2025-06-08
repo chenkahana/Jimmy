@@ -3,8 +3,8 @@ import SwiftUI
 struct QueueView: View {
     @ObservedObject private var viewModel = QueueViewModel.shared
     @ObservedObject private var audioPlayer = AudioPlayerService.shared
-    private let podcastService = PodcastService.shared
     @State private var editMode: EditMode = .inactive
+    @State private var allPodcasts: [Podcast] = [] // Store loaded podcasts for quick lookup
     
     var currentPlayingEpisode: Episode? {
         return audioPlayer.currentEpisode
@@ -100,13 +100,28 @@ struct QueueView: View {
                 }
             }
             .onAppear {
-                // Defer heavy operations to avoid blocking UI
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                    viewModel.syncCurrentEpisodeWithQueue()
-                    
-                    // Preload episodes for faster playback - but only if queue is not empty
-                    if !viewModel.queue.isEmpty {
-                        AudioPlayerService.shared.preloadEpisodes(Array(viewModel.queue.prefix(3)))
+                // WORLD-CLASS NAVIGATION: Instant display with immediate podcast loading for artwork
+                
+                // IMMEDIATE: Load podcasts immediately for artwork display
+                        PodcastService.shared.loadPodcastsAsync { podcasts in
+                            // CRITICAL FIX: Use asyncAfter to prevent \"Publishing changes from within view updates\"
+                            DispatchQueue.main.async {
+                                self.allPodcasts = podcasts
+                            }
+                        }
+                        
+                // DEFERRED: Heavy operations moved to background with delays
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                    DispatchQueue.global(qos: .background).async {
+                        // Sync and preload (low priority)
+                        // CRITICAL FIX: Use asyncAfter to prevent \"Publishing changes from within view updates\"
+                        DispatchQueue.main.async {
+                            viewModel.syncCurrentEpisodeWithQueue()
+                            
+                            if !viewModel.queue.isEmpty {
+                                AudioPlayerService.shared.preloadEpisodes(Array(viewModel.queue.prefix(3)))
+                            }
+                        }
                     }
                 }
             }
@@ -115,7 +130,8 @@ struct QueueView: View {
     }
     
     private func getPodcast(for episode: Episode) -> Podcast? {
-        return podcastService.loadPodcasts().first { $0.id == episode.podcastID }
+        // Use preloaded podcasts for fast lookup
+        return allPodcasts.first { $0.id == episode.podcastID }
     }
     
     private func moveEpisodes(from source: IndexSet, to destination: Int) {

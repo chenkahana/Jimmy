@@ -89,7 +89,10 @@ struct EpisodeDetailView: View {
                                     audioPlayer.togglePlayPause()
                                 } else {
                                     // Load and play this episode using new queue logic
-                                    QueueViewModel.shared.playEpisodeFromLibrary(episode)
+                                    // CRITICAL FIX: Use asyncAfter to prevent "Publishing changes from within view updates"
+                                    DispatchQueue.main.async {
+                                        QueueViewModel.shared.playEpisodeFromLibrary(episode)
+                                    }
                                 }
                             }) {
                                 HStack {

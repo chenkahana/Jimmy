@@ -170,17 +170,13 @@ class ImageCache: ObservableObject {
     
     /// Check if image is cached (in memory or disk)
     func isImageCached(url: URL) -> Bool {
-        // First check memory cache - this is fast and doesn't involve file system operations
+        // First check memory cache
         if getFromMemoryCache(url: url) != nil {
             return true
         }
         
-        // For episode artwork that scrolls frequently, prioritize memory cache hits
-        // Only check disk cache occasionally to avoid blocking the UI
-        return false
-        
-        // TODO: Consider implementing async disk cache check if needed:
-        // checkDiskCacheAsync(url: url, completion: { isCached in ... })
+        // Then check disk cache synchronously
+        return isImageCachedIncludingDisk(url: url)
     }
     
     /// Check if image is cached (in memory or disk) - synchronous version for cases where we need to know immediately
@@ -464,6 +460,32 @@ private class DownloadOperation: Operation, @unchecked Sendable {
     private let completionsLock = NSLock()
     var downloadedImage: UIImage?
     
+    private var _executing = false
+    private var _finished = false
+    private var task: URLSessionDataTask?
+    
+    override var isAsynchronous: Bool {
+        return true
+    }
+    
+    override var isExecuting: Bool {
+        get { return _executing }
+        set {
+            willChangeValue(forKey: "isExecuting")
+            _executing = newValue
+            didChangeValue(forKey: "isExecuting")
+        }
+    }
+    
+    override var isFinished: Bool {
+        get { return _finished }
+        set {
+            willChangeValue(forKey: "isFinished")
+            _finished = newValue
+            didChangeValue(forKey: "isFinished")
+        }
+    }
+    
     init(url: URL) {
         self.url = url
         super.init()
@@ -486,16 +508,29 @@ private class DownloadOperation: Operation, @unchecked Sendable {
         }
     }
     
-    override func main() {
-        guard !isCancelled else { return }
+    override func start() {
+        if isCancelled {
+            isFinished = true
+            return
+        }
         
-        // PERFORMANCE FIX: Use async completion instead of blocking semaphore
+        isExecuting = true
+        
         var request = URLRequest(url: url)
         request.timeoutInterval = ImageCache.CacheConfig.downloadTimeout
-        request.cachePolicy = .useProtocolCachePolicy
+        request.cachePolicy = .reloadIgnoringLocalCacheData
         
-        let task = URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
-            guard let self = self, !self.isCancelled else { return }
+        task = URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
+            guard let self = self else { return }
+            
+            defer {
+                self.isExecuting = false
+                self.isFinished = true
+            }
+            
+            if self.isCancelled {
+                return
+            }
             
             if let error = error {
                 print("❌ Image download failed for \(self.url): \(error.localizedDescription)")
@@ -507,14 +542,15 @@ private class DownloadOperation: Operation, @unchecked Sendable {
                 return
             }
             
-            // Optimize image size for memory efficiency
             self.downloadedImage = self.optimizeImageForCache(image)
         }
         
-        task.resume()
-        
-        // PERFORMANCE FIX: Don't block with semaphore.wait() - let the task complete asynchronously
-        // The completion handler will be called when the task finishes
+        task?.resume()
+    }
+    
+    override func cancel() {
+        super.cancel()
+        task?.cancel()
     }
     
     private func optimizeImageForCache(_ image: UIImage) -> UIImage {

@@ -40,7 +40,7 @@ final class WatchConnectivityService: NSObject, WCSessionDelegate {
 
     func session(_ session: WCSession, didReceiveMessage message: [String : Any]) {
         guard let command = message["command"] as? String else { return }
-        DispatchQueue.main.async {
+        Task { @MainActor in
             switch command {
             case "playPause":
                 AudioPlayerService.shared.togglePlayPause()

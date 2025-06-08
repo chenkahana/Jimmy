@@ -1,0 +1,88 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Utilities & Helper Functions
+
+## Core Utilities
+Located in [Jimmy/Utilities/](mdc:Jimmy/Utilities)
+
+### Data Parsing Utilities
+- [SpotifyListParser.swift](mdc:Jimmy/Utilities/SpotifyListParser.swift) - Parse Spotify playlist exports
+- [AppleBulkImportParser.swift](mdc:Jimmy/Utilities/AppleBulkImportParser.swift) - Parse Apple Podcasts bulk imports
+- [GoogleTakeoutParser.swift](mdc:Jimmy/Utilities/GoogleTakeoutParser.swift) - Parse Google Takeout podcast data
+- [OPMLParser.swift](mdc:Jimmy/Utilities/OPMLParser.swift) - Parse OPML subscription files
+
+### Data Management Utilities
+- [FileStorage.swift](mdc:Jimmy/Utilities/FileStorage.swift) - File system operations and storage management
+- [UserDataService.swift](mdc:Jimmy/Utilities/UserDataService.swift) - User data persistence and retrieval
+- [StringExtensions.swift](mdc:Jimmy/Utilities/StringExtensions.swift) - String manipulation and formatting helpers
+
+## Package Dependencies
+Defined in [Package.swift](mdc:Package.swift):
+
+### JimmyUtilities Library
+Includes core utilities that can be used across the app:
+- File storage operations
+- Data parsing functions
+- String extensions
+- Core data models
+
+### Available Utilities in Package
+- `FileStorage.swift` - File system operations
+- `SpotifyListParser.swift` - Spotify data parsing
+- `UserDataService.swift` - User data management
+- `AppleBulkImportParser.swift` - Apple import parsing
+- `GoogleTakeoutParser.swift` - Google data parsing
+- `OPMLParser.swift` - OPML file parsing
+- `StringExtensions.swift` - String utilities
+- `Podcast.swift` model - Core podcast data structure
+
+## Helper Services
+
+### Import Helpers
+- [SubscriptionImportService.swift](mdc:Jimmy/Services/SubscriptionImportService.swift) - Orchestrates various import operations
+- [SharedAudioImporter.swift](mdc:Jimmy/Services/SharedAudioImporter.swift) - Handle shared audio file imports
+
+### URL & Network Helpers
+- [PodcastURLResolver.swift](mdc:Jimmy/Services/PodcastURLResolver.swift) - Resolve podcast URLs to RSS feeds
+- [OptimizedNetworkManager.swift](mdc:Jimmy/Services/OptimizedNetworkManager.swift) - Network request utilities
+
+### UI Helpers
+- [LoadingStateManager.swift](mdc:Jimmy/Services/LoadingStateManager.swift) - Manage loading states across views
+- [ShakeUndoManager.swift](mdc:Jimmy/Services/ShakeUndoManager.swift) - Shake gesture detection for undo
+
+## Usage Patterns
+
+### File Import Pattern
+```swift
+// Use SharedAudioImporter for file imports
+SharedAudioImporter.shared.handleSharedFile(from: url)
+```
+
+### Data Parsing Pattern
+```swift
+// Use appropriate parser based on data source
+let parser = SpotifyListParser()
+let podcasts = parser.parse(data)
+```
+
+### Storage Pattern
+```swift
+// Use FileStorage for file operations
+FileStorage.shared.saveData(data, to: path)
+```
+
+### URL Resolution Pattern
+```swift
+// Use PodcastURLResolver for RSS feed discovery
+PodcastURLResolver.shared.resolveToRSSFeed(from: url) { feedURL in
+    // Handle resolved feed URL
+}
+```
+
+## Testing Utilities
+- Test targets defined in [Package.swift](mdc:Package.swift)
+- JimmyTests target depends on JimmyUtilities library
+- Utilities are designed to be testable in isolation

@@ -1,0 +1,92 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Background Thread Publishing & Episode State Fixes
+
+## Background Thread Publishing Issues Fixed
+
+### Problem
+SwiftUI was showing warnings: "Publishing changes from background threads is not allowed; make sure to publish values from the main thread (via operators like receive(on:)) on model updates."
+
+### Root Cause
+The [EpisodeViewModel.swift](mdc:Jimmy/ViewModels/EpisodeViewModel.swift) was updating `@Published` properties from background threads using `DispatchQueue.main.async` instead of proper async/await patterns.
+
+### Fixes Applied
+
+#### 1. Replaced DispatchQueue.main.async with Task { @MainActor }
+```swift
+// OLD - Causes warnings
+DispatchQueue.main.async {
+    self.episodes = updatedEpisodes
+}
+
+// NEW - Proper main actor usage
+Task { @MainActor in
+    self.episodes = updatedEpisodes
+}
+```
+
+#### 2. Updated Background Task Patterns
+```swift
+// OLD - Mixed dispatch patterns
+DispatchQueue.global(qos: .utility).async { [weak self] in
+    self?.saveEpisodes()
+}
+
+// NEW - Consistent async/await
+Task.detached(priority: .utility) { [weak self] in
+    await self?.saveEpisodes()
+}
+```
+
+#### 3. Made loadEpisodes() Async
+The `loadEpisodes()` method was converted to `async` to properly handle main thread updates:
+```swift
+private func loadEpisodes() async {
+    await MainActor.run {
+        guard !isLoading else { return }
+        isLoading = true
+    }
+    // ... rest of implementation
+}
+```
+
+## Episodes Disappearing Issue
+
+### Problem
+Episodes disappear when navigating from Library → Queue → Library.
+
+### Investigation Areas
+
+#### 1. UIPerformanceManager Protection
+[UIPerformanceManager.swift](mdc:Jimmy/Services/UIPerformanceManager.swift) has protection for Library tab (tab 3):
+```swift
+// NEVER unload the current tab or the Library tab (tab 3) to preserve episode data
+if tabIndex != self.currentTab && tabIndex != 3 {
+    self.loadedTabs.remove(tabIndex)
+}
+```
+
+#### 2. Episode State Management
+Check [EpisodeViewModel.swift](mdc:Jimmy/ViewModels/EpisodeViewModel.swift) for:
+- Race conditions in episode loading
+- Concurrent modifications to episodes array
+- Recovery mechanisms triggering incorrectly
+
+#### 3. Tab Switching Logic
+Verify [ContentView.swift](mdc:Jimmy/ContentView.swift) tab switching doesn't interfere with episode state.
+
+### Debugging Steps
+
+1. **Add Logging**: Monitor episode count during navigation
+2. **Check Recovery Logic**: Ensure `checkAndRecoverIfNeeded()` isn't clearing episodes inappropriately
+3. **Verify Cache Consistency**: Check if [EpisodeCacheService.swift](mdc:Jimmy/Services/EpisodeCacheService.swift) is interfering
+
+### Prevention Rules
+
+1. **Always use @MainActor for @Published updates**
+2. **Use Task.detached for background work**
+3. **Protect Library tab data during memory cleanup**
+4. **Add episode count logging for debugging**

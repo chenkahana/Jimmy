@@ -79,7 +79,7 @@ class EpisodeCacheService: ObservableObject {
             let podcastID = podcast.id
             
             // Update loading state on main thread
-            DispatchQueue.main.async {
+            Task { @MainActor in
                 self.isLoadingEpisodes[podcastID] = true
                 self.loadingErrors[podcastID] = nil
             }
@@ -88,41 +88,42 @@ class EpisodeCacheService: ObservableObject {
             self.getCachedEpisodesAsync(for: podcastID, ignoreExpiry: true) { cachedEpisodes in
                 // If we have cached episodes and not forcing refresh, return them immediately
                 if let episodes = cachedEpisodes, !forceRefresh {
-                    let isFresh = self.hasFreshCache(for: podcastID)
+                    self.hasFreshCache(for: podcastID) { isFresh in
+                        if isFresh {
+                            #if canImport(OSLog)
+                            self.logger.info("Using cached episodes for \(podcast.title, privacy: .public)")
+                            #else
+                            print("📱 Using cached episodes for \(podcast.title)")
+                            #endif
 
-                    if isFresh {
-                        #if canImport(OSLog)
-                        self.logger.info("Using cached episodes for \(podcast.title, privacy: .public)")
-                        #else
-                        print("📱 Using cached episodes for \(podcast.title)")
-                        #endif
-
-                        DispatchQueue.main.async {
-                            self.isLoadingEpisodes[podcastID] = false
-                            completion(episodes)
-                        }
-                        return
-                    } else {
-                        // Stale cache - show immediately then refresh in background
-                        #if canImport(OSLog)
-                        self.logger.info("Using stale episodes for \(podcast.title, privacy: .public) and refreshing")
-                        #else
-                        print("📱 Using stale episodes for \(podcast.title) and refreshing")
-                        #endif
-
-                        // Kick off a refresh before returning cached episodes
-                        self.fetchAndCacheEpisodes(for: podcast) { _, _ in
-                            DispatchQueue.main.async {
+                            Task { @MainActor in
                                 self.isLoadingEpisodes[podcastID] = false
+                                completion(episodes)
                             }
-                        }
+                            return
+                        } else {
+                            // Stale cache - show immediately then refresh in background
+                            #if canImport(OSLog)
+                            self.logger.info("Using stale episodes for \(podcast.title, privacy: .public) and refreshing")
+                            #else
+                            print("📱 Using stale episodes for \(podcast.title) and refreshing")
+                            #endif
 
-                        // Return stale data immediately
-                        DispatchQueue.main.async {
-                            completion(episodes)
+                            // Kick off a refresh before returning cached episodes
+                            self.fetchAndCacheEpisodes(for: podcast) { _, _ in
+                                Task { @MainActor in
+                                    self.isLoadingEpisodes[podcastID] = false
+                                }
+                            }
+
+                            // Return stale data immediately
+                            Task { @MainActor in
+                                completion(episodes)
+                            }
+                            return
                         }
-                        return
                     }
+                    return
                 }
                 
                 // If offline, return cached data if available
@@ -134,13 +135,13 @@ class EpisodeCacheService: ObservableObject {
                             #else
                             print("📡 Offline - using cached episodes for \(podcast.title)")
                             #endif
-                            DispatchQueue.main.async {
+                            Task { @MainActor in
                                 self.isLoadingEpisodes[podcastID] = false
                                 self.loadingErrors[podcastID] = "You appear to be offline. Showing cached episodes."
                                 completion(episodes)
                             }
                         } else {
-                            DispatchQueue.main.async {
+                            Task { @MainActor in
                                 self.isLoadingEpisodes[podcastID] = false
                                 self.loadingErrors[podcastID] = "You appear to be offline."
                                 completion([])
@@ -158,7 +159,7 @@ class EpisodeCacheService: ObservableObject {
                 #endif
                 
                 self.fetchAndCacheEpisodes(for: podcast) { episodes, error in
-                    DispatchQueue.main.async {
+                    Task { @MainActor in
                         self.isLoadingEpisodes[podcastID] = false
                         
                         if let error = error {
@@ -212,23 +213,29 @@ class EpisodeCacheService: ObservableObject {
     /// Use getCachedEpisodesAsync instead for better performance
     /// - Parameter podcastID: The podcast ID
     /// - Returns: Cached episodes or nil if not cached or expired
-    func getCachedEpisodes(for podcastID: UUID) -> [Episode]? {
-        // PERFORMANCE FIX: This should only be used for quick checks, not heavy operations
-        return cacheQueue.sync {
-            guard let entry = episodeCache[podcastID], !entry.isExpired else {
-                return nil
+    func getCachedEpisodes(for podcastID: UUID, completion: @escaping ([Episode]?) -> Void) {
+        cacheQueue.async { [weak self] in
+            guard let self = self,
+                  let entry = self.episodeCache[podcastID],
+                  !entry.isExpired else {
+                Task { @MainActor in completion(nil) }
+                return
             }
-            return entry.episodes
+            Task { @MainActor in completion(entry.episodes) }
         }
     }
     
     /// Check if episodes are cached and not expired for a podcast
     /// - Parameter podcastID: The podcast ID
     /// - Returns: True if fresh cached data is available
-    func hasFreshCache(for podcastID: UUID) -> Bool {
-        return cacheQueue.sync {
-            guard let entry = episodeCache[podcastID] else { return false }
-            return !entry.isExpired
+    func hasFreshCache(for podcastID: UUID, completion: @escaping (Bool) -> Void) {
+        cacheQueue.async { [weak self] in
+            guard let self = self,
+                  let entry = self.episodeCache[podcastID] else {
+                Task { @MainActor in completion(false) }
+                return
+            }
+            Task { @MainActor in completion(!entry.isExpired) }
         }
     }
     
@@ -243,7 +250,7 @@ class EpisodeCacheService: ObservableObject {
             }
         }
         
-        DispatchQueue.main.async { [weak self] in
+        Task { @MainActor [weak self] in
             self?.isLoadingEpisodes[podcastID] = false
             self?.loadingErrors.removeValue(forKey: podcastID)
         }
@@ -259,34 +266,50 @@ class EpisodeCacheService: ObservableObject {
             }
         }
         
-        DispatchQueue.main.async { [weak self] in
+        Task { @MainActor [weak self] in
             self?.isLoadingEpisodes.removeAll()
             self?.loadingErrors.removeAll()
         }
     }
     
     /// Get cache statistics
-    func getCacheStats() -> (totalPodcasts: Int, freshEntries: Int, expiredEntries: Int, totalSizeKB: Double) {
-        return cacheQueue.sync {
-            let total = episodeCache.count
-            let fresh = episodeCache.values.filter { !$0.isExpired }.count
+    func getCacheStats(completion: @escaping ((totalPodcasts: Int, freshEntries: Int, expiredEntries: Int, totalSizeKB: Double)) -> Void) {
+        cacheQueue.async { [weak self] in
+            guard let self = self else {
+                Task { @MainActor in completion((0, 0, 0, 0)) }
+                return
+            }
+            
+            let total = self.episodeCache.count
+            let fresh = self.episodeCache.values.filter { !$0.isExpired }.count
             let expired = total - fresh
             
             // Rough size estimation
             let averageEpisodeSize = 1.0 // KB per episode (rough estimate)
-            let totalEpisodes = episodeCache.values.reduce(0) { $0 + $1.episodes.count }
+            let totalEpisodes = self.episodeCache.values.reduce(0) { $0 + $1.episodes.count }
             let sizeKB = Double(totalEpisodes) * averageEpisodeSize
             
-            return (total, fresh, expired, sizeKB)
+            Task { @MainActor in
+                completion((total, fresh, expired, sizeKB))
+            }
         }
     }
 
     /// Approximate memory footprint of the in-memory cache in bytes
-    func getCacheMemoryUsage() -> Int {
-        return cacheQueue.sync {
-            episodeCache.values.reduce(0) { result, entry in
+    func getCacheMemoryUsage(completion: @escaping (Int) -> Void) {
+        cacheQueue.async { [weak self] in
+            guard let self = self else {
+                Task { @MainActor in completion(0) }
+                return
+            }
+            
+            let usage = self.episodeCache.values.reduce(0) { result, entry in
                 let data = try? JSONEncoder().encode(entry.episodes)
                 return result + (data?.count ?? 0)
+            }
+            
+            Task { @MainActor in
+                completion(usage)
             }
         }
     }
@@ -358,20 +381,22 @@ class EpisodeCacheService: ObservableObject {
     
     // PERFORMANCE FIX: Make cache persistence fully async to prevent blocking
     private func saveCacheToDisk() {
-        let cacheData = cacheQueue.sync {
+        cacheQueue.async { [weak self] in
+            guard let self = self else { return }
+            
             var entries: [String: CacheData] = [:]
-            for (uuid, entry) in episodeCache {
+            for (uuid, entry) in self.episodeCache {
                 entries[uuid.uuidString] = CacheData(
                     episodes: entry.episodes,
                     timestamp: entry.timestamp.timeIntervalSince1970,
                     lastModified: entry.lastModified
                 )
             }
-            return CacheContainer(entries: entries)
+            let cacheContainer = CacheContainer(entries: entries)
+            
+            // Save to file storage asynchronously
+            _ = FileStorage.shared.save(cacheContainer, to: "episodeCacheData.json")
         }
-        
-        // Save to file storage asynchronously
-        _ = FileStorage.shared.save(cacheData, to: "episodeCacheData.json")
     }
     
     private func loadCacheFromDisk() {

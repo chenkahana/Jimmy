@@ -1,0 +1,125 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# UI Performance Guidelines
+
+## Core Principle
+**NEVER** block the main UI thread with heavy operations or long-running tasks.
+
+## Main Thread Rules
+The main thread should ONLY be used for:
+- ✅ UI updates and rendering
+- ✅ User interaction handling
+- ✅ Quick property assignments
+- ✅ Simple calculations (<1ms)
+
+## Background Thread Operations
+Move these to background threads:
+- 🔄 Network requests
+- 🔄 File I/O operations
+- 🔄 Data parsing (RSS, JSON)
+- 🔄 Image processing
+- 🔄 Database operations
+- 🔄 Heavy computations
+
+## Async Patterns
+
+### ✅ GOOD - Non-blocking patterns
+```swift
+// Use Task for async operations
+Task { @MainActor in
+    // UI updates here
+}
+
+// Background work with main thread updates
+DispatchQueue.global(qos: .userInitiated).async {
+    // Heavy work here
+    DispatchQueue.main.async {
+        // UI updates here
+    }
+}
+
+// Async/await pattern
+func loadData() async {
+    let data = await heavyOperation()
+    await MainActor.run {
+        // UI updates
+    }
+}
+```
+
+### ❌ BAD - Blocking patterns
+```swift
+// NEVER block main thread
+func onAppear() {
+    let data = heavyNetworkCall() // Blocks UI!
+    updateUI(with: data)
+}
+
+// NEVER use synchronous operations on main thread
+let episodes = FileStorage.shared.loadSync() // Blocks UI!
+```
+
+## Critical Files to Monitor
+Pay special attention to UI blocking in:
+- [LibraryView.swift](mdc:Jimmy/Views/LibraryView.swift) - Episode loading and caching
+- [EpisodeViewModel.swift](mdc:Jimmy/ViewModels/EpisodeViewModel.swift) - Data operations
+- [AudioPlayerService.swift](mdc:Jimmy/Services/AudioPlayerService.swift) - Media operations
+- [EpisodeUpdateService.swift](mdc:Jimmy/Services/EpisodeUpdateService.swift) - Network operations
+
+## Performance Indicators
+Watch for these UI blocking signs:
+- 🚨 App freezes during data loading
+- 🚨 Slow tab switching
+- 🚨 Delayed user interaction response
+- 🚨 Stuttering animations
+- 🚨 Unresponsive scrolling
+
+## Immediate Display Strategy
+Always show something immediately:
+```swift
+// ✅ Show cached data first, update later
+func onAppear() {
+    // 1. Show cached data immediately
+    displayCachedData()
+    
+    // 2. Load fresh data in background
+    Task {
+        let freshData = await loadFreshData()
+        await MainActor.run {
+            updateDisplay(with: freshData)
+        }
+    }
+}
+```
+
+## Loading States
+Provide visual feedback for background operations:
+- ✅ Loading indicators
+- ✅ Skeleton screens
+- ✅ Progressive loading
+- ✅ Cached content while refreshing
+
+## Quality of Service (QoS)
+Use appropriate QoS levels:
+- `.userInitiated` - User-triggered operations
+- `.userInteractive` - Critical UI updates
+- `.utility` - Background maintenance
+- `.background` - Non-urgent tasks
+
+## Testing UI Responsiveness
+Verify UI remains responsive during:
+- Episode loading
+- Tab switching
+- Search operations
+- Data refresh
+- File operations
+
+## Emergency Protocol
+If UI becomes unresponsive:
+1. **IDENTIFY** the blocking operation
+2. **MOVE** it to background thread immediately
+3. **ADD** loading state if needed
+4. **VERIFY** UI responsiveness restored

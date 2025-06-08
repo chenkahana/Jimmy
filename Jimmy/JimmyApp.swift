@@ -16,6 +16,12 @@ struct JimmyApp: App {
     private let undoManager = ShakeUndoManager.shared
     // Initialize background task manager for BGTaskScheduler
     private let backgroundTaskManager = BackgroundTaskManager.shared
+    // Initialize optimized services for better performance
+    private let optimizedPodcastService = OptimizedPodcastService.shared
+    private let uiPerformanceManager = UIPerformanceManager.shared
+    // Initialize crash prevention for app stability
+    private let crashPreventionManager = CrashPreventionManager.shared
+    @Environment(\.scenePhase) private var scenePhase
     @State private var showFileImportSheet = false
     @State private var pendingAudioURL: URL?
     
@@ -28,6 +34,26 @@ struct JimmyApp: App {
                 .onAppear {
                     // Defer heavy startup operations to avoid blocking UI
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        // CRITICAL: Load from iCloud first before anything else
+                        print("🔄 JimmyApp: Loading from iCloud...")
+                        AppDataDocument.loadFromICloudIfEnabled()
+                        
+                        // DEBUG: Check what data we have after iCloud load
+                        let loadedPodcasts = PodcastService.shared.loadPodcasts()
+                        let episodes = EpisodeViewModel.shared.episodes
+                        print("📊 JimmyApp: After iCloud load - Podcasts: \(loadedPodcasts.count), Episodes: \(episodes.count)")
+                        
+                        // Start crash prevention first for maximum stability
+                        crashPreventionManager.startCrashPrevention()
+                        
+                        // Start optimized services first for better performance
+                        let optimizedPodcasts = optimizedPodcastService.loadPodcasts()
+                        if !optimizedPodcasts.isEmpty {
+                            optimizedPodcastService.startBackgroundProcessing()
+                        }
+                        
+                        // UI performance manager is now lightweight - no background processing needed
+                        
                         // Start background services after UI is loaded
                         updateService.startPeriodicUpdates()
                         
@@ -54,6 +80,19 @@ struct JimmyApp: App {
                         }
                     }
                 }
+        }
+        .onChange(of: scenePhase) { oldPhase, newPhase in
+            switch newPhase {
+            case .background, .inactive:
+                // App is moving to the background or becoming inactive.
+                // This is the last chance to save data.
+                EpisodeViewModel.shared.saveImmediately()
+            case .active:
+                // App is now active.
+                break
+            @unknown default:
+                break
+            }
         }
     }
     

@@ -1,0 +1,54 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Architecture Patterns & Conventions
+
+## Design Patterns Used
+
+### MVVM (Model-View-ViewModel)
+- **Models**: [Jimmy/Models/](mdc:Jimmy/Models) - Data structures (Podcast, Episode)
+- **Views**: [Jimmy/Views/](mdc:Jimmy/Views) - SwiftUI views
+- **ViewModels**: [Jimmy/ViewModels/](mdc:Jimmy/ViewModels) - Business logic for views
+
+### Service Layer Architecture
+All business logic is encapsulated in services located in [Jimmy/Services/](mdc:Jimmy/Services):
+
+#### Core Services
+- [PodcastService.swift](mdc:Jimmy/Services/PodcastService.swift) - Main podcast management
+- [AudioPlayerService.swift](mdc:Jimmy/Services/AudioPlayerService.swift) - Audio playback control
+- [EpisodeCacheService.swift](mdc:Jimmy/Services/EpisodeCacheService.swift) - Episode caching and storage
+
+#### Performance & Stability Services
+- [OptimizedPodcastService.swift](mdc:Jimmy/Services/OptimizedPodcastService.swift) - Performance-optimized operations
+- [CrashPreventionManager.swift](mdc:Jimmy/Services/CrashPreventionManager.swift) - Crash prevention and stability
+- [UIPerformanceManager.swift](mdc:Jimmy/Services/UIPerformanceManager.swift) - UI performance monitoring
+
+#### Background & Network Services
+- [EpisodeUpdateService.swift](mdc:Jimmy/Services/EpisodeUpdateService.swift) - Background episode updates
+- [BackgroundTaskManager.swift](mdc:Jimmy/Services/BackgroundTaskManager.swift) - Background task scheduling
+- [OptimizedNetworkManager.swift](mdc:Jimmy/Services/OptimizedNetworkManager.swift) - Network operations
+
+### Singleton Pattern
+Most services use the singleton pattern with `.shared` instances for global access and state management.
+
+### Dependency Injection
+Services are initialized in [JimmyApp.swift](mdc:Jimmy/JimmyApp.swift) and passed down through the view hierarchy.
+
+## Code Organization Principles
+
+### Performance First
+- All heavy operations are deferred or moved to background queues
+- UI updates are always performed on main queue
+- Memory management is prioritized to prevent crashes
+
+### Crash Prevention
+- Extensive error handling and validation
+- Safe unwrapping and nil-coalescing
+- Background task management to prevent Signal 9 crashes
+
+### Modular Design
+- Each feature has its own view, service, and model components
+- Utilities are shared across the app via [Jimmy/Utilities/](mdc:Jimmy/Utilities)
+- CarPlay functionality is isolated in [Jimmy/CarPlay/](mdc:Jimmy/CarPlay)

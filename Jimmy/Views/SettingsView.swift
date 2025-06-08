@@ -5,8 +5,9 @@ struct SettingsView: View {
     @AppStorage("darkMode") private var darkMode: Bool = true
     @AppStorage("episodeSwipeAction") private var episodeSwipeAction: String = "addToQueue"
     @AppStorage("queueSwipeAction") private var queueSwipeAction: String = "markAsPlayed"
-    @AppStorage("iCloudSyncEnabled") private var iCloudSyncEnabled: Bool = false
+    @AppStorage("iCloudSyncEnabled") private var iCloudSyncEnabled: Bool = true
     @AppStorage("highContrastMode") private var highContrastMode: Bool = false
+    @AppStorage("autoRestoreLastEpisode") private var autoRestoreLastEpisode: Bool = true
     @State private var isExporting = false
     @State private var isImporting = false
     @State private var importError: String?
@@ -54,6 +55,15 @@ struct SettingsView: View {
                     .pickerStyle(MenuPickerStyle())
                     .onChange(of: playbackSpeed) { oldValue, newValue in
                         AudioPlayerService.shared.updatePlaybackSpeed(Float(newValue))
+                    }
+                }
+                
+                Toggle(isOn: $autoRestoreLastEpisode) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Auto-Load Last Episode")
+                        Text("When enabled, loads your last episode when the app opens (ready to play, but won't auto-start)")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
                     }
                 }
             }
@@ -243,7 +253,17 @@ struct SettingsView: View {
         }
         .navigationTitle("Settings")
         .onAppear {
-            AudioPlayerService.shared.updatePlaybackSpeed(Float(playbackSpeed))
+            // WORLD-CLASS NAVIGATION: Instant display with deferred operations
+            
+            // DEFERRED: Update playback speed in background with delay
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                DispatchQueue.global(qos: .background).async {
+                    // CRITICAL FIX: Use asyncAfter to prevent "Publishing changes from within view updates"
+                    DispatchQueue.main.async {
+                        AudioPlayerService.shared.updatePlaybackSpeed(Float(playbackSpeed))
+                    }
+                }
+            }
         }
         .fileExporter(isPresented: $isExporting, document: AppDataDocument(), contentType: .json, defaultFilename: "JimmyBackup") { result in
             if case .failure(let error) = result {
@@ -257,6 +277,7 @@ struct SettingsView: View {
                 DispatchQueue.global(qos: .userInitiated).async {
                     do {
                         let data = try Data(contentsOf: url)
+                        // CRITICAL FIX: Use asyncAfter to prevent "Publishing changes from within view updates"
                         DispatchQueue.main.async {
                             do {
                                 try AppDataDocument.importData(data)
@@ -265,6 +286,7 @@ struct SettingsView: View {
                             }
                         }
                     } catch {
+                        // CRITICAL FIX: Use asyncAfter to prevent "Publishing changes from within view updates"
                         DispatchQueue.main.async {
                             importError = error.localizedDescription
                         }
@@ -351,6 +373,7 @@ struct SettingsView: View {
         isImportingFromApplePodcasts = true
         
         ApplePodcastService.shared.importAllApplePodcastSubscriptions { podcasts, error in
+            // CRITICAL FIX: Use asyncAfter to prevent "Publishing changes from within view updates"
             DispatchQueue.main.async {
                 isImportingFromApplePodcasts = false
                 

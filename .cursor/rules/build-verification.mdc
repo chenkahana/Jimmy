@@ -1,0 +1,53 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Build Verification Requirements
+
+## Mandatory Build Verification
+**ALWAYS** verify that the build passes after making any code changes, no matter how small.
+
+## Build Command
+Use this command to verify builds:
+```bash
+xcodebuild -scheme Jimmy -destination 'platform=iOS Simulator,name=iPhone 16' build
+```
+
+## When to Build
+Verify build after:
+- ✅ Any Swift file modifications
+- ✅ Adding new files or dependencies
+- ✅ Refactoring code
+- ✅ Fixing syntax errors
+- ✅ Updating imports or dependencies
+- ✅ Modifying project settings
+
+## Build Failure Protocol
+If build fails:
+1. **STOP** making additional changes
+2. **FIX** the compilation errors immediately
+3. **VERIFY** build passes before continuing
+4. **NEVER** leave broken code in the repository
+
+## Critical Files Requiring Extra Verification
+Pay special attention when modifying:
+- [LibraryView.swift](mdc:Jimmy/Views/LibraryView.swift) - Complex view with many dependencies
+- [EpisodeViewModel.swift](mdc:Jimmy/ViewModels/EpisodeViewModel.swift) - Core data model
+- [ContentView.swift](mdc:Jimmy/ContentView.swift) - Main app structure
+- [UIPerformanceManager.swift](mdc:Jimmy/Services/UIPerformanceManager.swift) - Performance-critical service
+
+## Syntax Error Prevention
+- Check for missing braces `{}`
+- Verify proper closure syntax
+- Ensure all imports are valid
+- Check for typos in property/method names
+
+## Build Success Indicators
+✅ "BUILD SUCCEEDED" message
+✅ No compilation errors
+✅ No warnings (when possible)
+✅ All targets compile successfully
+
+## No Exceptions
+**NEVER** commit or suggest code changes without verifying the build passes first.

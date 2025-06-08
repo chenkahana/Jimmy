@@ -1,0 +1,91 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Development Guidelines & Best Practices
+
+## Performance Guidelines
+Reference: [Performance_Optimization_Plan.md](mdc:Performance_Optimization_Plan.md)
+
+### UI Performance Rules
+- Always defer heavy operations using `DispatchQueue.main.asyncAfter`
+- Use background queues for data processing
+- Implement lazy loading for large lists
+- Follow patterns in [UIPerformanceManager.swift](mdc:Jimmy/Services/UIPerformanceManager.swift)
+
+### Memory Management
+- Use weak references to prevent retain cycles
+- Implement proper cleanup in deinit methods
+- Monitor memory usage through [CrashPreventionManager.swift](mdc:Jimmy/Services/CrashPreventionManager.swift)
+
+## Crash Prevention Guidelines
+Reference: [Signal9_Crash_Fixes.md](mdc:Signal9_Crash_Fixes.md)
+
+### Critical Rules
+- Never perform heavy operations on app startup
+- Always use safe unwrapping (`guard let`, `if let`, `??`)
+- Implement timeout mechanisms for network requests
+- Follow patterns in [CrashPreventionManager.swift](mdc:Jimmy/Services/CrashPreventionManager.swift)
+
+### Background Task Management
+- Use [BackgroundTaskManager.swift](mdc:Jimmy/Services/BackgroundTaskManager.swift) for all background operations
+- Avoid scheduling background refresh on startup
+- Implement proper task cleanup and timeout handling
+
+## Code Organization Standards
+
+### Service Layer Rules
+- All business logic must be in services ([Jimmy/Services/](mdc:Jimmy/Services))
+- Use singleton pattern with `.shared` for global services
+- Implement proper error handling and completion callbacks
+- Follow the initialization order defined in [JimmyApp.swift](mdc:Jimmy/JimmyApp.swift)
+
+### View Layer Rules
+- Keep views lightweight and focused on UI
+- Use ViewModels for complex view logic
+- Implement proper loading states using [LoadingStateManager.swift](mdc:Jimmy/Services/LoadingStateManager.swift)
+- Follow SwiftUI best practices for state management
+
+### Data Layer Rules
+- All data models in [Jimmy/Models/](mdc:Jimmy/Models)
+- Use [PodcastDataManager.swift](mdc:Jimmy/Services/PodcastDataManager.swift) for persistence
+- Implement proper caching through [EpisodeCacheService.swift](mdc:Jimmy/Services/EpisodeCacheService.swift)
+
+## Testing & Debugging
+
+### CarPlay Debugging
+Reference: [CarPlay_Debugging_Guide.md](mdc:CarPlay_Debugging_Guide.md)
+- Use CarPlay simulator for testing
+- Implement proper CarPlay scene lifecycle management
+- Test audio interruption scenarios
+
+### Performance Testing
+- Use [StorageDebugView.swift](mdc:Jimmy/Views/StorageDebugView.swift) for storage analysis
+- Monitor performance through [AnalyticsView.swift](mdc:Jimmy/Views/AnalyticsView.swift)
+- Test on low-memory devices
+
+## Import & Integration Guidelines
+
+### Supported Import Sources
+- Spotify playlists via [Jimmy/Utilities/SpotifyListParser.swift](mdc:Jimmy/Utilities/SpotifyListParser.swift)
+- Apple Podcasts via [ApplePodcastService.swift](mdc:Jimmy/Services/ApplePodcastService.swift)
+- Google Takeout via [Jimmy/Utilities/GoogleTakeoutParser.swift](mdc:Jimmy/Utilities/GoogleTakeoutParser.swift)
+- OPML files via [Jimmy/Utilities/OPMLParser.swift](mdc:Jimmy/Utilities/OPMLParser.swift)
+
+### URL Scheme Handling
+- Implement proper URL scheme handling in [JimmyApp.swift](mdc:Jimmy/JimmyApp.swift)
+- Support `jimmy://import?url=` scheme for podcast imports
+- Handle file sharing for audio imports
+
+## Documentation Requirements
+
+### Code Documentation
+- Document all public methods and complex algorithms
+- Use inline documentation for service initialization
+- Reference related documentation files in comments
+
+### Project Documentation
+- Keep [docs/](mdc:docs) directory updated
+- Update implementation plans when making architectural changes
+- Document performance optimizations and crash fixes
