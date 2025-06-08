@@ -109,14 +109,16 @@ class EpisodeCacheService: ObservableObject {
                         print("📱 Using stale episodes for \(podcast.title) and refreshing")
                         #endif
 
-                        DispatchQueue.main.async {
-                            completion(episodes)
-                        }
-
+                        // Kick off a refresh before returning cached episodes
                         self.fetchAndCacheEpisodes(for: podcast) { _, _ in
                             DispatchQueue.main.async {
                                 self.isLoadingEpisodes[podcastID] = false
                             }
+                        }
+
+                        // Return stale data immediately
+                        DispatchQueue.main.async {
+                            completion(episodes)
                         }
                         return
                     }
