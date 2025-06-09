@@ -1,7 +1,9 @@
 import SwiftUI
 
 struct DiscoverView: View {
-    @State private var recommended: [PodcastSearchResult] = []
+    @State private var trending: [TrendingEpisode] = []
+    @State private var featured: [PodcastSearchResult] = []
+    @State private var charts: [PodcastSearchResult] = []
     @State private var isLoading = true
     @State private var subscribed: [Podcast] = []
     @State private var showingSubscriptionAlert = false
@@ -10,10 +12,6 @@ struct DiscoverView: View {
     @State private var searchResults: [PodcastSearchResult] = []
     @State private var isSearching = false
     @State private var lastSearchText = ""
-
-    private var groupedRecommended: [String: [PodcastSearchResult]] {
-        Dictionary(grouping: recommended, by: { $0.genre })
-    }
 
     var body: some View {
         Group {
@@ -61,35 +59,73 @@ struct DiscoverView: View {
             } else {
                 ScrollView {
                     if isLoading {
-                        ProgressView("Loading recommendations...")
+                        ProgressView("Loading…")
                             .progressViewStyle(CircularProgressViewStyle())
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                             .padding(.top, 40)
-                    } else if recommended.isEmpty {
-                        VStack(spacing: 16) {
-                            Image(systemName: "sparkles")
-                                .font(.system(size: 48))
-                                .foregroundColor(.gray)
-                            Text("No recommendations yet")
-                                .font(.headline)
-                                .foregroundColor(.secondary)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 40)
                     } else {
                         VStack(alignment: .leading, spacing: 32) {
-                            ForEach(groupedRecommended.keys.sorted(), id: \.self) { genre in
-                                if let items = groupedRecommended[genre] {
-                                    DiscoverGenreSectionView(
-                                        genre: genre,
-                                        results: items,
-                                        isSubscribed: isSubscribed,
-                                        onSubscribe: { subscribe(to: $0) }
-                                    )
+                            if !trending.isEmpty {
+                                Text("Trending Episodes")
+                                    .font(.title2.bold())
+                                    .padding(.horizontal)
+                                ScrollView(.horizontal, showsIndicators: false) {
+                                    LazyHStack(spacing: 16) {
+                                        ForEach(trending) { episode in
+                                            TrendingEpisodeItemView(episode: episode) {
+                                                let result = PodcastSearchResult(
+                                                    id: episode.id,
+                                                    title: episode.podcastName,
+                                                    author: "",
+                                                    feedURL: episode.feedURL,
+                                                    artworkURL: episode.artworkURL,
+                                                    description: nil,
+                                                    genre: "",
+                                                    trackCount: 0
+                                                )
+                                                subscribe(to: result)
+                                            }
+                                        }
+                                    }
+                                    .padding(.horizontal)
                                 }
                             }
+
+                            if !featured.isEmpty {
+                                Text("Featured")
+                                    .font(.title2.bold())
+                                    .padding(.horizontal)
+                                ScrollView(.horizontal, showsIndicators: false) {
+                                    LazyHStack(spacing: 16) {
+                                        ForEach(featured) { result in
+                                            NavigationLink(destination: SearchResultDetailView(result: result)) {
+                                                LargeRecommendedPodcastItem(
+                                                    result: result,
+                                                    isSubscribed: isSubscribed(result),
+                                                    onSubscribe: { subscribe(to: result) }
+                                                )
+                                            }
+                                            .buttonStyle(.plain)
+                                        }
+                                    }
+                                    .padding(.horizontal)
+                                }
+                            }
+
+                            if !charts.isEmpty {
+                                Text("Top 100")
+                                    .font(.title2.bold())
+                                    .padding(.horizontal)
+                                LazyVStack(alignment: .leading, spacing: 16) {
+                                    ForEach(Array(charts.enumerated()), id: \.(0)) { index, result in
+                                        TopChartRowView(index: index + 1, result: result, isSubscribed: isSubscribed(result)) {
+                                            subscribe(to: result)
+                                        }
+                                    }
+                                }
+                                .padding(.vertical)
+                            }
                         }
-                        .padding(.vertical)
                     }
                 }
             }
@@ -128,8 +164,28 @@ struct DiscoverView: View {
     private func loadData() {
         guard isLoading else { return }
         subscribed = PodcastService.shared.loadPodcasts()
-        RecommendationService.shared.getRecommendations(basedOn: subscribed) { results in
-            recommended = results
+
+        let group = DispatchGroup()
+
+        group.enter()
+        DiscoveryService.shared.fetchTrendingEpisodes { eps in
+            trending = eps
+            group.leave()
+        }
+
+        group.enter()
+        DiscoveryService.shared.fetchFeaturedPodcasts { pods in
+            featured = pods
+            group.leave()
+        }
+
+        group.enter()
+        DiscoveryService.shared.fetchTopCharts { pods in
+            charts = pods
+            group.leave()
+        }
+
+        group.notify(queue: .main) {
             isLoading = false
         }
     }
