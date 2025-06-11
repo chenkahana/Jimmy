@@ -14,23 +14,16 @@ extension Notification.Name {
 }
 
 struct ContentView: View {
-    @StateObject private var episodeViewModel = EpisodeViewModel.shared
+    @ObservedObject private var episodeController = UnifiedEpisodeController.shared
     @StateObject private var podcastService = PodcastService.shared
     @StateObject private var audioPlayer = AudioPlayerService.shared
     @StateObject private var queueViewModel = QueueViewModel.shared
-    @StateObject private var undoManager = ShakeUndoManager.shared
-    @StateObject private var uiPerformanceManager = UIPerformanceManager.shared
+    @EnvironmentObject var undoManager: ShakeUndoManager
+    @EnvironmentObject var uiPerformanceManager: UIPerformanceManager
     
     @AppStorage("darkMode") private var darkMode = false
     @State private var isInitializing = true
     @State private var isTabSwitching = false
-    
-    // WORLD-CLASS NAVIGATION: Pre-instantiated views for instant switching
-    @State private var discoverView = AnyView(NavigationView { DiscoverView() })
-    @State private var queueView = AnyView(NavigationView { QueueView() })
-    @State private var currentPlayView = AnyView(CurrentPlayView())
-    @State private var libraryView = AnyView(LibraryView())
-    @State private var settingsView = AnyView(NavigationView { SettingsView() })
     
     private var selectedTab: Int { uiPerformanceManager.currentTab }
     
@@ -84,7 +77,7 @@ struct ContentView: View {
             
             while !isReady && attempts < maxAttempts {
                 // Check if essential services are initialized
-                let episodesLoaded = !episodeViewModel.episodes.isEmpty || episodeViewModel.hasAttemptedLoad
+                let episodesLoaded = !episodeController.episodes.isEmpty || episodeController.hasAttemptedLoad
                 let podcastsLoaded = !podcastService.loadPodcasts().isEmpty || podcastService.hasAttemptedLoad
                 
                 isReady = episodesLoaded && podcastsLoaded
@@ -109,21 +102,21 @@ struct ContentView: View {
             ZStack(alignment: .bottom) {
                 // WORLD-CLASS NAVIGATION: Instant tab switching with pre-loaded views
                 VStack(spacing: 0) {
-                    // CRITICAL FIX: Only load the current view to prevent background processing
+                    // INSTANT TAB SWITCHING: Direct view instantiation with singleton ViewModels
                     Group {
                         switch selectedTab {
                         case 0:
-                            discoverView
+                            NavigationView { DiscoverView() }
                         case 1:
-                            queueView
+                            NavigationView { QueueView() }
                         case 2:
-                            currentPlayView
+                            CurrentPlayView()
                         case 3:
-                            libraryView
+                            LibraryView()
                         case 4:
-                            settingsView
+                            NavigationView { SettingsView() }
                         default:
-                            libraryView
+                            LibraryView()
                         }
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)

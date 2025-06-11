@@ -11,8 +11,8 @@ class CrashPreventionManager {
     
     // MARK: - Configuration
     private struct Config {
-        static let maxMemoryUsage: Int = 150 * 1024 * 1024 // 150MB
-        static let criticalMemoryThreshold: Int = 200 * 1024 * 1024 // 200MB
+        static let maxMemoryUsage: Int = 300 * 1024 * 1024 // 300MB
+        static let criticalMemoryThreshold: Int = 400 * 1024 * 1024 // 400MB
         static let maxConcurrentOperations = 3
         static let audioSessionRetryAttempts = 3
         static let kvoObserverTimeout: TimeInterval = 30.0

@@ -142,7 +142,9 @@ class BackgroundTaskManager: ObservableObject {
             queue: .main
         ) { [weak self] _ in
             // Cancel to prevent excessive background processing
-            self?.cancelBackgroundRefresh()
+            Task { @MainActor in
+                self?.cancelBackgroundRefresh()
+            }
         }
         
         // Don't automatically restart background tasks when app becomes active

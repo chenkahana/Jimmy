@@ -5,9 +5,9 @@ struct PodcastDetailView: View {
     @State private var episodes: [Episode] = []
     @State private var selectedTab: EpisodeTab = .unplayed
     @ObservedObject private var audioPlayer = AudioPlayerService.shared
-    @ObservedObject private var episodeCacheService = EpisodeCacheService.shared
+    @ObservedObject private var episodeCache = EpisodeCacheService.shared
     @Environment(\.dismiss) private var dismiss
-    @State private var loadingTask: Task<Void, Never>? // Track async tasks for cleanup
+    @State private var loadingError: String?
 
     private enum EpisodeTab: String, CaseIterable, Identifiable {
         case unplayed = "Unplayed"
@@ -28,11 +28,7 @@ struct PodcastDetailView: View {
     }
     
     var isLoading: Bool {
-        episodeCacheService.isLoadingEpisodes[podcast.id] ?? false
-    }
-    
-    var loadingError: String? {
-        episodeCacheService.loadingErrors[podcast.id]
+        episodeCache.isLoadingEpisodes[podcast.id] ?? false
     }
     
     var body: some View {
@@ -88,9 +84,8 @@ struct PodcastDetailView: View {
                             FeedbackManager.shared.playNext()
                         },
                         onMarkAsPlayed: { episode, played in
-                            EpisodeViewModel.shared.markEpisodeAsPlayed(episode, played: played)
-                            // The EpisodeViewModel will handle the persistence and state updates
-                            // Update local state to reflect the change immediately in the UI
+                            UnifiedEpisodeController.shared.markEpisodeAsPlayed(episode, played: played)
+                            // Update local state immediately for responsive UI
                             if let index = episodes.firstIndex(where: { $0.id == episode.id }) {
                                 episodes[index].played = played
                             }
@@ -130,165 +125,32 @@ struct PodcastDetailView: View {
         .onAppear {
             loadEpisodes()
         }
+        .refreshable {
+            // Pull-to-refresh functionality
+            loadEpisodes(forceRefresh: true)
+        }
         .onDisappear {
-            // Cancel any running async operations to prevent crashes
-            loadingTask?.cancel()
-            loadingTask = nil
+            // Clean up handled by UnifiedEpisodeController
         }
     }
     
-    private func loadEpisodes(forceRefresh: Bool = false, completion: (() -> Void)? = nil) {
-        // Cancel any existing loading task
-        loadingTask?.cancel()
+    /// Load episodes using the working EpisodeCacheService
+    private func loadEpisodes(forceRefresh: Bool = false) {
+        print("🔍 PodcastDetailView: Loading episodes for podcast \(podcast.title) (ID: \(podcast.id))")
         
-        // Always clear episodes first to prevent any potential duplication
-        episodes = []
-        
-        // Try to load from cache immediately if available and not force refreshing
-        if !forceRefresh {
-            episodeCacheService.getCachedEpisodes(for: podcast.id) { cachedEpisodes in
-                if let cachedEpisodes = cachedEpisodes {
-                    // Merge saved played status and playback position
-                    let mergedEpisodes = cachedEpisodes.map { ep in
-                        var e = ep
-                        e.played = EpisodeViewModel.shared.isEpisodePlayed(ep.id)
-                        if let saved = EpisodeViewModel.shared.getEpisode(by: ep.id) {
-                            e.playbackPosition = saved.playbackPosition
-                        }
-                        return e
-                    }
-                    // CRITICAL FIX: Use asyncAfter to prevent "Publishing changes from within view updates"
-                    DispatchQueue.main.async {
-                        self.episodes = mergedEpisodes
-                    }
-                    
-                    // Debug logging for cached episodes
-                    print("📱 Loaded \(cachedEpisodes.count) cached episodes for \(self.podcast.title)")
-                    print("📱 First 3 cached episode titles:")
-                    for (index, episode) in cachedEpisodes.prefix(3).enumerated() {
-                        print("   \(index + 1). \(episode.title) (ID: \(episode.id))")
-                    }
-                    
-                    completion?()
-                    return
-                } else {
-                    // No cache available - proceed with network fetch
-                    self.performNetworkFetch(forceRefresh: forceRefresh, completion: completion)
-                }
+        episodeCache.getEpisodes(for: podcast, forceRefresh: forceRefresh) { loadedEpisodes in
+            DispatchQueue.main.async {
+                episodes = loadedEpisodes
+                loadingError = episodeCache.loadingErrors[podcast.id]
+                
+                print("✅ PodcastDetailView: Loaded \(loadedEpisodes.count) episodes for \(podcast.title)")
             }
-        } else {
-            // Force refresh - skip cache and fetch from network
-            performNetworkFetch(forceRefresh: forceRefresh, completion: completion)
         }
     }
     
-    private func performNetworkFetch(forceRefresh: Bool, completion: (() -> Void)?) {
-        // Create a new task for async loading
-        loadingTask = Task {
-            // Fetch episodes using cache service
-            episodeCacheService.getEpisodes(for: podcast, forceRefresh: forceRefresh) { fetchedEpisodes in
-                
-                // Check if task was cancelled
-                if Task.isCancelled { return }
-                
-                // Debug logging for fetched episodes
-                print("📱 Fetched \(fetchedEpisodes.count) episodes from network for \(podcast.title)")
-                print("📱 First 3 fetched episode titles:")
-                for (index, episode) in fetchedEpisodes.prefix(3).enumerated() {
-                    print("   \(index + 1). \(episode.title) (ID: \(episode.id))")
-                }
-                
-                // Check for potential title-based duplicates
-                let titleCounts = Dictionary(grouping: fetchedEpisodes, by: { $0.title }).mapValues { $0.count }
-                let duplicateTitles = titleCounts.filter { $0.value > 1 }
-                if !duplicateTitles.isEmpty {
-                    print("⚠️ Found episodes with duplicate titles:")
-                    for (title, count) in duplicateTitles {
-                        print("   '\(title)' appears \(count) times")
-                    }
-                }
-                
-                // Deduplicate episodes by ID AND by podcast name + episode title
-                var episodeDict: [UUID: Episode] = [:]
-                var titlePodcastDict: [String: Episode] = [:]
-                
-                for episode in fetchedEpisodes {
-                    guard let podcastID = episode.podcastID else { continue }
-                    let titleKey = "\(podcastID.uuidString)_\(episode.title)"
-                    
-                    // Skip if we already have this episode by ID
-                    if episodeDict[episode.id] != nil {
-                        continue
-                    }
-                    
-                    // Skip if we already have an episode with the same title for this podcast
-                    if let existingEpisode = titlePodcastDict[titleKey] {
-                        // Keep the one with the more recent published date, or first one if dates are equal
-                        switch (episode.publishedDate, existingEpisode.publishedDate) {
-                        case (let newDate?, let existingDate?):
-                            if newDate > existingDate {
-                                // Replace with newer episode
-                                episodeDict.removeValue(forKey: existingEpisode.id)
-                                episodeDict[episode.id] = episode
-                                titlePodcastDict[titleKey] = episode
-                            }
-                            // Otherwise keep existing
-                        case (_, nil):
-                            // New episode has date, existing doesn't - prefer new
-                            episodeDict.removeValue(forKey: existingEpisode.id)
-                            episodeDict[episode.id] = episode
-                            titlePodcastDict[titleKey] = episode
-                        default:
-                            // Keep existing episode
-                            break
-                        }
-                    } else {
-                        // New episode - add it
-                        episodeDict[episode.id] = episode
-                        titlePodcastDict[titleKey] = episode
-                    }
-                }
-                
-                let sortedEpisodes = Array(episodeDict.values).sorted { episode1, episode2 in
-                    switch (episode1.publishedDate, episode2.publishedDate) {
-                    case (let date1?, let date2?):
-                        return date1 > date2 // Most recent first
-                    case (nil, _?):
-                        return false
-                    case (_?, nil):
-                        return true
-                    case (nil, nil):
-                        return episode1.title.localizedCaseInsensitiveCompare(episode2.title) == .orderedAscending
-                    }
-                }
-                
-                // Merge saved played status and playback position into fetched episodes
-                let mergedEpisodes = sortedEpisodes.map { ep in
-                    var e = ep
-                    e.played = EpisodeViewModel.shared.isEpisodePlayed(ep.id)
-                    if let saved = EpisodeViewModel.shared.getEpisode(by: ep.id) {
-                        e.playbackPosition = saved.playbackPosition
-                    }
-                    return e
-                }
-                // CRITICAL FIX: Use asyncAfter to prevent "Publishing changes from within view updates"
-                DispatchQueue.main.async {
-                    episodes = mergedEpisodes
-                }
-                
-                // Sync merged episodes with global view model
-                episodeCacheService.syncWithEpisodeViewModel(episodes: mergedEpisodes)
-                
-                print("📱 Final result: \(sortedEpisodes.count) unique episodes for \(podcast.title) (deduped from \(fetchedEpisodes.count))")
-                print("📱 Final first 3 episode titles:")
-                for (index, episode) in sortedEpisodes.prefix(3).enumerated() {
-                    print("   \(index + 1). \(episode.title) (ID: \(episode.id))")
-                }
-                
-                completion?()
-            }
-        }
-    }
+
+    
+
 }
 
 // MARK: - Podcast Detail Header
@@ -369,7 +231,7 @@ struct PodcastEpisodesListView: View {
                                 FeedbackManager.shared.playNext()
                             },
                             onMarkAsPlayed: { episode, played in
-                                EpisodeViewModel.shared.markEpisodeAsPlayed(episode, played: played)
+                                UnifiedEpisodeController.shared.markEpisodeAsPlayed(episode, played: played)
                             }
                         )
                     }
@@ -419,19 +281,25 @@ struct EmptyEpisodesStateView: View {
                 .buttonStyle(.borderedProminent)
                 .padding(.top, 8)
             } else {
-                // Default empty state
+                // Default empty state - simplified
                 Image(systemName: "music.note.list")
                     .font(.system(size: 48))
                     .foregroundColor(.gray)
                 
-                Text("No Episodes Available")
+                Text("Loading Episodes...")
                     .font(.headline)
                     .foregroundColor(.primary)
                 
-                Text("Episodes will appear here when they become available")
+                Text("Episodes are being fetched from the podcast feed")
                     .font(.body)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
+                
+                Button("Refresh") {
+                    onRetry()
+                }
+                .buttonStyle(.borderedProminent)
+                .padding(.top, 16)
             }
         }
         .frame(maxWidth: .infinity)
@@ -541,7 +409,7 @@ struct SearchResultDetailView: View {
                             FeedbackManager.shared.playNext()
                         },
                         onMarkAsPlayed: { episode, played in
-                            EpisodeViewModel.shared.markEpisodeAsPlayed(episode, played: played)
+                            UnifiedEpisodeController.shared.markEpisodeAsPlayed(episode, played: played)
                         }
                     )
                     .listRowSeparator(.hidden)
@@ -593,8 +461,8 @@ struct SearchResultDetailView: View {
                     // Merge saved played status and playback position
                     let mergedEpisodes = cachedEpisodes.map { ep in
                         var e = ep
-                        e.played = EpisodeViewModel.shared.isEpisodePlayed(ep.id)
-                        if let saved = EpisodeViewModel.shared.getEpisode(by: ep.id) {
+                        e.played = UnifiedEpisodeController.shared.isEpisodePlayed(ep.id)
+                        if let saved = UnifiedEpisodeController.shared.getEpisode(by: ep.id) {
                             e.playbackPosition = saved.playbackPosition
                         }
                         return e
@@ -633,11 +501,11 @@ struct SearchResultDetailView: View {
                 if Task.isCancelled { return }
                 
                 // Debug logging for fetched episodes
-                print("📱 Fetched \(fetchedEpisodes.count) episodes from network for \(podcast.title)")
-                print("📱 First 3 fetched episode titles:")
-                for (index, episode) in fetchedEpisodes.prefix(3).enumerated() {
-                    print("   \(index + 1). \(episode.title) (ID: \(episode.id))")
-                }
+                // print("📱 Fetched \(fetchedEpisodes.count) episodes from network for \(podcast.title)")
+                // print("📱 First 3 fetched episode titles:")
+                // for (index, episode) in fetchedEpisodes.prefix(3).enumerated() {
+                //     print("   \(index + 1). \(episode.title) (ID: \(episode.id))")
+                // }
                 
                 // Check for potential title-based duplicates
                 let titleCounts = Dictionary(grouping: fetchedEpisodes, by: { $0.title }).mapValues { $0.count }
@@ -706,8 +574,8 @@ struct SearchResultDetailView: View {
                 // Merge saved played status and playback position into fetched episodes
                 let mergedEpisodes = sortedEpisodes.map { ep in
                     var e = ep
-                    e.played = EpisodeViewModel.shared.isEpisodePlayed(ep.id)
-                    if let saved = EpisodeViewModel.shared.getEpisode(by: ep.id) {
+                    e.played = UnifiedEpisodeController.shared.isEpisodePlayed(ep.id)
+                    if let saved = UnifiedEpisodeController.shared.getEpisode(by: ep.id) {
                         e.playbackPosition = saved.playbackPosition
                     }
                     return e
@@ -719,13 +587,13 @@ struct SearchResultDetailView: View {
                 
                 // Only sync with global episode view model when we fetch fresh data
                 // This prevents duplication while ensuring new episodes are added to the library
-                episodeCacheService.syncWithEpisodeViewModel(episodes: mergedEpisodes)
+                episodeCacheService.syncWithUnifiedEpisodeController(episodes: mergedEpisodes)
                 
-                print("📱 Final result: \(sortedEpisodes.count) unique episodes for \(podcast.title) (deduped from \(fetchedEpisodes.count))")
-                print("📱 Final first 3 episode titles:")
-                for (index, episode) in sortedEpisodes.prefix(3).enumerated() {
-                    print("   \(index + 1). \(episode.title) (ID: \(episode.id))")
-                }
+                print("📱 Final result: \(sortedEpisodes.count) unique episodes for \(podcast.title)")
+                // print("📱 Final first 3 episode titles:")
+                // for (index, episode) in sortedEpisodes.prefix(3).enumerated() {
+                //     print("   \(index + 1). \(episode.title) (ID: \(episode.id))")
+                // }
             }
         }
     }

@@ -149,30 +149,31 @@ class PodcastDataManager: ObservableObject {
         podcasts: [Podcast],
         completion: @escaping ([Podcast], [String]) -> Void
     ) {
-        let group = DispatchGroup()
-        var updatedPodcasts: [Podcast] = []
-        var errors: [String] = []
-        let lock = NSLock()
-        
-        for podcast in podcasts {
-            group.enter()
+        Task {
+            var updatedPodcasts: [Podcast] = []
+            var errors: [String] = []
             
-            podcastService.refreshPodcastMetadata(for: podcast) { success in
-                defer { group.leave() }
+            await withTaskGroup(of: (Podcast, Bool).self) { group in
+                for podcast in podcasts {
+                    group.addTask {
+                        do {
+                            await self.podcastService.refreshPodcastMetadata(for: podcast)
+                            return (podcast, true)
+                        } catch {
+                            return (podcast, false)
+                        }
+                    }
+                }
                 
-                if success {
-                    lock.lock()
-                    updatedPodcasts.append(podcast)
-                    lock.unlock()
-                } else {
-                    lock.lock()
-                    errors.append(podcast.title)
-                    lock.unlock()
+                for await (podcast, success) in group {
+                    if success {
+                        updatedPodcasts.append(podcast)
+                    } else {
+                        errors.append(podcast.title)
+                    }
                 }
             }
-        }
-        
-        group.notify(queue: .global(qos: .userInitiated)) {
+            
             // Load fresh podcast data after updates
             let freshPodcasts = self.podcastService.loadPodcasts()
             completion(freshPodcasts, errors)

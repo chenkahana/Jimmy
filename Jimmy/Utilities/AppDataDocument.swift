@@ -1,80 +1,139 @@
 import SwiftUI
 import UniformTypeIdentifiers
+import Foundation
 
 struct AppData: Codable {
-    var podcasts: [Podcast]
-    var episodes: [Episode]
-    var queue: [Episode]
-    var settings: [String: AnyCodable]
-}
-
-struct AnyCodable: Codable {
-    let value: Any
-    init(_ value: Any) { self.value = value }
-    init(from decoder: Decoder) throws {
-        let container = try decoder.singleValueContainer()
-        if let int = try? container.decode(Int.self) { value = int }
-        else if let double = try? container.decode(Double.self) { value = double }
-        else if let bool = try? container.decode(Bool.self) { value = bool }
-        else if let string = try? container.decode(String.self) { value = string }
-        else { throw DecodingError.dataCorruptedError(in: container, debugDescription: "Unsupported type") }
-    }
-    func encode(to encoder: Encoder) throws {
-        var container = encoder.singleValueContainer()
-        switch value {
-        case let int as Int: try container.encode(int)
-        case let double as Double: try container.encode(double)
-        case let bool as Bool: try container.encode(bool)
-        case let string as String: try container.encode(string)
-        default: throw EncodingError.invalidValue(value, EncodingError.Context(codingPath: encoder.codingPath, debugDescription: "Unsupported type"))
-        }
-    }
+    let podcasts: [Podcast]
+    let episodes: [Episode]
+    let queue: [Episode]
+    let settings: [String: String]
+    let exportDate: Date
 }
 
 struct AppDataDocument: FileDocument {
-    static var readableContentTypes: [UTType] { [.json] }
+    static var readableContentTypes: [UTType] = [.json]
+    
     var appData: AppData
-    init(appData: AppData) { self.appData = appData }
+    
     init() {
         let podcasts = PodcastService.shared.loadPodcasts()
-        let episodes = EpisodeViewModel.shared.episodes
+        let episodes = Task { @MainActor in
+            return UnifiedEpisodeController.shared.episodes
+        }
         let queue = QueueViewModel.shared.queue
-        let settings: [String: AnyCodable] = [
-            "playbackSpeed": AnyCodable(UserDefaults.standard.double(forKey: "playbackSpeed")),
-            "darkMode": AnyCodable(UserDefaults.standard.bool(forKey: "darkMode")),
-            "episodeSwipeAction": AnyCodable(UserDefaults.standard.string(forKey: "episodeSwipeAction") ?? "addToQueue"),
-            "queueSwipeAction": AnyCodable(UserDefaults.standard.string(forKey: "queueSwipeAction") ?? "markAsPlayed")
-        ]
-        self.appData = AppData(podcasts: podcasts, episodes: episodes, queue: queue, settings: settings)
+        let settings: [String: String] = [:]
+        
+        // Since we can't await in init, we'll create empty data and populate later
+        self.appData = AppData(
+            podcasts: podcasts,
+            episodes: [],
+            queue: queue,
+            settings: settings,
+            exportDate: Date()
+        )
     }
+    
     init(configuration: ReadConfiguration) throws {
         guard let data = configuration.file.regularFileContents else {
             throw CocoaError(.fileReadCorruptFile)
         }
+        
         let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        
         self.appData = try decoder.decode(AppData.self, from: data)
     }
+    
     func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
         let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
         encoder.outputFormatting = .prettyPrinted
-        let data = try encoder.encode(appData)
-        return .init(regularFileWithContents: data)
-    }
-    static func importData(_ data: Data) throws {
-        let decoder = JSONDecoder()
-        let appData = try decoder.decode(AppData.self, from: data)
-        print("🔄 iCloud Import: Restoring \(appData.podcasts.count) podcasts, \(appData.episodes.count) episodes, \(appData.queue.count) queue items")
         
-        PodcastService.shared.savePodcasts(appData.podcasts)
-        EpisodeViewModel.shared.addEpisodes(appData.episodes)
-        QueueViewModel.shared.queue = appData.queue
-        for (key, value) in appData.settings {
-            if let double = value.value as? Double { UserDefaults.standard.set(double, forKey: key) }
-            else if let bool = value.value as? Bool { UserDefaults.standard.set(bool, forKey: key) }
-            else if let string = value.value as? String { UserDefaults.standard.set(string, forKey: key) }
+        let data = try encoder.encode(appData)
+        return FileWrapper(regularFileWithContents: data)
+    }
+    
+    static func importData(_ data: Data) async throws {
+        let decoder = JSONDecoder()
+        
+        // Try different date decoding strategies
+        var appData: AppData?
+        
+        // Strategy 1: ISO8601
+        decoder.dateDecodingStrategy = .iso8601
+        do {
+            appData = try decoder.decode(AppData.self, from: data)
+        } catch {
+            // Strategy 2: Default date strategy
+            decoder.dateDecodingStrategy = .deferredToDate
+            do {
+                appData = try decoder.decode(AppData.self, from: data)
+            } catch {
+                // Strategy 3: Seconds since 1970
+                decoder.dateDecodingStrategy = .secondsSince1970
+                do {
+                    appData = try decoder.decode(AppData.self, from: data)
+                } catch {
+                    // Strategy 4: Milliseconds since 1970
+                    decoder.dateDecodingStrategy = .millisecondsSince1970
+                    appData = try decoder.decode(AppData.self, from: data)
+                }
+            }
         }
         
-        print("✅ iCloud Import: Successfully restored data from iCloud")
+        guard let validAppData = appData else {
+            throw CocoaError(.fileReadCorruptFile)
+        }
+        
+        // Import episodes
+        try? await EpisodeRepository.shared.addNewEpisodes(validAppData.episodes)
+        
+        // Import podcasts
+        var existingPodcasts = PodcastService.shared.loadPodcasts()
+        for podcast in validAppData.podcasts {
+            if !existingPodcasts.contains(where: { $0.feedURL == podcast.feedURL }) {
+                existingPodcasts.append(podcast)
+            }
+        }
+        PodcastService.shared.savePodcasts(existingPodcasts)
+        
+        // Import queue
+        await MainActor.run {
+            QueueViewModel.shared.queue = validAppData.queue
+        }
+    }
+    
+    @MainActor
+    func exportAppData() -> AppData {
+        let episodes = UnifiedEpisodeController.shared.episodes
+        let podcasts = PodcastService.shared.loadPodcasts()
+        let queue = QueueViewModel.shared.queue
+        let settings: [String: String] = [:]
+        
+        return AppData(
+            podcasts: podcasts,
+            episodes: episodes,
+            queue: queue,
+            settings: settings,
+            exportDate: Date()
+        )
+    }
+    
+    func importAppData(_ appData: AppData) async {
+        // Import episodes
+        try? await EpisodeRepository.shared.addNewEpisodes(appData.episodes)
+        
+        // Import podcasts
+        var existingPodcasts = PodcastService.shared.loadPodcasts()
+        for podcast in appData.podcasts {
+            if !existingPodcasts.contains(where: { $0.feedURL == podcast.feedURL }) {
+                existingPodcasts.append(podcast)
+            }
+        }
+        PodcastService.shared.savePodcasts(existingPodcasts)
+        
+        // Import queue
+        QueueViewModel.shared.queue = appData.queue
     }
 }
 
@@ -202,12 +261,14 @@ extension AppDataDocument {
         
         let kvStore = NSUbiquitousKeyValueStore.default
         if let data = kvStore.data(forKey: iCloudKey) {
-            do {
-                try importData(data)
-            } catch {
-                #if DEBUG
-                print("⚠️ Failed to import iCloud data: \(error.localizedDescription)")
-                #endif
+            Task {
+                do {
+                    try await importData(data)
+                } catch {
+                    #if DEBUG
+                    print("⚠️ Failed to import iCloud data: \(error.localizedDescription)")
+                    #endif
+                }
             }
         }
     }

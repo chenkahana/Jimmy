@@ -174,7 +174,7 @@ struct iTunesPodcastResult: Codable {
     let genres: [String]?
 }
 
-struct PodcastSearchResult: Identifiable {
+struct PodcastSearchResult: Identifiable, Codable {
     let id: Int
     let title: String
     let author: String

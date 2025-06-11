@@ -2,11 +2,12 @@ import Foundation
 import SwiftUI
 import UIKit
 import CryptoKit
+import Combine
 
 /// A comprehensive image caching solution for podcast artwork
 /// Handles both memory and disk caching with proper cache expiration
-class ImageCache: ObservableObject {
-    static let shared = ImageCache()
+public class ImageCache: ObservableObject {
+    public static let shared = ImageCache()
     
     // MARK: - Cache Configuration
     
@@ -25,7 +26,10 @@ class ImageCache: ObservableObject {
     private let diskCacheQueue = DispatchQueue(label: "image-cache-disk", qos: .utility)
     private let downloadQueue = DispatchQueue(label: "image-cache-download", qos: .userInitiated, attributes: .concurrent)
     private let operationQueue: OperationQueue
-
+    private var cancellables = Set<AnyCancellable>()
+    private let fileManager = FileManager.default
+    private let cacheDirectory: URL
+    
     // Notification token for memory warning observer
     private var memoryWarningObserver: NSObjectProtocol?
     
@@ -36,9 +40,6 @@ class ImageCache: ObservableObject {
     // Track memory cache keys for cleanup
     private var memoryCacheKeys: Set<String> = []
     private let memoryCacheKeysLock = NSLock()
-    
-    // Cache directory
-    private let cacheDirectory: URL
     
     // MARK: - Cache Entry Models
     
@@ -80,11 +81,16 @@ class ImageCache: ObservableObject {
         memoryCache.countLimit = 100 // Max 100 images in memory
         memoryCache.totalCostLimit = CacheConfig.memoryCapacity
         
-        // Setup disk cache directory
-        let documentsPath = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
-        cacheDirectory = documentsPath.appendingPathComponent("ImageCache")
+        // Create a custom cache directory for images
+        if let appCacheDirectory = fileManager.urls(for: .cachesDirectory, in: .userDomainMask).first {
+            cacheDirectory = appCacheDirectory.appendingPathComponent("ImageCache")
+            try? fileManager.createDirectory(at: cacheDirectory, withIntermediateDirectories: true, attributes: nil)
+        } else {
+            // Fallback, though this should rarely happen
+            cacheDirectory = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("ImageCache")
+            try? fileManager.createDirectory(at: cacheDirectory, withIntermediateDirectories: true, attributes: nil)
+        }
         
-        createCacheDirectoryIfNeeded()
         setupMemoryWarningObserver()
         
         // Clean expired entries on startup
@@ -95,35 +101,69 @@ class ImageCache: ObservableObject {
     
     /// Load image with caching
     /// Returns cached image immediately if available, otherwise downloads and caches
-    func loadImage(from url: URL, completion: @escaping (UIImage?) -> Void) {
-        // First check memory cache
-        if let cachedImage = getFromMemoryCache(url: url) {
+    public func loadImage(from url: URL, completion: @escaping (UIImage?) -> Void) {
+        let key = url.absoluteString as NSString
+        
+        // 1. Check memory cache first
+        if let cachedImage = memoryCache.object(forKey: key) {
             completion(cachedImage.image)
             return
         }
         
-        // Check disk cache
-        loadFromDiskCache(url: url) { [weak self] diskImage in
-            if let diskImage = diskImage {
-                // Add to memory cache and return
-                self?.addToMemoryCache(image: diskImage, url: url)
-                DispatchQueue.main.async {
-                    completion(diskImage)
-                }
-                return
-            }
-            
-            // Download from network
-            self?.downloadAndCache(url: url, completion: completion)
+        // 2. Check disk cache
+        let fileURL = cacheDirectory.appendingPathComponent(url.lastPathComponent)
+        if let image = UIImage(contentsOfFile: fileURL.path) {
+            self.memoryCache.setObject(CachedImage(image: image, url: url), forKey: key)
+            completion(image)
+            return
         }
+        
+        // 3. Fetch from network
+        URLSession.shared.dataTaskPublisher(for: url)
+            .map { UIImage(data: $0.data) }
+            .replaceError(with: nil)
+            .handleEvents(receiveOutput: { [weak self] image in
+                guard let image = image else { return }
+                self?.cache(image: image, forKey: key, fileURL: fileURL)
+            })
+            .receive(on: DispatchQueue.main)
+            .sink(receiveValue: completion)
+            .store(in: &cancellables)
     }
     
     /// Preload images for URLs (useful for prefetching)
-    func preloadImages(urls: [URL]) {
-        for url in urls {
-            loadImage(from: url) { _ in
-                // Silent preload - no completion handling needed
+    public func preloadImages(urls: Set<URL>) {
+        guard !urls.isEmpty else { return }
+        
+        print("🖼️ [ImageCache] Preloading \(urls.count) images...")
+        let qos: DispatchQoS.QoSClass = .utility
+        
+        DispatchQueue.global(qos: qos).async {
+            let group = DispatchGroup()
+            
+            for url in urls {
+                // Don't re-download if it's already in the cache
+                guard !self.isImageCached(url: url) else { continue }
+                
+                group.enter()
+                URLSession.shared.dataTask(with: url) { [weak self] data, _, _ in
+                    guard let self = self,
+                          let data = data,
+                          let image = UIImage(data: data) else {
+                        group.leave()
+                        return
+                    }
+                    
+                    let key = url.absoluteString as NSString
+                    let fileURL = self.cacheDirectory.appendingPathComponent(url.lastPathComponent)
+                    self.cache(image: image, forKey: key, fileURL: fileURL)
+                    
+                    group.leave()
+                }.resume()
             }
+            
+            group.wait()
+            print("✅ [ImageCache] Preloading complete.")
         }
     }
     
@@ -169,41 +209,14 @@ class ImageCache: ObservableObject {
     }
     
     /// Check if image is cached (in memory or disk)
-    func isImageCached(url: URL) -> Bool {
-        // First check memory cache
-        if getFromMemoryCache(url: url) != nil {
+    public func isImageCached(url: URL) -> Bool {
+        let key = url.absoluteString as NSString
+        if memoryCache.object(forKey: key) != nil {
             return true
         }
         
-        // Then check disk cache synchronously
-        return isImageCachedIncludingDisk(url: url)
-    }
-    
-    /// Check if image is cached (in memory or disk) - synchronous version for cases where we need to know immediately
-    func isImageCachedIncludingDisk(url: URL) -> Bool {
-        // First check memory cache
-        if getFromMemoryCache(url: url) != nil {
-            return true
-        }
-        
-        // Check disk cache synchronously
-        let filename = cacheFilename(for: url)
-        let imagePath = cacheDirectory.appendingPathComponent(filename)
-        let metadataPath = cacheDirectory.appendingPathComponent(filename + ".meta")
-        
-        guard FileManager.default.fileExists(atPath: imagePath.path),
-              FileManager.default.fileExists(atPath: metadataPath.path) else {
-            return false
-        }
-        
-        // Verify metadata is not expired
-        do {
-            let metadataData = try Data(contentsOf: metadataPath)
-            let metadata = try JSONDecoder().decode(DiskCacheMetadata.self, from: metadataData)
-            return !metadata.isExpired
-        } catch {
-            return false
-        }
+        let fileURL = cacheDirectory.appendingPathComponent(url.lastPathComponent)
+        return fileManager.fileExists(atPath: fileURL.path)
     }
     
     /// Check if multiple images are cached
@@ -213,168 +226,15 @@ class ImageCache: ObservableObject {
     
     // MARK: - Private Methods
     
-    private func getFromMemoryCache(url: URL) -> CachedImage? {
-        let key = NSString(string: url.absoluteString)
-        guard let cachedImage = memoryCache.object(forKey: key) else { return nil }
+    private func cache(image: UIImage, forKey key: NSString, fileURL: URL) {
+        // Cache in memory
+        self.memoryCache.setObject(CachedImage(image: image, url: fileURL), forKey: key)
         
-        if cachedImage.isExpired {
-            memoryCache.removeObject(forKey: key)
-            memoryCacheKeysLock.lock()
-            memoryCacheKeys.remove(url.absoluteString)
-            memoryCacheKeysLock.unlock()
-            return nil
-        }
-        
-        return cachedImage
-    }
-    
-    private func addToMemoryCache(image: UIImage, url: URL) {
-        let cachedImage = CachedImage(image: image, url: url)
-        let key = NSString(string: url.absoluteString)
-        
-        // Estimate image memory cost
-        let cost = Int(image.size.width * image.size.height * 4) // 4 bytes per pixel (RGBA)
-        memoryCache.setObject(cachedImage, forKey: key, cost: cost)
-        
-        memoryCacheKeysLock.lock()
-        memoryCacheKeys.insert(url.absoluteString)
-        memoryCacheKeysLock.unlock()
-    }
-    
-    private func loadFromDiskCache(url: URL, completion: @escaping (UIImage?) -> Void) {
-        diskCacheQueue.async { [weak self] in
-            guard let self = self else {
-                completion(nil)
-                return
+        // Cache on disk in background
+        DispatchQueue.global(qos: .background).async {
+            if let data = image.jpegData(compressionQuality: 0.8) {
+                try? data.write(to: fileURL)
             }
-            
-            let filename = self.cacheFilename(for: url)
-            let imagePath = self.cacheDirectory.appendingPathComponent(filename)
-            let metadataPath = self.cacheDirectory.appendingPathComponent(filename + ".meta")
-            
-            // Check if files exist
-            guard FileManager.default.fileExists(atPath: imagePath.path),
-                  FileManager.default.fileExists(atPath: metadataPath.path) else {
-                completion(nil)
-                return
-            }
-            
-            // Check metadata for expiration
-            do {
-                let metadataData = try Data(contentsOf: metadataPath)
-                let metadata = try JSONDecoder().decode(DiskCacheMetadata.self, from: metadataData)
-                
-                if metadata.isExpired {
-                    // Remove expired files
-                    try? FileManager.default.removeItem(at: imagePath)
-                    try? FileManager.default.removeItem(at: metadataPath)
-                    completion(nil)
-                    return
-                }
-                
-                // Load image
-                if let imageData = try? Data(contentsOf: imagePath),
-                   let image = UIImage(data: imageData) {
-                    completion(image)
-                } else {
-                    completion(nil)
-                }
-                
-            } catch {
-                print("❌ Failed to load image metadata: \(error)")
-                completion(nil)
-            }
-        }
-    }
-    
-    private func downloadAndCache(url: URL, completion: @escaping (UIImage?) -> Void) {
-        downloadsLock.lock()
-        
-        // Check if download is already in progress
-        if let existingOperation = ongoingDownloads[url] {
-            existingOperation.addCompletion(completion)
-            downloadsLock.unlock()
-            return
-        }
-        
-        // Create new download operation
-        let operation = DownloadOperation(url: url)
-        operation.addCompletion(completion)
-        ongoingDownloads[url] = operation
-        downloadsLock.unlock()
-        
-        // Configure download operation
-        operation.completionBlock = { [weak self, weak operation] in
-            guard let self = self, let operation = operation else { return }
-            
-            self.downloadsLock.lock()
-            self.ongoingDownloads.removeValue(forKey: url)
-            self.downloadsLock.unlock()
-            
-            if let image = operation.downloadedImage {
-                // Cache the image
-                self.addToMemoryCache(image: image, url: url)
-                self.saveToDiskCache(image: image, url: url)
-            }
-            
-            // Notify all waiting completions
-            DispatchQueue.main.async {
-                operation.notifyCompletions(with: operation.downloadedImage)
-            }
-        }
-        
-        operationQueue.addOperation(operation)
-    }
-    
-    private func saveToDiskCache(image: UIImage, url: URL) {
-        diskCacheQueue.async { [weak self] in
-            guard let self = self else { return }
-            
-            let filename = self.cacheFilename(for: url)
-            let imagePath = self.cacheDirectory.appendingPathComponent(filename)
-            let metadataPath = self.cacheDirectory.appendingPathComponent(filename + ".meta")
-            
-            // Save image data
-            if let imageData = image.jpegData(compressionQuality: 0.8) {
-                do {
-                    try imageData.write(to: imagePath)
-                    
-                    // Save metadata
-                    let metadata = DiskCacheMetadata(
-                        url: url.absoluteString,
-                        timestamp: Date().timeIntervalSince1970,
-                        filename: filename
-                    )
-                    
-                    let metadataData = try JSONEncoder().encode(metadata)
-                    try metadataData.write(to: metadataPath)
-                    
-                } catch {
-                    print("❌ Failed to save image to disk cache: \(error)")
-                }
-            }
-        }
-    }
-    
-    private func cacheFilename(for url: URL) -> String {
-        // Use SHA256 hash to create a short, consistent filename
-        // This avoids filesystem filename length limits while ensuring uniqueness
-        guard let data = url.absoluteString.data(using: .utf8) else {
-            return UUID().uuidString
-        }
-        
-        let hash = data.withUnsafeBytes { bytes in
-            var hasher = SHA256()
-            hasher.update(data: data)
-            return hasher.finalize()
-        }
-        
-        return hash.compactMap { String(format: "%02x", $0) }.joined()
-    }
-    
-    private func createCacheDirectoryIfNeeded() {
-        if !FileManager.default.fileExists(atPath: cacheDirectory.path) {
-            try? FileManager.default.createDirectory(at: cacheDirectory, withIntermediateDirectories: true)
         }
     }
     
@@ -442,6 +302,12 @@ class ImageCache: ObservableObject {
             } catch {
                 print("❌ Failed to cleanup expired cache entries: \(error)")
             }
+        }
+    }
+    
+    private func createCacheDirectoryIfNeeded() {
+        if !FileManager.default.fileExists(atPath: cacheDirectory.path) {
+            try? FileManager.default.createDirectory(at: cacheDirectory, withIntermediateDirectories: true)
         }
     }
     

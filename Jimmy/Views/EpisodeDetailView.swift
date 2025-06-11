@@ -207,7 +207,7 @@ struct EpisodeDetailView: View {
                         
                         Button(action: {
                             // Toggle played status
-                            EpisodeViewModel.shared.markEpisodeAsPlayed(episode, played: !episode.played)
+                            UnifiedEpisodeController.shared.markEpisodeAsPlayed(episode, played: !episode.played)
                         }) {
                             Label(
                                 episode.played ? "Mark as Unplayed" : "Mark as Played",

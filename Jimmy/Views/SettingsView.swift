@@ -278,9 +278,9 @@ struct SettingsView: View {
                     do {
                         let data = try Data(contentsOf: url)
                         // CRITICAL FIX: Use asyncAfter to prevent "Publishing changes from within view updates"
-                        DispatchQueue.main.async {
+                        Task { @MainActor in
                             do {
-                                try AppDataDocument.importData(data)
+                                try await AppDataDocument.importData(data)
                             } catch {
                                 importError = error.localizedDescription
                             }
@@ -520,10 +520,13 @@ struct SettingsView: View {
                     group.enter()
                     PodcastURLResolver.shared.resolveToRSSFeed(from: url.absoluteString) { feedURL in
                         if let feedURL = feedURL, !current.contains(where: { $0.feedURL == feedURL }) {
-                            PodcastService.shared.addPodcast(from: feedURL) { podcast, _ in
-                                if let podcast = podcast {
+                            Task {
+                                do {
+                                    let podcast = try await PodcastService.shared.addPodcast(from: feedURL)
                                     current.append(podcast)
                                     newCount += 1
+                                } catch {
+                                    print("Failed to add podcast: \(error)")
                                 }
                                 group.leave()
                             }
@@ -634,7 +637,9 @@ struct SettingsView: View {
         EpisodeCacheService.shared.clearAllCache()
         
         // Clear global episode view model
-        EpisodeViewModel.shared.clearAllEpisodes()
+        Task {
+            try? await EpisodeRepository.shared.clearAllEpisodes()
+        }
         
         // Show confirmation (we can reuse the existing alert system)
         activeAlert = .subscriptionImport("🗑️ Episode cache cleared successfully! Episodes will be re-fetched when you visit podcast pages.")
@@ -643,7 +648,9 @@ struct SettingsView: View {
     private func forceFetchAllEpisodes() {
         // Clear all cached episodes first
         EpisodeCacheService.shared.clearAllCache()
-        EpisodeViewModel.shared.clearAllEpisodes()
+        Task {
+            try? await EpisodeRepository.shared.clearAllEpisodes()
+        }
         
         // Force fetch episodes for all podcasts
         let podcasts = PodcastService.shared.loadPodcasts()
@@ -663,7 +670,9 @@ struct SettingsView: View {
         print("🔧 Starting Episodes & Queue Recovery...")
         
         // 1. Clear corrupted episode data
-        EpisodeViewModel.shared.clearAllEpisodes()
+        Task {
+            try? await EpisodeRepository.shared.clearAllEpisodes()
+        }
         
         // 2. Clear corrupted queue data
         UserDefaults.standard.removeObject(forKey: "queueKey")
@@ -730,8 +739,9 @@ struct SettingsView: View {
         PodcastDataManager.shared.podcasts.removeAll()
 
         // 2. Delete All Episodes and History
-        EpisodeViewModel.shared.clearAllEpisodes()
-        EpisodeViewModel.shared.clearPlayedIDs()
+        Task {
+            try? await EpisodeRepository.shared.clearAllEpisodes()
+        }
 
         // 3. Delete Episode Cache
         EpisodeCacheService.shared.clearAllCache()
@@ -1072,13 +1082,11 @@ struct ManualPodcastImportView: View {
             DispatchQueue.main.async {
                 if let feedURL = feedURL {
                     // Try to add the podcast
-                    PodcastService.shared.addPodcast(from: feedURL) { podcast, error in
-                        DispatchQueue.main.async {
-                            isLoading = false
-                            
-                            if let error = error {
-                                statusMessage = "Error: \(error.localizedDescription)"
-                            } else if let podcast = podcast {
+                    Task {
+                        do {
+                            let podcast = try await PodcastService.shared.addPodcast(from: feedURL)
+                            await MainActor.run {
+                                isLoading = false
                                 statusMessage = "Successfully added \"\(podcast.title)\"!"
                                 
                                 // Clear the URL field and auto-dismiss after a delay
@@ -1086,6 +1094,11 @@ struct ManualPodcastImportView: View {
                                 DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
                                     dismiss()
                                 }
+                            }
+                        } catch {
+                            await MainActor.run {
+                                isLoading = false
+                                statusMessage = "Error: \(error.localizedDescription)"
                             }
                         }
                     }

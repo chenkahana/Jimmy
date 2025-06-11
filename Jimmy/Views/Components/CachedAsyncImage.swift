@@ -277,47 +277,85 @@ struct PodcastGridArtwork: View {
                     .overlay(
                         Image(systemName: "exclamationmark.triangle")
                             .foregroundColor(.orange)
-                            .font(.title2)
                     )
             case .empty:
-                // Loading state
+                // Clean loading state
                 RoundedRectangle(cornerRadius: 12)
                     .fill(LinearGradient(
                         colors: [Color.gray.opacity(0.1), Color.gray.opacity(0.2)],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     ))
-                    .overlay(
-                        ProgressView()
-                            .scaleEffect(0.8)
-                    )
             }
         }
-        .frame(width: 100, height: 100)
         .clipShape(RoundedRectangle(cornerRadius: 12))
-        .scaleEffect(isEditMode ? 0.9 : 1.0)
+        .overlay {
+            if isEditMode {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(.black.opacity(0.4))
+                    
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.largeTitle)
+                        .foregroundColor(.white)
+                }
+            }
+        }
     }
 }
 
-// MARK: - Image Preloading Utilities
+// MARK: - Gallery View for Preloading
 
-struct ImagePreloader {
-    static func preloadPodcastArtwork(_ podcasts: [Podcast]) {
-        let urls = podcasts.compactMap { $0.artworkURL }
-        ImageCache.shared.preloadImages(urls: urls)
-    }
-    
-    static func preloadEpisodeArtwork(_ episodes: [Episode], fallbackPodcast: Podcast? = nil) {
-        var urls: [URL] = []
-        
-        for episode in episodes {
-            if let artworkURL = episode.artworkURL {
-                urls.append(artworkURL)
-            } else if let podcastArtwork = fallbackPodcast?.artworkURL {
-                urls.append(podcastArtwork)
+struct ImageGalleryView: View {
+    let imageURLs: [URL]
+    @State private var currentIndex: Int = 0
+
+    var body: some View {
+        TabView(selection: $currentIndex) {
+            ForEach(imageURLs.indices, id: \.self) { index in
+                CachedAsyncImagePhase(url: imageURLs[index]) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                    case .failure:
+                        VStack {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                            Text("Failed to load image")
+                        }
+                    case .empty:
+                        ProgressView()
+                    }
+                }
+                .tag(index)
             }
         }
-        
+        .tabViewStyle(PageTabViewStyle())
+        .onChange(of: currentIndex) { _, newIndex in
+            preloadSurroundingImages(currentIndex: newIndex)
+        }
+        .onAppear {
+            preloadAllImages()
+        }
+    }
+
+    // Preload all images in the collection
+    private func preloadAllImages() {
+        let urls = Set(imageURLs)
         ImageCache.shared.preloadImages(urls: urls)
+    }
+
+    // Preload surrounding images for a smoother scrolling experience
+    private func preloadSurroundingImages(currentIndex: Int) {
+        let urls = imageURLs
+        guard currentIndex < urls.count else { return }
+        
+        let preloadRange = 2 // Preload 2 images before and after the current one
+        let startIndex = max(0, currentIndex - preloadRange)
+        let endIndex = min(urls.count - 1, currentIndex + preloadRange)
+        
+        let urlsToPreload = Set(Array(urls[startIndex...endIndex]))
+        ImageCache.shared.preloadImages(urls: urlsToPreload)
     }
 } 

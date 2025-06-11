@@ -7,7 +7,7 @@ struct EpisodeListView: View {
     let onEpisodeTap: (Episode) -> Void
     
     @ObservedObject private var audioPlayer = AudioPlayerService.shared
-    @ObservedObject private var episodeViewModel = EpisodeViewModel.shared
+    @ObservedObject private var episodeController = UnifiedEpisodeController.shared
     @ObservedObject private var queueViewModel = QueueViewModel.shared
     
     var currentPlayingEpisode: Episode? {
@@ -57,7 +57,7 @@ struct EpisodeListView: View {
                                         handlePlayNext(episode)
                                     },
                                     onMarkAsPlayed: { episode, played in
-                                        episodeViewModel.markEpisodeAsPlayed(episode, played: played)
+                                        episodeController.markEpisodeAsPlayed(episode, played: played)
                                     }
                                 )
                                 .listRowSeparator(.hidden)
@@ -119,14 +119,14 @@ struct EpisodeListView: View {
     }
     
     private func markAllAsPlayed() {
-        episodeViewModel.markAllEpisodesAsPlayed(for: podcast.id)
+                                episodeController.markAllEpisodesAsPlayed(for: podcast.id)
         
         // Show haptic feedback
         FeedbackManager.shared.success()
     }
     
     private func markAllAsUnplayed() {
-        episodeViewModel.markAllEpisodesAsUnplayed(for: podcast.id)
+        episodeController.markAllEpisodesAsUnplayed(for: podcast.id)
         
         // Show haptic feedback
         FeedbackManager.shared.success()

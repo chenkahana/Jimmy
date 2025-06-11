@@ -11,7 +11,7 @@ final class OptimizedNetworkManager {
     // MARK: - Configuration
     fileprivate struct Config {
         static let maxConcurrentRequests = 6
-        static let requestTimeout: TimeInterval = 10.0
+        static let requestTimeout: TimeInterval = 30.0
         static let cacheExpiry: TimeInterval = 15 * 60 // 15 minutes
         static let backgroundQueueQoS: DispatchQoS = .utility
         static let maxCacheSize = 50 // Maximum cached responses
@@ -157,8 +157,8 @@ final class OptimizedNetworkManager {
                 guard let self = self else { return }
                 
                 if let error = error {
-                    self.logger.error("Network request failed for \(url.absoluteString): \(error.localizedDescription)")
-                    self.notifyAllWaiters(cacheKey: cacheKey, result: .failure(error))
+                    // If main URLSession fails, try with a simple fallback
+                    self.attemptFallbackRequest(url: url, cacheKey: cacheKey, completion: completion)
                     return
                 }
                 
@@ -177,15 +177,11 @@ final class OptimizedNetworkManager {
                     }
                 }
                 
-                // Cache the response
+                // Cache successful response
+                let cachedResponse = CachedResponse(data: data, timestamp: Date())
                 self.cacheQueue.async {
-                    let cachedResponse = CachedResponse(data: data, timestamp: Date())
                     self.responseCache[cacheKey] = cachedResponse
-                    
-                    // Limit cache size
-                    if self.responseCache.count > Config.maxCacheSize {
-                        self.removeOldestCacheEntry()
-                    }
+                    self.clearExpiredCache()
                 }
                 
                 self.notifyAllWaiters(cacheKey: cacheKey, result: .success(data))
@@ -225,6 +221,53 @@ final class OptimizedNetworkManager {
         Timer.scheduledTimer(withTimeInterval: 600, repeats: true) { [weak self] _ in
             self?.clearExpiredCache()
         }
+    }
+    
+    // MARK: - Fallback Network Request
+    
+    private func attemptFallbackRequest(url: URL, cacheKey: String, completion: @escaping (Result<Data, Error>) -> Void) {
+        // Create a simple URLSession with minimal configuration
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 60.0  // Longer timeout
+        config.timeoutIntervalForResource = 120.0
+        config.requestCachePolicy = .reloadIgnoringLocalAndRemoteCacheData
+        config.urlCache = nil  // Disable caching
+        
+        let simpleSession = URLSession(configuration: config)
+        
+        var request = URLRequest(url: url)
+        request.setValue("Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15", forHTTPHeaderField: "User-Agent")
+        
+        simpleSession.dataTask(with: request) { [weak self] data, response, error in
+            defer {
+                simpleSession.invalidateAndCancel()
+            }
+            
+            guard let self = self else { return }
+            
+            if let error = error {
+                print("❌ Fallback request also failed: \(error.localizedDescription)")
+                self.notifyAllWaiters(cacheKey: cacheKey, result: .failure(error))
+                return
+            }
+            
+            guard let data = data, !data.isEmpty else {
+                let error = NSError(domain: "OptimizedNetworkManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "Empty response from fallback"])
+                self.notifyAllWaiters(cacheKey: cacheKey, result: .failure(error))
+                return
+            }
+            
+            print("✅ Fallback request succeeded: \(data.count) bytes")
+            
+            // Cache successful response
+            let cachedResponse = CachedResponse(data: data, timestamp: Date())
+            self.cacheQueue.async {
+                self.responseCache[cacheKey] = cachedResponse
+                self.clearExpiredCache()
+            }
+            
+            self.notifyAllWaiters(cacheKey: cacheKey, result: .success(data))
+        }.resume()
     }
 }
 

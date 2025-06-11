@@ -10,17 +10,38 @@ import UniformTypeIdentifiers
 
 @main
 struct JimmyApp: App {
-    // Initialize the update service
+    // MARK: - CHAT_HELP.md Architecture Services
+    
+    // 1. Repository (GRDB + WAL) - Core data layer
+    private let repository = PodcastRepository.shared
+    
+    // 2. FetchWorker (Task + GCD barriers) - Network operations
+    private let fetchWorker = FetchWorker.shared
+    
+    // 3. PodcastStore (Swift Actor) - Thread-safe storage
+    private let podcastStore = PodcastStore.shared
+    
+    // 4. ViewModel (AsyncPublisher) - UI data binding
+    private let podcastViewModel = PodcastViewModel.shared
+    
+    // 5. Background Refresh Service (BGAppRefreshTask)
+    private let backgroundRefreshService = BackgroundRefreshService.shared
+    
+    // 6. Performance Monitor (os_signpost)
+    private let performanceMonitor = PerformanceMonitor.shared
+    
+    // MARK: - Legacy Services (for compatibility)
     private let updateService = EpisodeUpdateService.shared
-    // Initialize the undo manager for shake-to-undo functionality
     private let undoManager = ShakeUndoManager.shared
-    // Initialize background task manager for BGTaskScheduler
     private let backgroundTaskManager = BackgroundTaskManager.shared
-    // Initialize optimized services for better performance
     private let optimizedPodcastService = OptimizedPodcastService.shared
     private let uiPerformanceManager = UIPerformanceManager.shared
-    // Initialize crash prevention for app stability
     private let crashPreventionManager = CrashPreventionManager.shared
+    
+    // Legacy episode services (being phased out)
+    private let episodeRepository = EpisodeRepository.shared
+    private let episodeFetchWorker = EpisodeFetchWorker.shared
+    private let enhancedEpisodeController = EnhancedEpisodeController.shared
     @Environment(\.scenePhase) private var scenePhase
     @State private var showFileImportSheet = false
     @State private var pendingAudioURL: URL?
@@ -28,6 +49,15 @@ struct JimmyApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .environmentObject(podcastViewModel)
+                .environmentObject(UnifiedEpisodeController.shared)
+                .environmentObject(uiPerformanceManager)
+                .environmentObject(undoManager)
+                .onAppear {
+                    // Register background tasks for CHAT_HELP.md architecture
+                    backgroundRefreshService.registerBackgroundTasks()
+                    backgroundRefreshService.scheduleBackgroundRefresh()
+                }
                 .onOpenURL { url in
                     handleURL(url)
                 }
@@ -40,11 +70,32 @@ struct JimmyApp: App {
                         
                         // DEBUG: Check what data we have after iCloud load
                         let loadedPodcasts = PodcastService.shared.loadPodcasts()
-                        let episodes = EpisodeViewModel.shared.episodes
+                        let episodes = UnifiedEpisodeController.shared.episodes
                         print("📊 JimmyApp: After iCloud load - Podcasts: \(loadedPodcasts.count), Episodes: \(episodes.count)")
+                        
+                        // RECOVERY: Check for orphaned episodes and recover missing podcasts
+                        if loadedPodcasts.isEmpty && episodes.count > 0 {
+                            print("🔧 JimmyApp: Detected orphaned episodes, starting recovery...")
+                            Task {
+                                await PodcastRecoveryService.shared.recoverMissingPodcasts()
+                                // Notify LibraryController after recovery
+                                await MainActor.run {
+                                    NotificationCenter.default.post(name: NSNotification.Name("iCloudDataLoaded"), object: nil)
+                                }
+                            }
+                        } else {
+                            // Notify LibraryController that iCloud data has been loaded
+                            NotificationCenter.default.post(name: NSNotification.Name("iCloudDataLoaded"), object: nil)
+                        }
                         
                         // Start crash prevention first for maximum stability
                         crashPreventionManager.startCrashPrevention()
+                        
+                        // ENHANCED EPISODE ARCHITECTURE: Initialize award-winning episode system
+                        print("🏆 JimmyApp: Initializing enhanced episode architecture...")
+                        
+                        // Repository and fetch worker are already initialized via their singletons
+                        // Enhanced controller will automatically load cached data and queue background updates
                         
                         // Start optimized services first for better performance
                         let optimizedPodcasts = optimizedPodcastService.loadPodcasts()
@@ -65,6 +116,8 @@ struct JimmyApp: App {
                         
                         // Setup file import callback
                         setupFileImportCallback()
+                        
+                        print("✅ JimmyApp: Enhanced episode architecture initialized successfully!")
                     }
                 }
                 .sheet(isPresented: $showFileImportSheet) {
@@ -86,7 +139,10 @@ struct JimmyApp: App {
             case .background, .inactive:
                 // App is moving to the background or becoming inactive.
                 // This is the last chance to save data.
-                EpisodeViewModel.shared.saveImmediately()
+                // Note: UnifiedEpisodeController doesn't have saveImmediately method
+                // Saving is now handled automatically by the repository
+                // EpisodeRepository.shared.saveImmediately()
+                break
             case .active:
                 // App is now active.
                 break
@@ -136,15 +192,18 @@ struct JimmyApp: App {
         PodcastURLResolver.shared.resolveToRSSFeed(from: url.absoluteString) { feedURL in
             DispatchQueue.main.async {
                 if let feedURL = feedURL {
-                    // Try to add the podcast using existing service
-                    PodcastService.shared.addPodcast(from: feedURL) { podcast, error in
-                        DispatchQueue.main.async {
-                            if let error = error {
+                    // Try to add the podcast using existing service with async/await
+                    Task {
+                        do {
+                            let podcast = try await PodcastService.shared.addPodcast(from: feedURL)
+                            await MainActor.run {
+                                print("Successfully imported podcast: \(podcast.title)")
+                                // Could show a success notification here
+                            }
+                        } catch {
+                            await MainActor.run {
                                 print("Error importing podcast via URL scheme: \(error.localizedDescription)")
                                 // Could show a notification or alert here
-                            } else if let podcast = podcast {
-    
-                                // Could show a success notification here
                             }
                         }
                     }

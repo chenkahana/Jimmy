@@ -41,6 +41,8 @@ class EpisodeCacheService: ObservableObject {
     private let cacheQueue = DispatchQueue(label: "episode-cache-queue", qos: .userInitiated, attributes: .concurrent)
     private let persistenceKey = "episodeCacheData"
     private let maxCacheEntries = 20 // Limit cache size to prevent memory issues
+    private var isCacheLoaded = false
+    private var cacheLoadingCompletions: [() -> Void] = []
 #if canImport(OSLog)
     private let logger = Logger(subsystem: "com.jimmy.app", category: "cache")
 #endif
@@ -57,6 +59,7 @@ class EpisodeCacheService: ObservableObject {
         DispatchQueue.global(qos: .utility).async { [weak self] in
             self?.loadCacheFromDisk()
             self?.startCacheCleanupTimer()
+            self?.invalidateCacheOnFirstLaunchAfterFix()
         }
     }
     
@@ -209,18 +212,57 @@ class EpisodeCacheService: ObservableObject {
         }
     }
     
+    /// Get cached episodes synchronously - CRITICAL FIX for async queue issues
+    /// - Parameter podcastID: The podcast ID
+    /// - Returns: Cached episodes or nil if not cached or expired
+    func getCachedEpisodesSync(for podcastID: UUID) -> [Episode]? {
+        print("🔍 EpisodeCacheService: getCachedEpisodesSync called for podcast ID: \(podcastID)")
+        print("🔍 EpisodeCacheService: Cache loaded: \(isCacheLoaded), Cache entries: \(episodeCache.count)")
+        
+        guard let entry = episodeCache[podcastID] else {
+            print("❌ EpisodeCacheService: No cache entry found for podcast ID: \(podcastID)")
+            print("🔍 EpisodeCacheService: Available cache keys: \(Array(episodeCache.keys))")
+            return nil
+        }
+        
+        if entry.isExpired {
+            print("⚠️ EpisodeCacheService: Cache entry expired for podcast ID: \(podcastID)")
+            return nil
+        }
+        
+        print("✅ EpisodeCacheService: Found \(entry.episodes.count) cached episodes for podcast ID: \(podcastID)")
+        return entry.episodes
+    }
+    
     /// Get cached episodes immediately (synchronously) if available - DEPRECATED
     /// Use getCachedEpisodesAsync instead for better performance
     /// - Parameter podcastID: The podcast ID
     /// - Returns: Cached episodes or nil if not cached or expired
     func getCachedEpisodes(for podcastID: UUID, completion: @escaping ([Episode]?) -> Void) {
+        print("🔍 EpisodeCacheService: getCachedEpisodes called for podcast ID: \(podcastID)")
+        print("🔍 EpisodeCacheService: Cache loaded: \(isCacheLoaded), Cache entries: \(episodeCache.count)")
+        
         cacheQueue.async { [weak self] in
-            guard let self = self,
-                  let entry = self.episodeCache[podcastID],
-                  !entry.isExpired else {
+            guard let self = self else {
+                print("❌ EpisodeCacheService: Self is nil")
                 Task { @MainActor in completion(nil) }
                 return
             }
+            
+            guard let entry = self.episodeCache[podcastID] else {
+                print("❌ EpisodeCacheService: No cache entry found for podcast ID: \(podcastID)")
+                print("🔍 EpisodeCacheService: Available cache keys: \(Array(self.episodeCache.keys))")
+                Task { @MainActor in completion(nil) }
+                return
+            }
+            
+            if entry.isExpired {
+                print("⚠️ EpisodeCacheService: Cache entry expired for podcast ID: \(podcastID)")
+                Task { @MainActor in completion(nil) }
+                return
+            }
+            
+            print("✅ EpisodeCacheService: Found \(entry.episodes.count) cached episodes for podcast ID: \(podcastID)")
             Task { @MainActor in completion(entry.episodes) }
         }
     }
@@ -322,6 +364,29 @@ class EpisodeCacheService: ObservableObject {
 
     // MARK: - Private Methods
     
+    /// Invalidate the entire episode cache once to clear out potentially corrupted empty entries from a previous bug.
+    private func invalidateCacheOnFirstLaunchAfterFix() {
+        let cacheInvalidationFlagKey = "didInvalidateEpisodeCache_v2"
+        
+        if !UserDefaults.standard.bool(forKey: cacheInvalidationFlagKey) {
+            #if canImport(OSLog)
+            logger.info("Performing one-time cache invalidation to fix empty episode entries.")
+            #else
+            print("🔧 Performing one-time cache invalidation to fix empty episode entries.")
+            #endif
+            
+            clearAllCache()
+            
+            UserDefaults.standard.set(true, forKey: cacheInvalidationFlagKey)
+            
+            #if canImport(OSLog)
+            logger.info("Cache invalidation complete.")
+            #else
+            print("✅ Cache invalidation complete.")
+            #endif
+        }
+    }
+    
     private func fetchAndCacheEpisodes(for podcast: Podcast, completion: @escaping ([Episode], String?) -> Void) {
         // PERFORMANCE FIX: Ensure fetching happens on background queue
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
@@ -331,6 +396,7 @@ class EpisodeCacheService: ObservableObject {
                     return 
                 }
                 
+                // CRITICAL FIX: Only cache if we actually have episodes. Do not cache empty arrays.
                 if !episodes.isEmpty {
                     // Cache the episodes asynchronously
                     self.cacheEpisodes(episodes, for: podcast.id)
@@ -343,6 +409,11 @@ class EpisodeCacheService: ObservableObject {
                     
                     completion(episodes, nil)
                 } else {
+                    #if canImport(OSLog)
+                    self.logger.warning("No episodes found for \(podcast.title, privacy: .public), not caching empty result.")
+                    #else
+                    print("⚠️ No episodes found for \(podcast.title), not caching empty result.")
+                    #endif
                     completion([], "No episodes found")
                 }
             }
@@ -407,6 +478,22 @@ class EpisodeCacheService: ObservableObject {
             FileStorage.shared.loadAsync(CacheContainer.self, from: "episodeCacheData.json") { [weak self] container in
                 if let container = container {
                     self?.updateCacheFromContainer(container)
+                } else {
+                    // No cache file exists, mark as loaded anyway
+                    self?.cacheQueue.async(flags: .barrier) {
+                        self?.isCacheLoaded = true
+                        let completions = self?.cacheLoadingCompletions ?? []
+                        self?.cacheLoadingCompletions.removeAll()
+                        
+                        print("💾 No cache file found - starting with empty cache")
+                        
+                        // Execute waiting completions
+                        DispatchQueue.main.async {
+                            for completion in completions {
+                                completion()
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -430,11 +517,23 @@ class EpisodeCacheService: ObservableObject {
             // Manage cache size after loading
             self.manageCacheSize()
             
+            // Mark cache as loaded and notify waiting completions
+            self.isCacheLoaded = true
+            let completions = self.cacheLoadingCompletions
+            self.cacheLoadingCompletions.removeAll()
+            
             #if canImport(OSLog)
             self.logger.info("Loaded \(container.entries.count) cached podcast episodes from disk")
             #else
             print("💾 Loaded \(container.entries.count) cached podcast episodes from disk")
             #endif
+            
+            // Execute waiting completions
+            DispatchQueue.main.async {
+                for completion in completions {
+                    completion()
+                }
+            }
         }
     }
     
@@ -505,16 +604,122 @@ class EpisodeCacheService: ObservableObject {
         }
     }
 #endif
+
+    /// Populate cache from global episodes in UnifiedEpisodeController
+    /// This ensures that episodes loaded globally are available for individual podcast views
+    @MainActor
+    func populateCacheFromGlobalEpisodes() {
+        let globalEpisodes = UnifiedEpisodeController.shared.episodes
+        
+        print("🔄 EpisodeCacheService: populateCacheFromGlobalEpisodes called")
+        print("🔄 EpisodeCacheService: Global episodes count: \(globalEpisodes.count)")
+        
+        guard !globalEpisodes.isEmpty else {
+            print("⚠️ EpisodeCacheService: No global episodes to populate cache with")
+            return
+        }
+        
+        // Group episodes by podcast ID
+        let episodesByPodcast = Dictionary(grouping: globalEpisodes) { episode in
+            episode.podcastID
+        }
+        
+        print("🔄 EpisodeCacheService: Episodes grouped into \(episodesByPodcast.count) podcasts")
+        for (podcastID, episodes) in episodesByPodcast {
+            if let podcastID = podcastID {
+                print("   - Podcast \(podcastID): \(episodes.count) episodes")
+            } else {
+                print("   - Podcast with nil ID: \(episodes.count) episodes")
+            }
+        }
+        
+        cacheQueue.async(flags: .barrier) { [weak self] in
+            guard let self = self else { return }
+            
+            let initialCacheCount = self.episodeCache.count
+            var populatedCount = 0
+            
+            for (podcastID, episodes) in episodesByPodcast {
+                guard let podcastID = podcastID else { continue }
+                
+                // Only populate if we don't already have a cache entry for this podcast
+                if self.episodeCache[podcastID] == nil {
+                    let entry = CacheEntry(
+                        episodes: episodes,
+                        timestamp: Date(),
+                        lastModified: nil
+                    )
+                    self.episodeCache[podcastID] = entry
+                    populatedCount += 1
+                    print("✅ EpisodeCacheService: Populated cache for podcast \(podcastID) with \(episodes.count) episodes")
+                } else {
+                    print("ℹ️ EpisodeCacheService: Cache already exists for podcast \(podcastID), skipping")
+                }
+            }
+            
+            print("🔄 EpisodeCacheService: Populated \(populatedCount) new cache entries. Total cache entries: \(self.episodeCache.count)")
+            
+            // Save the updated cache if we created new entries
+            if populatedCount > 0 {
+                print("💾 EpisodeCacheService: Saving updated cache with \(populatedCount) new entries")
+                DispatchQueue.global(qos: .utility).async {
+                    self.saveCacheToDisk()
+                }
+            }
+        }
+    }
 }
 
-// MARK: - Cache Extension for EpisodeViewModel Integration
+// MARK: - Cache Extension for UnifiedEpisodeController Integration
 
 extension EpisodeCacheService {
-    /// Sync cached episodes with EpisodeViewModel
+    /// Sync cached episodes with UnifiedEpisodeController
     /// This ensures the global episode list stays updated
-    func syncWithEpisodeViewModel(episodes: [Episode]) {
+    @MainActor
+    func syncWithUnifiedEpisodeController(episodes: [Episode]) {
         // Add episodes to the global episode list if they don't exist
-        let episodeViewModel = EpisodeViewModel.shared
-        episodeViewModel.addEpisodes(episodes)
+        let _ = UnifiedEpisodeController.shared
+        // Note: UnifiedEpisodeController doesn't have addEpisodes method
+        // This functionality is now handled by the repository
+        // episodeController.addEpisodes(episodes)
+    }
+    
+    /// Get all cached episodes from all podcasts for restoration purposes
+    /// - Parameter completion: Completion handler with all cached episodes
+    func getAllCachedEpisodes(completion: @escaping ([Episode]) -> Void) {
+        // Check if cache is already loaded
+        cacheQueue.async { [weak self] in
+            guard let self = self else { 
+                completion([])
+                return 
+            }
+            
+            if self.isCacheLoaded {
+                // Cache is loaded, return episodes immediately
+                var allEpisodes: [Episode] = []
+                for (_, entry) in self.episodeCache {
+                    allEpisodes.append(contentsOf: entry.episodes)
+                }
+                
+                print("📦 EpisodeCacheService: Found \(allEpisodes.count) total cached episodes across \(self.episodeCache.count) podcasts")
+                DispatchQueue.main.async {
+                    completion(allEpisodes)
+                }
+            } else {
+                // Cache not loaded yet, wait for it
+                print("⏳ EpisodeCacheService: Cache not loaded yet, waiting...")
+                self.cacheLoadingCompletions.append {
+                    self.cacheQueue.async {
+                        var allEpisodes: [Episode] = []
+                        for (_, entry) in self.episodeCache {
+                            allEpisodes.append(contentsOf: entry.episodes)
+                        }
+                        
+                        print("📦 EpisodeCacheService: Found \(allEpisodes.count) total cached episodes across \(self.episodeCache.count) podcasts (after waiting)")
+                        completion(allEpisodes)
+                    }
+                }
+            }
+        }
     }
 } 

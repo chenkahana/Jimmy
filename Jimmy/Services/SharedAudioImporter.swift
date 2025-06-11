@@ -66,7 +66,9 @@ class SharedAudioImporter: ObservableObject {
                 playbackPosition: 0
             )
 
-            EpisodeViewModel.shared.addEpisodes([episode])
+            Task { @MainActor in
+                try? await EpisodeRepository.shared.addNewEpisodes([episode])
+            }
             // Don't automatically add to queue - let user decide
             return episode
         } catch {

@@ -18,5 +18,18 @@ struct Episode: Identifiable, Codable, Equatable {
         return duration ?? 0
     }
     
-    // Add other necessary properties here
+    // Public CodingKeys for GRDB access
+    enum CodingKeys: String, CodingKey {
+        case id
+        case title
+        case artworkURL
+        case audioURL
+        case description
+        case played
+        case podcastID
+        case publishedDate
+        case localFileURL
+        case playbackPosition
+        case duration
+    }
 } 
