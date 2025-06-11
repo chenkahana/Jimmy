@@ -696,32 +696,13 @@ struct ScaleButtonStyle: ButtonStyle {
 
 struct EmptyPlayStateView: View {
     var body: some View {
-        VStack(spacing: 32) {
-            Spacer()
-            
-            VStack(spacing: 24) {
-                Image(systemName: "music.note.house")
-                    .font(.system(size: 72, weight: .thin))
-                    .foregroundStyle(Color(.systemGray3))
-                
-                VStack(spacing: 12) {
-                    Text("No Episode Playing")
-                        .font(.title2)
-                        .fontWeight(.semibold)
-                        .foregroundColor(.primary)
-                    
-                    Text("Choose an episode from your queue or library to start listening")
-                        .font(.body)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-                        .lineLimit(2)
-                }
-            }
-            .padding(.horizontal, 48)
-            
-            Spacer()
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        UnifiedEmptyStateView(
+            icon: "music.note.house",
+            title: "No Episode Playing",
+            subtitle: "Choose an episode from your queue or library to start listening",
+            iconSize: 72,
+            spacing: 24
+        )
     }
 }
 

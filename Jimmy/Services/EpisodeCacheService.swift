@@ -390,7 +390,8 @@ class EpisodeCacheService: ObservableObject {
     private func fetchAndCacheEpisodes(for podcast: Podcast, completion: @escaping ([Episode], String?) -> Void) {
         // PERFORMANCE FIX: Ensure fetching happens on background queue
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            PodcastService.shared.fetchEpisodes(for: podcast) { episodes in
+            // Use the enhanced error handling method
+            PodcastService.shared.fetchEpisodesWithError(for: podcast) { episodes, error in
                 guard let self = self else { 
                     completion([], "Service unavailable")
                     return 
@@ -409,14 +410,220 @@ class EpisodeCacheService: ObservableObject {
                     
                     completion(episodes, nil)
                 } else {
-                    #if canImport(OSLog)
-                    self.logger.warning("No episodes found for \(podcast.title, privacy: .public), not caching empty result.")
-                    #else
-                    print("⚠️ No episodes found for \(podcast.title), not caching empty result.")
-                    #endif
-                    completion([], "No episodes found")
+                    // Generate specific error message based on the error type
+                    let errorMessage: String
+                    if let error = error {
+                        errorMessage = self.generateNetworkErrorMessage(for: error, podcast: podcast)
+                        
+                        #if canImport(OSLog)
+                        self.logger.error("Network error for \(podcast.title, privacy: .public): \(error.localizedDescription, privacy: .public)")
+                        #else
+                        print("❌ Network error for \(podcast.title): \(error.localizedDescription)")
+                        #endif
+                    } else {
+                        errorMessage = self.generateErrorMessage(for: podcast)
+                        
+                        #if canImport(OSLog)
+                        self.logger.warning("No episodes found for \(podcast.title, privacy: .public), not caching empty result.")
+                        #else
+                        print("⚠️ No episodes found for \(podcast.title), not caching empty result.")
+                        #endif
+                    }
+                    
+                    completion([], errorMessage)
                 }
             }
+        }
+    }
+    
+    /// Fetch and cache episodes progressively, updating UI as episodes are parsed
+    /// - Parameters:
+    ///   - podcast: The podcast to fetch episodes for
+    ///   - progressCallback: Called for each episode as it's parsed (on main queue)
+    ///   - completion: Called when all episodes are fetched and cached
+    private func fetchAndCacheEpisodesProgressively(for podcast: Podcast, 
+                                                   progressCallback: @escaping (Episode) -> Void,
+                                                   completion: @escaping ([Episode], String?) -> Void) {
+        
+        #if canImport(OSLog)
+        logger.info("Starting progressive fetch for \(podcast.title, privacy: .public)")
+        #else
+        print("🚀 Starting progressive fetch for \(podcast.title)")
+        #endif
+        
+        var allEpisodes: [Episode] = []
+        
+        PodcastService.shared.fetchEpisodesProgressively(
+            for: podcast,
+            episodeCallback: { episode in
+                // Add episode to our collection
+                allEpisodes.append(episode)
+                
+                // Update UI immediately
+                progressCallback(episode)
+                
+                // Cache episodes in batches for better performance
+                if allEpisodes.count % 10 == 0 {
+                    Task { [weak self] in
+                        await self?.cacheEpisodesAsync(allEpisodes, for: podcast.id)
+                    }
+                }
+            },
+            metadataCallback: { metadata in
+                // Metadata callback - could be used to update podcast info
+                #if canImport(OSLog)
+                self.logger.info("Received metadata for \(podcast.title, privacy: .public): \(metadata.title ?? "Unknown", privacy: .public)")
+                #else
+                print("📊 Received metadata for \(podcast.title): \(metadata.title ?? "Unknown")")
+                #endif
+            },
+            completion: { episodes, error in
+                if !episodes.isEmpty {
+                    // Final cache of all episodes
+                    Task { [weak self] in
+                        await self?.cacheEpisodesAsync(episodes, for: podcast.id)
+                        
+                        #if canImport(OSLog)
+                        self?.logger.info("Progressive fetch completed and cached \(episodes.count) episodes for \(podcast.title, privacy: .public)")
+                        #else
+                        print("💾 Progressive fetch completed and cached \(episodes.count) episodes for \(podcast.title)")
+                        #endif
+                    }
+                    
+                    completion(episodes, nil)
+                } else {
+                    // Generate specific error message based on the error type
+                    let errorMessage: String
+                    if let error = error {
+                        errorMessage = self.generateNetworkErrorMessage(for: error, podcast: podcast)
+                        
+                        #if canImport(OSLog)
+                        self.logger.error("Progressive fetch error for \(podcast.title, privacy: .public): \(error.localizedDescription, privacy: .public)")
+                        #else
+                        print("❌ Progressive fetch error for \(podcast.title): \(error.localizedDescription)")
+                        #endif
+                    } else {
+                        errorMessage = self.generateErrorMessage(for: podcast)
+                        
+                        #if canImport(OSLog)
+                        self.logger.warning("Progressive fetch found no episodes for \(podcast.title, privacy: .public)")
+                        #else
+                        print("⚠️ Progressive fetch found no episodes for \(podcast.title)")
+                        #endif
+                    }
+                    
+                    completion([], errorMessage)
+                }
+            }
+        )
+    }
+    
+    /// Async version of cacheEpisodes for better performance
+    private func cacheEpisodesAsync(_ episodes: [Episode], for podcastID: UUID) async {
+        await withCheckedContinuation { continuation in
+            cacheQueue.async(flags: .barrier) { [weak self] in
+                guard let self = self else { 
+                    continuation.resume()
+                    return 
+                }
+                
+                let entry = CacheEntry(
+                    episodes: episodes,
+                    timestamp: Date(),
+                    lastModified: nil
+                )
+                
+                self.episodeCache[podcastID] = entry
+                
+                // Manage cache size to prevent memory issues
+                self.manageCacheSize()
+                
+                continuation.resume()
+            }
+            
+            // Save to disk asynchronously
+            DispatchQueue.global(qos: .utility).async { [weak self] in
+                self?.saveCacheToDisk()
+            }
+        }
+    }
+    
+    /// Generate specific error message based on network error type
+    private func generateNetworkErrorMessage(for error: Error, podcast: Podcast) -> String {
+        let nsError = error as NSError
+        
+        switch nsError.code {
+        case NSURLErrorTimedOut:
+            return "Connection timed out. The podcast server is taking too long to respond. Please try again."
+            
+        case NSURLErrorCannotConnectToHost, NSURLErrorCannotFindHost:
+            return "Cannot connect to the podcast server. The server may be temporarily unavailable."
+            
+        case NSURLErrorNetworkConnectionLost:
+            return "Network connection was lost. Please check your internet connection and try again."
+            
+        case NSURLErrorDNSLookupFailed:
+            return "Cannot find the podcast server. The podcast may have moved or the URL may be incorrect."
+            
+        case NSURLErrorNotConnectedToInternet:
+            return "No internet connection. Please connect to Wi-Fi or cellular data and try again."
+            
+        case NSURLErrorInternationalRoamingOff:
+            return "International roaming is disabled. Please enable roaming or connect to Wi-Fi."
+            
+        case NSURLErrorDataNotAllowed:
+            return "Cellular data is disabled for this app. Please enable cellular data or connect to Wi-Fi."
+            
+        case NSURLErrorBadURL:
+            return "The podcast feed URL is invalid. This podcast may have moved or been discontinued."
+            
+        case NSURLErrorHTTPTooManyRedirects:
+            return "Too many redirects. The podcast feed configuration may be incorrect."
+            
+        case NSURLErrorResourceUnavailable:
+            return "The podcast feed is currently unavailable. Please try again later."
+            
+        case NSURLErrorBadServerResponse:
+            return "The podcast server returned an invalid response. The feed may be corrupted or temporarily unavailable."
+            
+        default:
+            // Check for HTTP status codes in the error
+            if let httpResponse = nsError.userInfo["NSHTTPURLResponse"] as? HTTPURLResponse {
+                switch httpResponse.statusCode {
+                case 400...499:
+                    return "The podcast feed returned a client error (\(httpResponse.statusCode)). The podcast may have moved or been discontinued."
+                case 500...599:
+                    return "The podcast server is experiencing issues (\(httpResponse.statusCode)). Please try again later."
+                default:
+                    break
+                }
+            }
+            
+            // Fallback to generic network error message
+            return "Network error: \(error.localizedDescription). Please check your connection and try again."
+        }
+    }
+    
+    private func generateErrorMessage(for podcast: Podcast) -> String {
+        // Check if the feed URL looks suspicious or might be invalid
+        let feedURLString = podcast.feedURL.absoluteString.lowercased()
+        
+        // Check network connectivity first
+        if !NetworkMonitor.shared.isConnected {
+            return "No internet connection. Please check your network settings and try again."
+        }
+        
+        if feedURLString.contains("itunes.apple.com") || feedURLString.contains("podcasts.apple.com") {
+            return "This podcast may only be available on Apple Podcasts. Try searching for it in the Apple Podcasts app."
+        } else if feedURLString.contains("spotify.com") {
+            return "This podcast may only be available on Spotify. Try searching for it in the Spotify app."
+        } else if feedURLString.contains("youtube.com") {
+            return "This podcast may only be available on YouTube. Try searching for it in the YouTube app."
+        } else if !feedURLString.contains("rss") && !feedURLString.contains("feed") && !feedURLString.contains(".xml") {
+            return "The podcast feed URL appears to be invalid. This podcast may not have a public RSS feed."
+        } else {
+            // Provide more specific network-related error messages
+            return "Unable to load episodes. This could be due to:\n\n• Temporary network connectivity issues\n• The podcast feed server is temporarily unavailable\n• The podcast may have moved to a different platform\n\nPlease try again in a few moments."
         }
     }
     
@@ -636,7 +843,7 @@ class EpisodeCacheService: ObservableObject {
         cacheQueue.async(flags: .barrier) { [weak self] in
             guard let self = self else { return }
             
-            let initialCacheCount = self.episodeCache.count
+            let _ = self.episodeCache.count
             var populatedCount = 0
             
             for (podcastID, episodes) in episodesByPodcast {
@@ -667,6 +874,336 @@ class EpisodeCacheService: ObservableObject {
                 }
             }
         }
+    }
+
+    /// Manually retry fetching episodes for a podcast (useful for error recovery)
+    /// - Parameters:
+    ///   - podcast: The podcast to retry fetching for
+    ///   - completion: Completion handler with episodes and optional error message
+    func retryFetchingEpisodes(for podcast: Podcast, completion: @escaping ([Episode], String?) -> Void) {
+        let podcastID = podcast.id
+        
+        // Clear any existing error state
+        Task { @MainActor in
+            self.loadingErrors.removeValue(forKey: podcastID)
+            self.isLoadingEpisodes[podcastID] = true
+        }
+        
+        #if canImport(OSLog)
+        logger.info("Manually retrying episode fetch for \(podcast.title, privacy: .public)")
+        #else
+        print("🔄 Manually retrying episode fetch for \(podcast.title)")
+        #endif
+        
+        // Force a fresh fetch (bypass cache)
+        fetchAndCacheEpisodes(for: podcast) { episodes, error in
+            Task { @MainActor in
+                self.isLoadingEpisodes[podcastID] = false
+                
+                if let error = error {
+                    self.loadingErrors[podcastID] = error
+                }
+                
+                completion(episodes, error)
+            }
+        }
+    }
+    
+    /// Check if a podcast has a loading error
+    /// - Parameter podcastID: The podcast ID to check
+    /// - Returns: The error message if there is one, nil otherwise
+    func getLoadingError(for podcastID: UUID) -> String? {
+        return loadingErrors[podcastID]
+    }
+    
+    /// Clear loading error for a specific podcast
+    /// - Parameter podcastID: The podcast ID to clear error for
+    func clearLoadingError(for podcastID: UUID) {
+        Task { @MainActor in
+            loadingErrors.removeValue(forKey: podcastID)
+        }
+    }
+
+    /// Load episodes for a podcast with progressive UI updates using thread-safe architecture
+    /// - Parameters:
+    ///   - podcast: The podcast to load episodes for
+    ///   - forceRefresh: Whether to bypass cache and fetch fresh data
+    ///   - progressCallback: Called for each episode as it's parsed (on main queue)
+    ///   - completion: Called when loading is complete with all episodes
+    func loadEpisodesProgressively(for podcast: Podcast, 
+                                  forceRefresh: Bool = false,
+                                  progressCallback: @escaping (Episode) -> Void,
+                                  completion: @escaping ([Episode]) -> Void) {
+        let podcastID = podcast.id
+        let operationId = "load-episodes-progressive-\(podcastID)"
+        
+        // Ensure cache is loaded before proceeding
+        if !self.isCacheLoaded {
+            self.loadCacheFromDisk()
+        }
+        
+        // Proceed with progressive loading
+        Task { [weak self] in
+            guard let self = self else { 
+                completion([])
+                return 
+            }
+            
+            // Use DataFetchCoordinator for thread-safe operation
+            DataFetchCoordinator.shared.startFetch(
+                id: operationId,
+                operation: {
+                    // This runs on background thread
+                    return try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<[Episode], Error>) in
+                        
+                        // Set up a timeout to prevent continuation leaks
+                        let timeoutTask = Task {
+                            try await Task.sleep(nanoseconds: 60_000_000_000) // 60 seconds
+                            Task { @MainActor in
+                                self.isLoadingEpisodes[podcastID] = false
+                            }
+                            continuation.resume(throwing: NSError(domain: "EpisodeCacheService", code: 408, userInfo: [
+                                NSLocalizedDescriptionKey: "Episode loading timed out",
+                                NSLocalizedRecoverySuggestionErrorKey: "The podcast feed took too long to load. Please try again."
+                            ]))
+                        }
+                        
+                        // Check if already loading (thread-safe)
+                        Task { @MainActor in
+                            if self.isLoadingEpisodes[podcastID] == true {
+                                #if canImport(OSLog)
+                                self.logger.info("Already loading episodes for \(podcast.title, privacy: .public), skipping duplicate request")
+                                #else
+                                print("⏳ Already loading episodes for \(podcast.title), skipping duplicate request")
+                                #endif
+                                timeoutTask.cancel()
+                                continuation.resume(returning: [])
+                                return
+                            }
+                            
+                            self.isLoadingEpisodes[podcastID] = true
+                        }
+                        
+                        // Check cache first (unless force refresh)
+                        if !forceRefresh {
+                            self.getCachedEpisodesAsync(for: podcastID) { cachedEpisodes in
+                                if let episodes = cachedEpisodes {
+                                    #if canImport(OSLog)
+                                    self.logger.info("Using cached episodes for \(podcast.title, privacy: .public)")
+                                    #else
+                                    print("💾 Using cached episodes for \(podcast.title)")
+                                    #endif
+                                    
+                                    Task { @MainActor in
+                                        self.isLoadingEpisodes[podcastID] = false
+                                        
+                                        // Send cached episodes progressively for immediate UI update
+                                        for episode in episodes {
+                                            progressCallback(episode)
+                                            
+                                            // Notify UIUpdateService on main actor
+                                            Task { @MainActor in
+                                                UIUpdateService.shared.handleProgressiveEpisodeUpdate(
+                                                    podcastId: podcastID,
+                                                    episode: episode
+                                                )
+                                            }
+                                        }
+                                        
+                                        timeoutTask.cancel()
+                                        continuation.resume(returning: episodes)
+                                    }
+                                } else {
+                                    // No cache available - proceed with progressive network fetch
+                                    self.performThreadSafeProgressiveFetch(
+                                        for: podcast,
+                                        forceRefresh: forceRefresh,
+                                        progressCallback: progressCallback,
+                                        continuation: continuation,
+                                        timeoutTask: timeoutTask
+                                    )
+                                }
+                            }
+                        } else {
+                            // Force refresh - skip cache and fetch progressively from network
+                            self.performThreadSafeProgressiveFetch(
+                                for: podcast,
+                                forceRefresh: forceRefresh,
+                                progressCallback: progressCallback,
+                                continuation: continuation,
+                                timeoutTask: timeoutTask
+                            )
+                        }
+                    }
+                },
+                onComplete: { result in
+                    // This runs on main thread
+                    switch result {
+                    case .success(let episodes):
+                        completion(episodes)
+                        
+                    case .failure(let error):
+                        #if canImport(OSLog)
+                        self.logger.error("Progressive episode loading failed for \(podcast.title, privacy: .public): \(error.localizedDescription, privacy: .public)")
+                        #else
+                        print("❌ Progressive episode loading failed for \(podcast.title): \(error.localizedDescription)")
+                        #endif
+                        
+                        Task { @MainActor in
+                            self.isLoadingEpisodes[podcastID] = false
+                            self.loadingErrors[podcastID] = error.localizedDescription
+                        }
+                        
+                        completion([])
+                    }
+                }
+            )
+        }
+    }
+    
+    /// Perform thread-safe progressive fetch using the new architecture
+    private func performThreadSafeProgressiveFetch(
+        for podcast: Podcast,
+        forceRefresh: Bool,
+        progressCallback: @escaping (Episode) -> Void,
+        continuation: CheckedContinuation<[Episode], Error>,
+        timeoutTask: Task<Void, Error>
+    ) {
+        let podcastID = podcast.id
+        
+        // Check network connectivity
+        if !NetworkMonitor.shared.isConnected {
+            getCachedEpisodesAsync(for: podcastID, ignoreExpiry: true) { offlineCachedEpisodes in
+                if let episodes = offlineCachedEpisodes {
+                    #if canImport(OSLog)
+                    self.logger.info("Offline - using cached episodes for \(podcast.title, privacy: .public)")
+                    #else
+                    print("📡 Offline - using cached episodes for \(podcast.title)")
+                    #endif
+                    
+                    Task { @MainActor in
+                        self.isLoadingEpisodes[podcastID] = false
+                        self.loadingErrors[podcastID] = "You appear to be offline. Showing cached episodes."
+                        
+                        // Send cached episodes progressively
+                        for episode in episodes {
+                            progressCallback(episode)
+                            
+                            // Notify UIUpdateService on main actor
+                            Task { @MainActor in
+                                UIUpdateService.shared.handleProgressiveEpisodeUpdate(
+                                    podcastId: podcastID,
+                                    episode: episode
+                                )
+                            }
+                        }
+                        
+                        timeoutTask.cancel()
+                        continuation.resume(returning: episodes)
+                    }
+                } else {
+                    Task { @MainActor in
+                        self.isLoadingEpisodes[podcastID] = false
+                        self.loadingErrors[podcastID] = "You appear to be offline."
+                    }
+                    timeoutTask.cancel()
+                    continuation.resume(throwing: NetworkError.offline)
+                }
+            }
+            return
+        }
+        
+        // Fetch fresh data progressively using thread-safe service
+        #if canImport(OSLog)
+        logger.info("Fetching fresh episodes progressively for \(podcast.title, privacy: .public) (force: \(forceRefresh))")
+        #else
+        print("🌐 Fetching fresh episodes progressively for \(podcast.title) (force: \(forceRefresh))")
+        #endif
+        
+        var allEpisodes: [Episode] = []
+        
+        PodcastService.shared.fetchEpisodesProgressively(
+            for: podcast,
+            episodeCallback: { episode in
+                // This is called on main thread
+                allEpisodes.append(episode)
+                
+                // Update UI immediately
+                progressCallback(episode)
+                
+                // Cache episodes in batches for better performance
+                if allEpisodes.count % 10 == 0 {
+                    Task { [weak self] in
+                        await self?.cacheEpisodesAsync(allEpisodes, for: podcast.id)
+                    }
+                }
+            },
+            metadataCallback: { metadata in
+                // This is called on main thread
+                #if canImport(OSLog)
+                self.logger.info("Received metadata for \(podcast.title, privacy: .public): \(metadata.title ?? "Unknown", privacy: .public)")
+                #else
+                print("📊 Received metadata for \(podcast.title): \(metadata.title ?? "Unknown")")
+                #endif
+            },
+            completion: { episodes, error in
+                // This is called on main thread
+                Task { @MainActor in
+                    self.isLoadingEpisodes[podcastID] = false
+                    
+                    if let error = error {
+                        let errorMessage = self.generateNetworkErrorMessage(for: error, podcast: podcast)
+                        self.loadingErrors[podcastID] = errorMessage
+                        
+                        // If we have stale cache data, return it as fallback
+                        self.getCachedEpisodesAsync(for: podcastID, ignoreExpiry: true) { staleEpisodes in
+                            if let episodes = staleEpisodes {
+                                #if canImport(OSLog)
+                                self.logger.warning("Using stale cache as fallback for \(podcast.title, privacy: .public)")
+                                #else
+                                print("⚠️ Using stale cache as fallback for \(podcast.title)")
+                                #endif
+                                
+                                // Send stale episodes progressively
+                                for episode in episodes {
+                                    progressCallback(episode)
+                                    
+                                    // Notify UIUpdateService on main actor
+                                    Task { @MainActor in
+                                        UIUpdateService.shared.handleProgressiveEpisodeUpdate(
+                                            podcastId: podcastID,
+                                            episode: episode
+                                        )
+                                    }
+                                }
+                                
+                                timeoutTask.cancel()
+                                continuation.resume(returning: episodes)
+                            } else {
+                                timeoutTask.cancel()
+                                continuation.resume(throwing: error)
+                            }
+                        }
+                    } else {
+                        self.loadingErrors[podcastID] = nil
+                        
+                        // Final cache of all episodes
+                        Task { [weak self] in
+                            await self?.cacheEpisodesAsync(episodes, for: podcast.id)
+                            
+                            #if canImport(OSLog)
+                            self?.logger.info("Progressive fetch completed and cached \(episodes.count) episodes for \(podcast.title, privacy: .public)")
+                            #else
+                            print("💾 Progressive fetch completed and cached \(episodes.count) episodes for \(podcast.title)")
+                            #endif
+                        }
+                        
+                        timeoutTask.cancel()
+                        continuation.resume(returning: episodes)
+                    }
+                }
+            }
+        )
     }
 }
 

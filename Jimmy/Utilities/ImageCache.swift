@@ -102,68 +102,90 @@ public class ImageCache: ObservableObject {
     /// Load image with caching
     /// Returns cached image immediately if available, otherwise downloads and caches
     public func loadImage(from url: URL, completion: @escaping (UIImage?) -> Void) {
-        let key = url.absoluteString as NSString
+        // Validate URL first
+        guard isValidImageURL(url) else {
+            DispatchQueue.main.async {
+                completion(nil)
+            }
+            return
+        }
+        
+        let cacheKey = generateCacheKey(for: url)
+        let key = cacheKey as NSString
         
         // 1. Check memory cache first
         if let cachedImage = memoryCache.object(forKey: key) {
-            completion(cachedImage.image)
+            DispatchQueue.main.async {
+                completion(cachedImage.image)
+            }
             return
         }
         
         // 2. Check disk cache
-        let fileURL = cacheDirectory.appendingPathComponent(url.lastPathComponent)
+        let fileURL = cacheDirectory.appendingPathComponent(cacheKey + ".jpg")
         if let image = UIImage(contentsOfFile: fileURL.path) {
-            self.memoryCache.setObject(CachedImage(image: image, url: url), forKey: key)
-            completion(image)
+            let cachedImage = CachedImage(image: image, url: url)
+            self.memoryCache.setObject(cachedImage, forKey: key)
+            
+            // Track memory cache key
+            memoryCacheKeysLock.lock()
+            memoryCacheKeys.insert(cacheKey)
+            memoryCacheKeysLock.unlock()
+            
+            DispatchQueue.main.async {
+                completion(image)
+            }
             return
         }
         
-        // 3. Fetch from network
-        URLSession.shared.dataTaskPublisher(for: url)
-            .map { UIImage(data: $0.data) }
-            .replaceError(with: nil)
-            .handleEvents(receiveOutput: { [weak self] image in
-                guard let image = image else { return }
-                self?.cache(image: image, forKey: key, fileURL: fileURL)
-            })
-            .receive(on: DispatchQueue.main)
-            .sink(receiveValue: completion)
-            .store(in: &cancellables)
+        // 3. Check if download is already in progress
+        downloadsLock.lock()
+        if let existingOperation = ongoingDownloads[url] {
+            existingOperation.addCompletion(completion)
+            downloadsLock.unlock()
+            return
+        }
+        
+        // 4. Start new download
+        let downloadOperation = DownloadOperation(url: url)
+        downloadOperation.addCompletion(completion)
+        ongoingDownloads[url] = downloadOperation
+        downloadsLock.unlock()
+        
+        downloadOperation.completionBlock = { [weak self] in
+            self?.downloadsLock.lock()
+            self?.ongoingDownloads.removeValue(forKey: url)
+            self?.downloadsLock.unlock()
+            
+            if let image = downloadOperation.downloadedImage {
+                self?.cache(image: image, forKey: key, fileURL: fileURL, originalURL: url)
+            }
+        }
+        
+        operationQueue.addOperation(downloadOperation)
     }
     
     /// Preload images for URLs (useful for prefetching)
     public func preloadImages(urls: Set<URL>) {
         guard !urls.isEmpty else { return }
         
-        print("🖼️ [ImageCache] Preloading \(urls.count) images...")
-        let qos: DispatchQoS.QoSClass = .utility
+        let validUrls = urls.filter { isValidImageURL($0) }
+        guard !validUrls.isEmpty else { return }
         
-        DispatchQueue.global(qos: qos).async {
+        DispatchQueue.global(qos: .utility).async {
             let group = DispatchGroup()
             
-            for url in urls {
+            for url in validUrls {
                 // Don't re-download if it's already in the cache
                 guard !self.isImageCached(url: url) else { continue }
                 
                 group.enter()
-                URLSession.shared.dataTask(with: url) { [weak self] data, _, _ in
-                    guard let self = self,
-                          let data = data,
-                          let image = UIImage(data: data) else {
-                        group.leave()
-                        return
-                    }
-                    
-                    let key = url.absoluteString as NSString
-                    let fileURL = self.cacheDirectory.appendingPathComponent(url.lastPathComponent)
-                    self.cache(image: image, forKey: key, fileURL: fileURL)
-                    
+                self.loadImage(from: url) { _ in
                     group.leave()
-                }.resume()
+                }
             }
             
             group.wait()
-            print("✅ [ImageCache] Preloading complete.")
         }
     }
     
@@ -202,7 +224,7 @@ public class ImageCache: ObservableObject {
                 }
             }
         } catch {
-            print("❌ Failed to calculate disk cache size: \(error)")
+            // Silent failure for cache stats
         }
         
         return (memoryCount, diskSize / (1024 * 1024))
@@ -210,12 +232,16 @@ public class ImageCache: ObservableObject {
     
     /// Check if image is cached (in memory or disk)
     public func isImageCached(url: URL) -> Bool {
-        let key = url.absoluteString as NSString
+        guard isValidImageURL(url) else { return false }
+        
+        let cacheKey = generateCacheKey(for: url)
+        let key = cacheKey as NSString
+        
         if memoryCache.object(forKey: key) != nil {
             return true
         }
         
-        let fileURL = cacheDirectory.appendingPathComponent(url.lastPathComponent)
+        let fileURL = cacheDirectory.appendingPathComponent(cacheKey + ".jpg")
         return fileManager.fileExists(atPath: fileURL.path)
     }
     
@@ -226,14 +252,62 @@ public class ImageCache: ObservableObject {
     
     // MARK: - Private Methods
     
-    private func cache(image: UIImage, forKey key: NSString, fileURL: URL) {
+    private func isValidImageURL(_ url: URL) -> Bool {
+        // Check if URL is valid and points to an image
+        let urlString = url.absoluteString.lowercased()
+        
+        // Must be HTTP/HTTPS
+        guard url.scheme == "http" || url.scheme == "https" else { return false }
+        
+        // Must have a host
+        guard url.host != nil else { return false }
+        
+        // Check for common image extensions or iTunes artwork patterns
+        let imageExtensions = [".jpg", ".jpeg", ".png", ".webp", ".gif"]
+        let hasImageExtension = imageExtensions.contains { urlString.contains($0) }
+        let isITunesArtwork = urlString.contains("is1-ssl.mzstatic.com") || 
+                             urlString.contains("is2-ssl.mzstatic.com") ||
+                             urlString.contains("is3-ssl.mzstatic.com") ||
+                             urlString.contains("is4-ssl.mzstatic.com") ||
+                             urlString.contains("is5-ssl.mzstatic.com")
+        
+        return hasImageExtension || isITunesArtwork
+    }
+    
+    private func generateCacheKey(for url: URL) -> String {
+        // Create a unique cache key using SHA256 hash of the URL
+        let urlString = url.absoluteString
+        let data = Data(urlString.utf8)
+        let hash = SHA256.hash(data: data)
+        return hash.compactMap { String(format: "%02x", $0) }.joined()
+    }
+    
+    private func cache(image: UIImage, forKey key: NSString, fileURL: URL, originalURL: URL) {
         // Cache in memory
-        self.memoryCache.setObject(CachedImage(image: image, url: fileURL), forKey: key)
+        let cachedImage = CachedImage(image: image, url: originalURL)
+        self.memoryCache.setObject(cachedImage, forKey: key)
+        
+        // Track memory cache key
+        memoryCacheKeysLock.lock()
+        memoryCacheKeys.insert(key as String)
+        memoryCacheKeysLock.unlock()
         
         // Cache on disk in background
-        DispatchQueue.global(qos: .background).async {
+        diskCacheQueue.async {
             if let data = image.jpegData(compressionQuality: 0.8) {
                 try? data.write(to: fileURL)
+                
+                // Save metadata
+                let metadata = DiskCacheMetadata(
+                    url: originalURL.absoluteString,
+                    timestamp: Date().timeIntervalSince1970,
+                    filename: fileURL.lastPathComponent
+                )
+                
+                if let metadataData = try? JSONEncoder().encode(metadata) {
+                    let metadataURL = fileURL.appendingPathExtension("meta")
+                    try? metadataData.write(to: metadataURL)
+                }
             }
         }
     }
@@ -264,8 +338,6 @@ public class ImageCache: ObservableObject {
             memoryCacheKeys.remove(key)
         }
         memoryCacheKeysLock.unlock()
-        
-        print("🧹 Cleared \(keysToRemove.count) images from memory cache due to memory warning")
     }
     
     private func cleanupExpiredEntries() {
@@ -295,12 +367,8 @@ public class ImageCache: ObservableObject {
                     }
                 }
                 
-                if removedCount > 0 {
-                    print("🧹 Cleaned up \(removedCount) expired image cache entries")
-                }
-                
             } catch {
-                print("❌ Failed to cleanup expired cache entries: \(error)")
+                // Silent failure for cleanup
             }
         }
     }
@@ -363,19 +431,8 @@ private class DownloadOperation: Operation, @unchecked Sendable {
         completionsLock.unlock()
     }
     
-    func notifyCompletions(with image: UIImage?) {
-        completionsLock.lock()
-        let allCompletions = completions
-        completions.removeAll()
-        completionsLock.unlock()
-        
-        for completion in allCompletions {
-            completion(image)
-        }
-    }
-    
     override func start() {
-        if isCancelled {
+        guard !isCancelled else {
             isFinished = true
             return
         }
@@ -384,7 +441,7 @@ private class DownloadOperation: Operation, @unchecked Sendable {
         
         var request = URLRequest(url: url)
         request.timeoutInterval = ImageCache.CacheConfig.downloadTimeout
-        request.cachePolicy = .reloadIgnoringLocalCacheData
+        request.setValue("image/*", forHTTPHeaderField: "Accept")
         
         task = URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
             guard let self = self else { return }
@@ -392,23 +449,26 @@ private class DownloadOperation: Operation, @unchecked Sendable {
             defer {
                 self.isExecuting = false
                 self.isFinished = true
+                
+                // Call all completions
+                self.completionsLock.lock()
+                let allCompletions = self.completions
+                self.completionsLock.unlock()
+                
+                DispatchQueue.main.async {
+                    for completion in allCompletions {
+                        completion(self.downloadedImage)
+                    }
+                }
             }
             
-            if self.isCancelled {
+            guard !self.isCancelled,
+                  let data = data,
+                  let image = UIImage(data: data) else {
                 return
             }
             
-            if let error = error {
-                print("❌ Image download failed for \(self.url): \(error.localizedDescription)")
-                return
-            }
-            
-            guard let data = data, let image = UIImage(data: data) else {
-                print("❌ Invalid image data from \(self.url)")
-                return
-            }
-            
-            self.downloadedImage = self.optimizeImageForCache(image)
+            self.downloadedImage = image
         }
         
         task?.resume()
@@ -417,25 +477,5 @@ private class DownloadOperation: Operation, @unchecked Sendable {
     override func cancel() {
         super.cancel()
         task?.cancel()
-    }
-    
-    private func optimizeImageForCache(_ image: UIImage) -> UIImage {
-        let maxDimension: CGFloat = 600 // Max size for podcast artwork
-        let currentMaxDimension = max(image.size.width, image.size.height)
-        
-        guard currentMaxDimension > maxDimension else { return image }
-        
-        let scaleFactor = maxDimension / currentMaxDimension
-        let newSize = CGSize(
-            width: image.size.width * scaleFactor,
-            height: image.size.height * scaleFactor
-        )
-        
-        UIGraphicsBeginImageContextWithOptions(newSize, false, 0.0)
-        image.draw(in: CGRect(origin: .zero, size: newSize))
-        let optimizedImage = UIGraphicsGetImageFromCurrentImageContext() ?? image
-        UIGraphicsEndImageContext()
-        
-        return optimizedImage
     }
 }

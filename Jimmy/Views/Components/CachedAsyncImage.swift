@@ -218,6 +218,11 @@ struct PodcastArtworkView: View {
     let size: CGFloat
     let cornerRadius: CGFloat
     
+    @State private var retryCount = 0
+    @State private var hasFailedToLoad = false
+    
+    private let maxRetries = 2
+    
     init(
         artworkURL: URL?,
         size: CGFloat = 60,
@@ -229,28 +234,46 @@ struct PodcastArtworkView: View {
     }
     
     var body: some View {
-        CachedAsyncImage(url: artworkURL) { image in
-            image
-                .resizable()
-                .aspectRatio(contentMode: .fill)
-        } placeholder: {
-            RoundedRectangle(cornerRadius: cornerRadius)
-                .fill(LinearGradient(
-                    colors: [
-                        Color.accentColor.opacity(0.3),
-                        Color.accentColor.opacity(0.1)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                ))
-                .overlay(
-                    Image(systemName: "waveform.circle.fill")
-                        .font(.system(size: size * 0.3))
-                        .foregroundColor(.white)
-                )
+        ZStack {
+            Rectangle()
+                .fill(Color(.systemBackground))
+                .frame(width: size, height: size)
+            
+            CachedAsyncImage(url: artworkURL) { image in
+                image
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: size, height: size)
+                    .clipped()
+            } placeholder: {
+                Rectangle()
+                    .fill(Color(.systemGray5))
+                    .overlay(
+                        Image(systemName: "photo")
+                            .font(.system(size: size / 4))
+                            .foregroundColor(.secondary)
+                    )
+            }
         }
         .frame(width: size, height: size)
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
+        .overlay(
+            RoundedRectangle(cornerRadius: cornerRadius)
+                .stroke(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(0.3),
+                            Color.clear,
+                            Color.black.opacity(0.1)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 0.5
+                )
+        )
+        .shadow(color: .black.opacity(0.2), radius: 8, x: 0, y: 4)
+        .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
     }
 }
 
@@ -358,4 +381,87 @@ struct ImageGalleryView: View {
         let urlsToPreload = Set(Array(urls[startIndex...endIndex]))
         ImageCache.shared.preloadImages(urls: urlsToPreload)
     }
+}
+
+// MARK: - Unified Empty State Component
+
+/// Unified empty state view for consistent styling across Library, Queue, and Now Playing views
+struct UnifiedEmptyStateView: View {
+    let icon: String
+    let title: String
+    let subtitle: String
+    let iconSize: CGFloat
+    let spacing: CGFloat
+    
+    init(
+        icon: String,
+        title: String,
+        subtitle: String,
+        iconSize: CGFloat = 64,
+        spacing: CGFloat = 20
+    ) {
+        self.icon = icon
+        self.title = title
+        self.subtitle = subtitle
+        self.iconSize = iconSize
+        self.spacing = spacing
+    }
+    
+    var body: some View {
+        VStack(spacing: spacing) {
+            Spacer()
+            
+            VStack(spacing: 16) {
+                // Icon
+                Image(systemName: icon)
+                    .font(.system(size: iconSize, weight: .thin))
+                    .foregroundStyle(Color(.systemGray3))
+                
+                // Text content
+                VStack(spacing: 8) {
+                    Text(title)
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.primary)
+                    
+                    Text(subtitle)
+                        .font(.body)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                        .lineLimit(3)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .padding(.horizontal, 40)
+            
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+#Preview("Library Empty State") {
+    UnifiedEmptyStateView(
+        icon: "rectangle.grid.3x2",
+        title: "No Podcasts Yet",
+        subtitle: "Your subscribed podcasts will appear here. Go to Discover to find and subscribe to podcasts."
+    )
+}
+
+#Preview("Queue Empty State") {
+    UnifiedEmptyStateView(
+        icon: "list.bullet",
+        title: "Your queue is empty",
+        subtitle: "Add episodes from your podcasts to build your listening queue"
+    )
+}
+
+#Preview("Now Playing Empty State") {
+    UnifiedEmptyStateView(
+        icon: "music.note.house",
+        title: "No Episode Playing",
+        subtitle: "Choose an episode from your queue or library to start listening",
+        iconSize: 72,
+        spacing: 24
+    )
 } 

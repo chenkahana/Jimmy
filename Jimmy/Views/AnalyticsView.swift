@@ -75,6 +75,7 @@ struct Analytics {
 }
 
 class AnalyticsHelper {
+    @MainActor
     static func getAnalytics() -> Analytics {
         let podcasts = PodcastService.shared.loadPodcasts()
         let queue = QueueViewModel.shared.queue

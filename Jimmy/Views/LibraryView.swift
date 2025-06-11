@@ -4,18 +4,39 @@ struct LibraryView: View {
     @ObservedObject private var libraryController = LibraryController.shared
     @ObservedObject private var episodeController = UnifiedEpisodeController.shared
     @ObservedObject private var audioPlayer = AudioPlayerService.shared
+    @EnvironmentObject private var uiUpdateService: UIUpdateService
+    
+    @State private var selectedTab: LibraryTab = .shows
+    @State private var isRefreshing: Bool = false
+    
+    enum LibraryTab: String, CaseIterable {
+        case shows = "Shows"
+        case episodes = "Episodes"
+    }
     
     var body: some View {
         NavigationView {
             VStack(spacing: 0) {
-                // View Type Picker
-                viewTypePicker
+                // Enhanced Segmented Control
+                enhancedSegmentedControl
                 
                 // Search Bar
                 searchBar
                 
-                // Main Content
-                mainContent
+                // Content
+                if libraryController.isLoading || isRefreshing {
+                    Spacer()
+                    ProgressView("Loading...")
+                        .scaleEffect(1.2)
+                    Spacer()
+                } else {
+                    switch selectedTab {
+                    case .shows:
+                        showsContent
+                    case .episodes:
+                        episodesContent
+                    }
+                }
             }
             .navigationTitle("Library")
             .navigationBarTitleDisplayMode(.large)
@@ -24,193 +45,233 @@ struct LibraryView: View {
                     Button("Edit") {
                         libraryController.toggleEditMode()
                     }
+                    .foregroundColor(.accentColor)
                 }
             }
         }
         .refreshable {
-            libraryController.refreshData()
+            await performRefresh()
         }
         .onAppear {
-            // Debug: Check what data we actually have
-            print("📱 LibraryView.onAppear - Podcasts: \(libraryController.subscribedPodcasts.count), Filtered: \(libraryController.filteredPodcasts.count)")
-            print("📱 LibraryView.onAppear - Loading: \(libraryController.isLoading), Error: \(libraryController.errorMessage ?? "none")")
+            libraryController.loadData()
         }
     }
     
-    // MARK: - View Components
+    // MARK: - Enhanced UI Components
     
-    private var viewTypePicker: some View {
-        Picker("View Type", selection: $libraryController.selectedViewType) {
-            ForEach(LibraryController.LibraryViewType.allCases, id: \.self) { viewType in
-                Text(viewType.displayName).tag(viewType)
+    private var enhancedSegmentedControl: some View {
+        HStack(spacing: 0) {
+            ForEach(LibraryTab.allCases, id: \.self) { tab in
+                Button(action: {
+                    withAnimation(.easeInOut(duration: 0.3)) {
+                        selectedTab = tab
+                    }
+                }) {
+                    Text(tab.rawValue)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(selectedTab == tab ? .white : .primary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(selectedTab == tab ? Color.accentColor : Color.clear)
+                        )
+                }
+                .buttonStyle(PlainButtonStyle())
             }
         }
-        .pickerStyle(SegmentedPickerStyle())
-        .padding(.horizontal)
+        .padding(4)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color(.secondarySystemBackground))
+        )
+        .padding(.horizontal, 16)
+        .padding(.bottom, 16)
     }
     
     private var searchBar: some View {
-        HStack {
-            Image(systemName: "magnifyingglass")
-                .foregroundColor(.secondary)
-            
-            TextField("Search podcasts and episodes", text: $libraryController.searchText)
-                .textFieldStyle(RoundedBorderTextFieldStyle())
-            
-            if !libraryController.searchText.isEmpty {
-                Button("Clear") {
-                    libraryController.clearSearch()
+        HStack(spacing: 12) {
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundColor(.secondary)
+                    .font(.system(size: 16))
+                
+                TextField(selectedTab == .shows ? "Search podcasts" : "Search episodes", text: $libraryController.searchText)
+                    .font(.system(size: 16))
+                
+                if !libraryController.searchText.isEmpty {
+                    Button("Clear") {
+                        libraryController.clearSearch()
+                    }
+                    .foregroundColor(.accentColor)
+                    .font(.system(size: 14, weight: .medium))
                 }
-                .foregroundColor(.blue)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .background(
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(Color(.tertiarySystemBackground))
+            )
+        }
+        .padding(.horizontal, 16)
+        .padding(.bottom, 16)
+    }
+    
+    // MARK: - Content Views
+    
+    @ViewBuilder
+    private var showsContent: some View {
+        if libraryController.filteredPodcasts.isEmpty {
+            emptyShowsState
+        } else {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    // Section Header
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Subscribed Shows")
+                                .font(.title2.bold())
+                                .foregroundColor(.primary)
+                            
+                            Text("Sorted by latest update")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        Spacer()
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
+                    
+                    // Enhanced Grid
+                    LazyVGrid(columns: [
+                        GridItem(.flexible(), spacing: 16),
+                        GridItem(.flexible(), spacing: 16),
+                        GridItem(.flexible(), spacing: 16)
+                    ], spacing: 20) {
+                        ForEach(libraryController.filteredPodcasts.sorted { podcast1, podcast2 in
+                            let date1 = libraryController.getLatestEpisodeDate(for: podcast1) ?? Date.distantPast
+                            let date2 = libraryController.getLatestEpisodeDate(for: podcast2) ?? Date.distantPast
+                            return date1 > date2
+                        }, id: \.id) { podcast in
+                            NavigationLink(destination: PodcastDetailView(podcast: podcast)) {
+                                EnhancedPodcastCard(
+                                    podcast: podcast,
+                                    episodeCount: libraryController.getEpisodesCount(for: podcast),
+                                    unplayedCount: libraryController.getUnplayedEpisodesCount(for: podcast),
+                                    isEditMode: libraryController.isEditMode,
+                                    onDelete: {
+                                        libraryController.deletePodcast(podcast)
+                                    }
+                                )
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                            .disabled(libraryController.isEditMode)
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 100) // Space for mini player
+                }
             }
         }
-        .padding(.horizontal)
     }
     
     @ViewBuilder
-    private var mainContent: some View {
-        if libraryController.isLoading {
-            loadingView
-        } else if libraryController.filteredPodcasts.isEmpty && libraryController.selectedViewType != .episodes {
-            emptyStateView
+    private var episodesContent: some View {
+        if libraryController.filteredEpisodes.isEmpty {
+            emptyEpisodesState
         } else {
-            switch libraryController.selectedViewType {
-            case .shows:
-                podcastsView
-            case .grid:
-                podcastsGridView
-            case .episodes:
-                episodesView
+            List {
+                ForEach(libraryController.filteredEpisodes.sorted { episode1, episode2 in
+                    let date1 = episode1.publishedDate ?? Date.distantPast
+                    let date2 = episode2.publishedDate ?? Date.distantPast
+                    return date1 > date2
+                }, id: \.id) { episode in
+                    NavigationLink(destination: EpisodeDetailView(
+                        episode: episode,
+                        podcast: libraryController.getPodcast(for: episode) ?? Podcast(title: "Unknown", author: "", description: "", feedURL: URL(string: "https://example.com")!, artworkURL: nil)
+                    )) {
+                        EnhancedEpisodeRow(
+                            episode: episode,
+                            podcast: libraryController.getPodcast(for: episode)
+                        )
+                    }
+                }
             }
+            .listStyle(PlainListStyle())
         }
     }
     
-    private var loadingView: some View {
-        VStack(spacing: 16) {
-            ProgressView()
-                .scaleEffect(1.2)
-            Text("Loading Library...")
-                .font(.headline)
-                .foregroundColor(.secondary)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-    
-    private var emptyStateView: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "mic.circle")
+    private var emptyShowsState: some View {
+        VStack(spacing: 20) {
+            Spacer()
+            
+            Image(systemName: "books.vertical")
                 .font(.system(size: 60))
-                .foregroundColor(.secondary)
-            
-            Text("No Podcasts Yet")
-                .font(.title2)
-                .fontWeight(.semibold)
-            
-            Text("Your subscribed podcasts will appear here. Go to Discover to find and subscribe to podcasts.")
-                .font(.body)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 32)
+                .foregroundColor(.secondary.opacity(0.6))
             
             VStack(spacing: 8) {
-                Text("Debug Info:")
-                    .font(.caption)
+                Text("No Podcasts Yet")
+                    .font(.title2.bold())
+                    .foregroundColor(.primary)
+                
+                Text("Your subscribed podcasts will appear here.\nGo to Discover to find and subscribe to podcasts.")
+                    .font(.subheadline)
                     .foregroundColor(.secondary)
-                Text("Subscribed: \(libraryController.subscribedPodcasts.count)")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                Text("Filtered: \(libraryController.filteredPodcasts.count)")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                Text("Loading: \(libraryController.isLoading ? "Yes" : "No")")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(2)
             }
-            .padding(.top, 20)
+            
+            Spacer()
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 40)
     }
     
-    private var podcastsView: some View {
-        ScrollView {
-            LazyVStack(spacing: 12) {
-                ForEach(libraryController.filteredPodcasts, id: \.id) { podcast in
-                    NavigationLink(destination: PodcastDetailView(podcast: podcast)) {
-                        PodcastRowView(
-                            podcast: podcast,
-                            episodeCount: libraryController.getEpisodesCount(for: podcast),
-                            unplayedCount: libraryController.getUnplayedEpisodesCount(for: podcast),
-                            isEditMode: libraryController.isEditMode,
-                            onDelete: {
-                                libraryController.deletePodcast(podcast)
-                            }
-                        )
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                    .disabled(libraryController.isEditMode)
-                }
+    private var emptyEpisodesState: some View {
+        VStack(spacing: 20) {
+            Spacer()
+            
+            Image(systemName: "list.bullet")
+                .font(.system(size: 60))
+                .foregroundColor(.secondary.opacity(0.6))
+            
+            VStack(spacing: 8) {
+                Text("No Episodes Yet")
+                    .font(.title2.bold())
+                    .foregroundColor(.primary)
+                
+                Text("Episodes from your subscribed podcasts will appear here.")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
             }
-            .padding(.horizontal)
+            
+            Spacer()
         }
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 40)
     }
     
-    private var podcastsGridView: some View {
-        ScrollView {
-            LazyVGrid(columns: [
-                GridItem(.flexible(), spacing: 8),
-                GridItem(.flexible(), spacing: 8),
-                GridItem(.flexible(), spacing: 8)
-            ], spacing: 16) {
-                ForEach(libraryController.filteredPodcasts, id: \.id) { podcast in
-                    NavigationLink(destination: PodcastDetailView(podcast: podcast)) {
-                        PodcastGridItemView(
-                            podcast: podcast,
-                            episodeCount: libraryController.getEpisodesCount(for: podcast),
-                            unplayedCount: libraryController.getUnplayedEpisodesCount(for: podcast),
-                            isEditMode: libraryController.isEditMode,
-                            onDelete: {
-                                libraryController.deletePodcast(podcast)
-                            }
-                        )
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                    .disabled(libraryController.isEditMode)
-                }
-            }
-            .padding(.horizontal)
-        }
-    }
+    // MARK: - Helper Methods
     
-    private var episodesView: some View {
-        ScrollView {
-            LazyVStack(spacing: 8) {
-                ForEach(libraryController.filteredEpisodes, id: \.id) { episode in
-                    EpisodeRowView(
-                        episode: episode,
-                        podcast: libraryController.getPodcast(for: episode) ?? Podcast(title: "Unknown", author: "", description: "", feedURL: URL(string: "https://example.com")!, artworkURL: nil),
-                        isCurrentlyPlaying: audioPlayer.currentEpisode?.id == episode.id,
-                        onTap: {
-                            audioPlayer.loadEpisode(episode)
-                            audioPlayer.play()
-                        },
-                        onPlayNext: { episode in
-                            // Add to queue next
-                        },
-                        onMarkAsPlayed: { episode, played in
-                            episodeController.markEpisodeAsPlayed(episode, played: played)
-                        }
-                    )
-                }
-            }
-            .padding(.horizontal)
+    private func performRefresh() async {
+        await MainActor.run {
+            isRefreshing = true
+        }
+        
+        await libraryController.refreshAllData()
+        
+        await MainActor.run {
+            isRefreshing = false
         }
     }
-
 }
 
-// MARK: - Supporting Views
+// MARK: - Enhanced Components
 
-struct PodcastGridItemView: View {
+struct EnhancedPodcastCard: View {
     let podcast: Podcast
     let episodeCount: Int
     let unplayedCount: Int
@@ -218,34 +279,41 @@ struct PodcastGridItemView: View {
     let onDelete: () -> Void
     
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 12) {
             ZStack(alignment: .topTrailing) {
-                // Podcast Artwork (Square)
+                // Podcast Artwork
                 AsyncImage(url: podcast.artworkURL) { image in
                     image
                         .resizable()
                         .aspectRatio(1, contentMode: .fill)
                 } placeholder: {
                     Rectangle()
-                        .fill(Color.gray.opacity(0.3))
-                        .aspectRatio(1, contentMode: .fit)
+                        .fill(Color(.systemGray5))
                         .overlay(
-                            Image(systemName: "mic.circle.fill")
-                                .foregroundColor(.gray)
-                                .font(.title)
+                            VStack(spacing: 8) {
+                                Image(systemName: "waveform.circle.fill")
+                                    .font(.title2)
+                                    .foregroundColor(.secondary)
+                                Text("Podcast")
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                            }
                         )
                 }
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-                .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+                .clipShape(RoundedRectangle(cornerRadius: 16))
+                .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 4)
                 
                 // Edit Mode Delete Button
                 if isEditMode {
                     Button(action: onDelete) {
                         Image(systemName: "minus.circle.fill")
-                            .foregroundColor(.red)
-                            .background(Color.white)
-                            .clipShape(Circle())
                             .font(.title2)
+                            .foregroundColor(.red)
+                            .background(
+                                Circle()
+                                    .fill(Color.white)
+                                    .shadow(radius: 2)
+                            )
                     }
                     .offset(x: 8, y: -8)
                 }
@@ -253,110 +321,107 @@ struct PodcastGridItemView: View {
                 // Unplayed Count Badge
                 if unplayedCount > 0 && !isEditMode {
                     Text("\(unplayedCount)")
-                        .font(.caption2)
-                        .fontWeight(.bold)
+                        .font(.caption.bold())
                         .foregroundColor(.white)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(Color.blue)
-                        .clipShape(Capsule())
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(
+                            Capsule()
+                                .fill(Color.accentColor)
+                        )
                         .offset(x: 8, y: -8)
                 }
             }
             
             // Podcast Info
-            VStack(spacing: 2) {
+            VStack(spacing: 6) {
                 Text(podcast.title)
-                    .font(.caption)
-                    .fontWeight(.medium)
+                    .font(.system(size: 14, weight: .semibold))
                     .lineLimit(2)
                     .multilineTextAlignment(.center)
                     .foregroundColor(.primary)
+                    .frame(minHeight: 36)
                 
                 if episodeCount > 0 {
                     Text("\(episodeCount) episodes")
-                        .font(.caption2)
+                        .font(.caption)
                         .foregroundColor(.secondary)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 2)
+                        .background(
+                            Capsule()
+                                .fill(Color(.systemGray6))
+                        )
+                } else {
+                    Text("No episodes")
+                        .font(.caption)
+                        .foregroundColor(.secondary.opacity(0.7))
                 }
             }
         }
-        .contentShape(Rectangle())
+        .scaleEffect(isEditMode ? 0.95 : 1.0)
+        .animation(.easeInOut(duration: 0.2), value: isEditMode)
     }
 }
 
-struct PodcastRowView: View {
-    let podcast: Podcast
-    let episodeCount: Int
-    let unplayedCount: Int
-    let isEditMode: Bool
-    let onDelete: () -> Void
+struct EnhancedEpisodeRow: View {
+    let episode: Episode
+    let podcast: Podcast?
     
     var body: some View {
         HStack(spacing: 12) {
-            // Podcast Artwork
-            AsyncImage(url: podcast.artworkURL) { image in
+            // Episode/Podcast Artwork
+            AsyncImage(url: episode.artworkURL ?? podcast?.artworkURL) { image in
                 image
                     .resizable()
                     .aspectRatio(contentMode: .fill)
             } placeholder: {
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(Color.gray.opacity(0.3))
+                Rectangle()
+                    .fill(Color(.systemGray5))
                     .overlay(
-                        Image(systemName: "mic.circle.fill")
-                            .foregroundColor(.gray)
+                        Image(systemName: "play.circle")
+                            .font(.title3)
+                            .foregroundColor(.secondary)
                     )
             }
             .frame(width: 60, height: 60)
-            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .clipShape(RoundedRectangle(cornerRadius: 12))
             
-            // Podcast Info
-            VStack(alignment: .leading, spacing: 4) {
-                Text(podcast.title)
+            VStack(alignment: .leading, spacing: 6) {
+                Text(episode.title)
                     .font(.headline)
                     .lineLimit(2)
+                    .foregroundColor(.primary)
                 
-                if !podcast.author.isEmpty {
-                    Text(podcast.author)
+                if let podcast = podcast {
+                    Text(podcast.title)
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                         .lineLimit(1)
                 }
                 
-                HStack {
-                    Text("\(episodeCount) episodes")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    
-                    if unplayedCount > 0 {
-                        Text("• \(unplayedCount) new")
+                HStack(spacing: 8) {
+                    if let publishedDate = episode.publishedDate {
+                        Text(publishedDate, style: .date)
                             .font(.caption)
-                            .foregroundColor(.blue)
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    if episode.played {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.caption)
+                            .foregroundColor(.green)
+                    } else if episode.playbackPosition > 0 {
+                        Image(systemName: "clock.fill")
+                            .font(.caption)
+                            .foregroundColor(.orange)
                     }
                 }
             }
             
             Spacer()
-            
-            // Edit Mode Controls
-            if isEditMode {
-                Button(action: onDelete) {
-                    Image(systemName: "minus.circle.fill")
-                        .foregroundColor(.red)
-                        .font(.title2)
-                }
-            } else {
-                Image(systemName: "chevron.right")
-                    .foregroundColor(.secondary)
-                    .font(.caption)
-            }
         }
-        .padding(.vertical, 8)
-        .contentShape(Rectangle())
-        .onTapGesture {
-            if !isEditMode {
-                // Navigate to podcast detail
-            }
-        }
+        .padding(.vertical, 4)
     }
 }
 

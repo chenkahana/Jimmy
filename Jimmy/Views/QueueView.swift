@@ -14,23 +14,11 @@ struct QueueView: View {
         NavigationView {
             Group {
                 if viewModel.queue.isEmpty {
-                    VStack(spacing: 20) {
-                        Image(systemName: "list.bullet")
-                            .font(.system(size: 60))
-                            .foregroundColor(.gray.opacity(0.5))
-                        
-                        Text("Your queue is empty")
-                            .font(.title2)
-                            .fontWeight(.semibold)
-                            .foregroundColor(.primary)
-                        
-                        Text("Add episodes from your podcasts to build your listening queue")
-                            .font(.body)
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, 40)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    UnifiedEmptyStateView(
+                        icon: "list.bullet",
+                        title: "Your queue is empty",
+                        subtitle: "Add episodes from your podcasts to build your listening queue"
+                    )
                 } else {
                     List {
                         ForEach(viewModel.queue, id: \.id) { episode in
@@ -103,12 +91,13 @@ struct QueueView: View {
                 // WORLD-CLASS NAVIGATION: Instant display with immediate podcast loading for artwork
                 
                 // IMMEDIATE: Load podcasts immediately for artwork display
-                        PodcastService.shared.loadPodcastsAsync { podcasts in
-                            // CRITICAL FIX: Use asyncAfter to prevent \"Publishing changes from within view updates\"
-                            DispatchQueue.main.async {
-                                self.allPodcasts = podcasts
-                            }
-                        }
+                Task {
+                    let podcasts = await PodcastService.shared.loadPodcastsAsync()
+                    // CRITICAL FIX: Use asyncAfter to prevent \"Publishing changes from within view updates\"
+                    DispatchQueue.main.async {
+                        self.allPodcasts = podcasts
+                    }
+                }
                         
                 // DEFERRED: Heavy operations moved to background with delays
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {

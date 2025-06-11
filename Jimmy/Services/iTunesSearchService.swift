@@ -61,7 +61,7 @@ struct iTunesSearchService {
                         title: result.collectionName,
                         author: result.artistName,
                         feedURL: feedUrl,
-                        artworkURL: URL(string: result.artworkUrl600 ?? result.artworkUrl100 ?? ""),
+                        artworkURL: self.createBestArtworkURL(from: result),
                         description: result.description,
                         genre: result.primaryGenreName,
                         trackCount: result.trackCount
@@ -110,7 +110,7 @@ struct iTunesSearchService {
                         title: result.collectionName,
                         author: result.artistName,
                         feedURL: feedUrl,
-                        artworkURL: URL(string: result.artworkUrl600 ?? result.artworkUrl100 ?? ""),
+                        artworkURL: self.createBestArtworkURL(from: result),
                         description: result.description,
                         genre: result.primaryGenreName,
                         trackCount: result.trackCount
@@ -249,5 +249,24 @@ extension iTunesSearchService {
                 DispatchQueue.main.async { completion(nil) }
             }
         }
+    }
+    
+    private func createBestArtworkURL(from result: iTunesPodcastResult) -> URL? {
+        // Try artwork URLs in order of preference (highest resolution first)
+        let artworkOptions = [
+            result.artworkUrl600,
+            result.artworkUrl100,
+            result.artworkUrl60,
+            result.artworkUrl30,
+            result.artworkUrl
+        ].compactMap { $0 }
+        
+        for artworkString in artworkOptions {
+            if !artworkString.isEmpty, let url = URL(string: artworkString) {
+                return url
+            }
+        }
+        
+        return nil
     }
 }

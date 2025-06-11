@@ -11,21 +11,14 @@ struct DiscoveryCacheData: Codable {
 
 
 struct DiscoverView: View {
-    @StateObject private var controller = UnifiedDiscoveryController.shared
+    @ObservedObject private var controller = UnifiedDiscoveryController.shared
 
     var body: some View {
-        ZStack {
-            // Beautiful gradient background
-            LinearGradient(
-                colors: [
-                    Color("DarkBackground"),
-                    Color("SurfaceElevated").opacity(0.3),
-                    Color("DarkBackground")
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
+        NavigationView {
+            ZStack {
+            // Clean solid background
+            Color(.systemBackground)
+                .ignoresSafeArea()
             
             if !controller.searchText.isEmpty {
                 searchResultsSection
@@ -34,11 +27,6 @@ struct DiscoverView: View {
             } else {
                 ScrollView {
                     LazyVStack(spacing: 32) {
-                        // Cache status indicator
-                        if controller.isDataCached {
-                            cacheStatusView
-                        }
-                        
                         heroFeaturedSection
                         trendingSection
                         chartsSection
@@ -53,15 +41,21 @@ struct DiscoverView: View {
         .navigationTitle("Discover")
         .navigationBarTitleDisplayMode(.large)
         .searchable(text: $controller.searchText, prompt: "Search for podcasts")
+        .onChange(of: controller.searchText) { _ in
+            Task { [weak controller] in
+                await controller?.searchPodcasts()
+            }
+        }
         .onAppear {
-            Task {
-                await controller.loadDataIfNeeded()
+            Task { [weak controller] in
+                await controller?.loadDataIfNeeded()
             }
         }
         .alert("Subscription", isPresented: $controller.showingSubscriptionAlert) {
             Button("OK", role: .cancel) { }
         } message: {
             Text(controller.subscriptionMessage)
+        }
         }
     }
     
@@ -123,17 +117,16 @@ struct DiscoverView: View {
             } else {
                 LazyVStack(spacing: 12) {
                     ForEach(controller.searchResults) { result in
-                        NavigationLink(destination: SearchResultDetailView(result: result)) {
-                            SearchResultRow(
+                        NavigationLink(destination: PodcastDetailView(podcast: result.toPodcast())) {
+                            DiscoverSearchResultRow(
                                 result: result,
-                                isSubscribed: controller.isSubscribed(result)
-                            ) {
-                                // Navigation handled by NavigationLink
-                            } onSubscribe: {
-                                Task {
-                                    await controller.subscribe(to: result)
+                                isSubscribed: controller.isSubscribed(result),
+                                onSubscribe: {
+                                    Task {
+                                        await controller.subscribe(to: result)
+                                    }
                                 }
-                            }
+                            )
                         }
                         .buttonStyle(.plain)
                         .padding(.horizontal, 20)
@@ -182,16 +175,21 @@ struct DiscoverView: View {
             
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 20) {
-                    ForEach(controller.featured.prefix(5)) { podcast in
-                        EnhancedFeaturedPodcastCard(
-                            result: podcast,
-                            isSubscribed: controller.isSubscribed(podcast),
-                            onSubscribe: { 
-                                Task {
-                                    await controller.subscribe(to: podcast)
+                    ForEach(Array(controller.featured.prefix(5))) { podcast in
+                        NavigationLink(destination: PodcastDetailView(podcast: podcast.toPodcast())) {
+                            EnhancedFeaturedPodcastCard(
+                                result: podcast,
+                                isSubscribed: controller.isSubscribed(podcast),
+                                onSubscribe: { 
+                                    Task {
+                                        await controller.subscribe(to: podcast)
+                                    }
                                 }
-                            }
-                        )
+                            )
+                        }
+                        .buttonStyle(.plain)
+                        .scaleEffect(1.0)
+                        .animation(.easeInOut(duration: 0.2), value: false)
                     }
                 }
                 .padding(.horizontal, 20)
@@ -228,18 +226,38 @@ struct DiscoverView: View {
             
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 16) {
-                    ForEach(controller.trending) { episode in
-                        EnhancedTrendingEpisodeCard(
-                            episode: episode,
-                            onSubscribe: {}
-                        )
+                    ForEach(Array(controller.trending.prefix(5)), id: \.id) { (episode: TrendingEpisode) in
+                        NavigationLink(destination: TrendingEpisodeDetailView(episode: episode)) {
+                            EnhancedTrendingEpisodeCard(
+                                episode: episode,
+                                onSubscribe: {
+                                    // For trending episodes, we need to create a PodcastSearchResult from the episode
+                                    let podcastResult = PodcastSearchResult(
+                                        id: episode.id,
+                                        title: episode.podcastName,
+                                        author: episode.podcastName,
+                                        feedURL: episode.feedURL,
+                                        artworkURL: episode.artworkURL,
+                                        description: nil,
+                                        genre: "Podcast",
+                                        trackCount: 1
+                                    )
+                                    Task {
+                                        await controller.subscribe(to: podcastResult)
+                                    }
+                                }
+                            )
+                        }
+                        .buttonStyle(.plain)
+                        .scaleEffect(1.0)
+                        .animation(.easeInOut(duration: 0.15), value: false)
                     }
                 }
                 .padding(.horizontal, 20)
             }
         }
     }
-
+ 
     private var chartsSection: some View {
         VStack(alignment: .leading, spacing: 20) {
             HStack {
@@ -263,44 +281,30 @@ struct DiscoverView: View {
             
             LazyVStack(spacing: 12) {
                 ForEach(Array(controller.charts.enumerated()), id: \.element.id) { index, result in
-                    EnhancedTopChartRow(
-                        index: index + 1,
-                        result: result,
-                        isSubscribed: controller.isSubscribed(result),
-                        onSubscribe: { 
-                            Task {
-                                await controller.subscribe(to: result)
+                    NavigationLink(destination: PodcastDetailView(podcast: result.toPodcast())) {
+                        EnhancedTopChartRow(
+                            index: index + 1,
+                            result: result,
+                            isSubscribed: controller.isSubscribed(result),
+                            onSubscribe: { 
+                                Task {
+                                    await controller.subscribe(to: result)
+                                }
                             }
-                        }
-                    )
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .scaleEffect(1.0)
+                    .animation(.easeInOut(duration: 0.18), value: false)
                     .padding(.horizontal, 20)
                 }
             }
         }
     }
-    
-    private var cacheStatusView: some View {
-        HStack {
-            Image(systemName: controller.isDataFresh ? "checkmark.circle.fill" : "clock.fill")
-                .foregroundColor(controller.isDataFresh ? .green : .orange)
-            
-            Text(controller.getCacheStatusText())
-                .font(.caption)
-                .foregroundColor(.secondary)
-            
-            Spacer()
-            
-            if controller.isLoading {
-                ProgressView()
-                    .scaleEffect(0.8)
-            }
-        }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 8)
-        .background(Color.secondary.opacity(0.1))
-        .cornerRadius(8)
-        .padding(.horizontal, 20)
-    }
+}
+
+#Preview {
+    DiscoverView()
 }
 
 // MARK: - Enhanced Card Components
@@ -338,22 +342,6 @@ struct EnhancedFeaturedPodcastCard: View {
                 size: 180,
                 cornerRadius: 20
             )
-            .shadow(color: .black.opacity(0.3), radius: 12, x: 0, y: 6)
-            .overlay {
-                RoundedRectangle(cornerRadius: 20)
-                    .stroke(
-                        LinearGradient(
-                            colors: [
-                                Color.white.opacity(0.3),
-                                Color.clear,
-                                Color.black.opacity(0.1)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        lineWidth: 1
-                    )
-            }
             
             VStack(alignment: .leading, spacing: 8) {
                 Text(result.title)
@@ -367,38 +355,61 @@ struct EnhancedFeaturedPodcastCard: View {
                     .foregroundColor(.secondary)
                     .lineLimit(1)
                 
-                Button(action: onSubscribe) {
-                    HStack(spacing: 6) {
-                        Image(systemName: isSubscribed ? "checkmark.circle.fill" : "plus.circle.fill")
-                        Text(isSubscribed ? "Subscribed" : "Subscribe")
-                    }
-                    .font(.caption.bold())
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
-                    .background(
-                        Capsule()
-                            .fill(
-                                isSubscribed 
-                                ? LinearGradient(colors: [.green.opacity(0.2), .green.opacity(0.1)], startPoint: .leading, endPoint: .trailing)
-                                : LinearGradient(colors: [.accentColor.opacity(0.2), .accentColor.opacity(0.1)], startPoint: .leading, endPoint: .trailing)
-                            )
-                    )
-                    .foregroundColor(isSubscribed ? .green : .accentColor)
-                    .overlay {
-                        Capsule()
-                            .stroke(
-                                isSubscribed ? Color.green.opacity(0.3) : Color.accentColor.opacity(0.3),
-                                lineWidth: 1
-                            )
+                HStack(spacing: 6) {
+                    Image(systemName: isSubscribed ? "checkmark.circle.fill" : "plus.circle.fill")
+                    Text(isSubscribed ? "Subscribed" : "Subscribe")
+                }
+                .font(.caption.bold())
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(
+                    Capsule()
+                        .fill(
+                            isSubscribed 
+                            ? LinearGradient(colors: [.green.opacity(0.3), .green.opacity(0.2)], startPoint: .leading, endPoint: .trailing)
+                            : LinearGradient(colors: [.accentColor.opacity(0.3), .accentColor.opacity(0.2)], startPoint: .leading, endPoint: .trailing)
+                        )
+                )
+                .foregroundColor(isSubscribed ? .green : .accentColor)
+                .overlay {
+                    Capsule()
+                        .stroke(
+                            isSubscribed ? Color.green.opacity(0.5) : Color.accentColor.opacity(0.5),
+                            lineWidth: 1
+                        )
+                }
+                .opacity(isSubscribed ? 0.6 : 1.0)
+                .onTapGesture {
+                    if !isSubscribed {
+                        onSubscribe()
                     }
                 }
-                .disabled(isSubscribed)
             }
         }
         .frame(width: 180)
         .padding(20)
-        .background(gradient)
-        .enhanced3DCard(cornerRadius: 24, elevation: 4)
+        .background(
+            RoundedRectangle(cornerRadius: 24)
+                .fill(.ultraThinMaterial)
+                .opacity(0.8)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 24)
+                        .stroke(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(0.4),
+                                    Color.clear,
+                                    Color.black.opacity(0.1)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 1
+                        )
+                )
+        )
+        .shadow(color: .black.opacity(0.15), radius: 12, x: 0, y: 6)
+        .shadow(color: .black.opacity(0.05), radius: 3, x: 0, y: 2)
     }
 }
 
@@ -415,7 +426,6 @@ struct EnhancedTrendingEpisodeCard: View {
                     size: 160,
                     cornerRadius: 16
                 )
-                .shadow(color: .black.opacity(0.25), radius: 8, x: 0, y: 4)
                 
                 // Trending badge
                 HStack(spacing: 4) {
@@ -437,7 +447,7 @@ struct EnhancedTrendingEpisodeCard: View {
                         )
                 )
                 .foregroundColor(.white)
-                .shadow(color: .orange.opacity(0.5), radius: 4, x: 0, y: 2)
+                .shadow(color: .orange.opacity(0.6), radius: 6, x: 0, y: 3)
                 .offset(x: -8, y: 8)
             }
             
@@ -457,16 +467,27 @@ struct EnhancedTrendingEpisodeCard: View {
         .frame(width: 160)
         .padding(12)
         .background(
-            LinearGradient(
-                colors: [
-                    Color("SurfaceElevated"),
-                    Color("SurfaceElevated").opacity(0.8)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
+            RoundedRectangle(cornerRadius: 20)
+                .fill(.thinMaterial)
+                .opacity(0.85)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20)
+                        .stroke(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(0.3),
+                                    Color.clear,
+                                    Color.black.opacity(0.08)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 0.8
+                        )
+                )
         )
-        .enhanced3DCard(cornerRadius: 20, elevation: 3)
+        .shadow(color: .black.opacity(0.12), radius: 8, x: 0, y: 4)
+        .shadow(color: .black.opacity(0.04), radius: 2, x: 0, y: 1)
     }
 }
 
@@ -483,7 +504,7 @@ struct EnhancedTopChartRow: View {
                 Circle()
                     .fill(
                         LinearGradient(
-                            colors: [.accentColor.opacity(0.2), .accentColor.opacity(0.1)],
+                            colors: [.accentColor.opacity(0.3), .accentColor.opacity(0.1)],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
@@ -501,7 +522,6 @@ struct EnhancedTopChartRow: View {
                 size: 70,
                 cornerRadius: 12
             )
-            .shadow(color: .black.opacity(0.15), radius: 4, x: 0, y: 2)
             
             // Content
             VStack(alignment: .leading, spacing: 4) {
@@ -519,65 +539,218 @@ struct EnhancedTopChartRow: View {
             Spacer()
             
             // Subscribe button
-            Button(action: onSubscribe) {
-                HStack(spacing: 4) {
-                    Image(systemName: isSubscribed ? "checkmark.circle.fill" : "plus.circle")
-                    Text(isSubscribed ? "✓" : "Add")
-                }
-                .font(.caption.bold())
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(
-                    Capsule()
-                        .fill(
-                            isSubscribed 
-                            ? Color.green.opacity(0.15)
-                            : Color.accentColor.opacity(0.15)
-                        )
-                )
-                .foregroundColor(isSubscribed ? .green : .accentColor)
-                .overlay {
-                    Capsule()
-                        .stroke(
-                            isSubscribed ? Color.green.opacity(0.3) : Color.accentColor.opacity(0.3),
-                            lineWidth: 1
-                        )
+            HStack(spacing: 4) {
+                Image(systemName: isSubscribed ? "checkmark.circle.fill" : "plus.circle.fill")
+                Text(isSubscribed ? "✓" : "+")
+            }
+            .font(.caption.bold())
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(
+                Capsule()
+                    .fill(
+                        isSubscribed 
+                        ? LinearGradient(colors: [.green.opacity(0.3), .green.opacity(0.2)], startPoint: .leading, endPoint: .trailing)
+                        : LinearGradient(colors: [.accentColor.opacity(0.3), .accentColor.opacity(0.2)], startPoint: .leading, endPoint: .trailing)
+                    )
+            )
+            .foregroundColor(isSubscribed ? .green : .accentColor)
+            .overlay {
+                Capsule()
+                    .stroke(
+                        isSubscribed ? Color.green.opacity(0.5) : Color.accentColor.opacity(0.5),
+                        lineWidth: 1
+                    )
+            }
+            .opacity(isSubscribed ? 0.6 : 1.0)
+            .onTapGesture {
+                if !isSubscribed {
+                    onSubscribe()
                 }
             }
-            .disabled(isSubscribed)
         }
         .padding(16)
         .background(
             RoundedRectangle(cornerRadius: 16)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            Color("SurfaceElevated"),
-                            Color("SurfaceElevated").opacity(0.9)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
+                .fill(.regularMaterial)
+                .opacity(0.75)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(0.35),
+                                    Color.clear,
+                                    Color.black.opacity(0.1)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 0.8
+                        )
                 )
         )
-        .overlay {
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(
-                    LinearGradient(
-                        colors: [
-                            Color("SurfaceHighlighted").opacity(0.2),
-                            Color.clear
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    ),
-                    lineWidth: 0.5
-                )
-        }
-        .shadow(color: .black.opacity(0.08), radius: 4, x: 0, y: 2)
+        .shadow(color: .black.opacity(0.1), radius: 6, x: 0, y: 3)
+        .shadow(color: .black.opacity(0.03), radius: 1, x: 0, y: 1)
     }
 }
 
-#Preview {
-    DiscoverView()
+// MARK: - Search Result Components
+
+struct DiscoverSearchResultRow: View {
+    let result: PodcastSearchResult
+    let isSubscribed: Bool
+    let onSubscribe: () -> Void
+    
+    var body: some View {
+        HStack(alignment: .top, spacing: 16) {
+            // Podcast artwork
+            PodcastArtworkView(
+                artworkURL: result.artworkURL,
+                size: 70,
+                cornerRadius: 12
+            )
+            
+            VStack(alignment: .leading, spacing: 8) {
+                // Title
+                Text(result.title)
+                    .font(.headline.bold())
+                    .foregroundColor(.primary)
+                    .multilineTextAlignment(.leading)
+                    .lineLimit(2)
+                
+                // Author
+                Text(result.author)
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+                
+                // Genre badge
+                HStack {
+                    Text(result.genre)
+                        .font(.caption.bold())
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.accentColor.opacity(0.2))
+                        .foregroundColor(.accentColor)
+                        .cornerRadius(6)
+                    
+                    Spacer()
+                    
+                    // Subscribe button
+                    HStack(spacing: 4) {
+                        Image(systemName: isSubscribed ? "checkmark.circle.fill" : "plus.circle")
+                            .font(.caption)
+                        Text(isSubscribed ? "Subscribed" : "Subscribe")
+                            .font(.caption.bold())
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(
+                        (isSubscribed ? Color.green : Color.blue).opacity(0.2)
+                    )
+                    .foregroundColor(isSubscribed ? .green : .blue)
+                    .cornerRadius(8)
+                    .opacity(isSubscribed ? 0.6 : 1.0)
+                    .onTapGesture {
+                        if !isSubscribed {
+                            onSubscribe()
+                        }
+                    }
+                }
+            }
+            
+            Spacer(minLength: 0)
+        }
+        .padding(.vertical, 12)
+        .padding(.horizontal, 16)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(.thickMaterial)
+                .opacity(0.7)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(0.25),
+                                    Color.clear,
+                                    Color.black.opacity(0.08)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 0.6
+                        )
+                )
+        )
+        .shadow(color: .black.opacity(0.08), radius: 4, x: 0, y: 2)
+        .shadow(color: .black.opacity(0.02), radius: 1, x: 0, y: 0.5)
+
+    }
 }
+
+// MARK: - Detail Views
+
+struct TrendingEpisodeDetailView: View {
+    let episode: TrendingEpisode
+    @Environment(\.dismiss) var dismiss
+    
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                // Large artwork
+                PodcastArtworkView(
+                    artworkURL: episode.artworkURL,
+                    size: 300,
+                    cornerRadius: 24
+                )
+                .frame(maxWidth: .infinity)
+                
+                VStack(alignment: .leading, spacing: 12) {
+                    Text(episode.title)
+                        .font(.title.bold())
+                        .foregroundColor(.primary)
+                        .multilineTextAlignment(.leading)
+                    
+                    Text(episode.podcastName)
+                        .font(.title3)
+                        .foregroundColor(.secondary)
+                    
+                    // Action buttons
+                    HStack(spacing: 16) {
+                        Button("Play Episode") {
+                            // TODO: Implement play functionality
+                        }
+                        .buttonStyle(.borderedProminent)
+                        
+                        Button("Subscribe to Podcast") {
+                            // TODO: Implement subscribe functionality
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                    .padding(.top, 8)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                
+                Spacer()
+            }
+            .padding(20)
+        }
+        .background(
+            LinearGradient(
+                colors: [
+                    Color(.systemBackground),
+                    Color(.secondarySystemBackground),
+                    Color(.systemBackground).opacity(0.8)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
+        )
+        .navigationTitle("Episode")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+

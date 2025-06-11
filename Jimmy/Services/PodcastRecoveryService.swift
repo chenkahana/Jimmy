@@ -10,10 +10,39 @@ class PodcastRecoveryService {
     private let logger = Logger(subsystem: "Jimmy", category: "PodcastRecovery")
     #endif
     
+    /// Flag to disable recovery service (used when clearing all data)
+    private var isRecoveryDisabled: Bool {
+        return UserDefaults.standard.bool(forKey: "disablePodcastRecovery")
+    }
+    
     private init() {}
+    
+    /// Disable the recovery service
+    func disableRecovery() {
+        UserDefaults.standard.set(true, forKey: "disablePodcastRecovery")
+        #if canImport(OSLog)
+        logger.info("🚫 Podcast recovery service disabled")
+        #endif
+    }
+    
+    /// Enable the recovery service
+    func enableRecovery() {
+        UserDefaults.standard.set(false, forKey: "disablePodcastRecovery")
+        #if canImport(OSLog)
+        logger.info("✅ Podcast recovery service enabled")
+        #endif
+    }
     
     /// Recover missing podcasts from orphaned episodes
     func recoverMissingPodcasts() async {
+        // Check if recovery is disabled
+        guard !isRecoveryDisabled else {
+            #if canImport(OSLog)
+            logger.info("🚫 Podcast recovery is disabled - skipping recovery")
+            #endif
+            return
+        }
+        
         #if canImport(OSLog)
         logger.info("🔧 Starting podcast recovery from orphaned episodes")
         #endif
@@ -31,7 +60,7 @@ class PodcastRecoveryService {
         #endif
         
         // Find unique podcast IDs from episodes that don't have corresponding podcasts
-        let episodePodcastIDs = Set(allEpisodes.compactMap(\.podcastID))
+        let episodePodcastIDs = Set(allEpisodes.compactMap { $0.podcastID })
         let orphanedPodcastIDs = episodePodcastIDs.subtracting(existingPodcastIDs)
         
         #if canImport(OSLog)
@@ -59,7 +88,7 @@ class PodcastRecoveryService {
             // Try to extract podcast title from episode metadata or use a default
             let podcastTitle = extractPodcastTitle(from: episodesForPodcast) ?? "Recovered Podcast"
             let podcastAuthor = extractPodcastAuthor(from: episodesForPodcast) ?? "Unknown Author"
-            let lastEpisodeDate = episodesForPodcast.compactMap(\.publishedDate).max()
+            let lastEpisodeDate = episodesForPodcast.compactMap { $0.publishedDate }.max()
             
             // Create a placeholder podcast
             let recoveredPodcast = Podcast(
@@ -90,7 +119,7 @@ class PodcastRecoveryService {
     /// Extract podcast title from episodes (try to find common patterns)
     private func extractPodcastTitle(from episodes: [Episode]) -> String? {
         // Look for common prefixes in episode titles
-        let titles = episodes.map(\.title)
+        let titles = episodes.map { $0.title }
         
         // Try to find the longest common prefix
         guard let firstTitle = titles.first else { return nil }

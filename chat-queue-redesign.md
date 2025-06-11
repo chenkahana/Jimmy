@@ -36,7 +36,7 @@ QueueTabView
 
 3.1 QueueHeaderView
 
-Shows title “Up Next” and subtitle “(viewModel.episodes.count) items • (totalRemainingTime) left”
+Shows title "Up Next" and subtitle "(viewModel.episodes.count) items • (totalRemainingTime) left"
 
 Font: SF Pro Semibold 20pt, dynamic color.
 
@@ -60,7 +60,7 @@ ArtistLabel: Text(episode.artist), font: SF Pro Regular 14pt, foreground: second
 
 MetadataRow: HStack(spacing: 8)
 
-Text(formattedDuration) (e.g., “45:30”), font: SF Pro Regular 12pt.
+Text(formattedDuration) (e.g., "45:30"), font: SF Pro Regular 12pt.
 
 ProgressView(value: episode.playedTime / episode.duration)
 
@@ -134,13 +134,13 @@ Full Swipe Action
 
 Swipe Right
 
-Show “Move to Top”
+Show "Move to Top"
 
 Move episode to index 1
 
 Swipe Left
 
-Show “Move to Bottom”
+Show "Move to Bottom"
 
 Move episode to last index
 
@@ -232,3 +232,95 @@ Swipe actions reveal correct buttons and perform actions.
 Accessibility Tests:
 
 VoiceOver reads labels correctly.
+
+---
+
+## 9. Implementation Task Breakdown  
+_Use the check-boxes to track progress. Nested subtasks should all be completed before the parent can be checked off._
+
+### 9.1  Project Setup
+- [ ] **Bootstrap feature branch**  
+  - [ ] Create branch `feature/queue-tab-redesign`.  
+  - [ ] Run `xcodebuild` once to ensure baseline compiles.
+- [ ] **Add placeholder feature flag** (if staged rollout is required).  
+  - [ ] Add `QueueTabV2Enabled` to `FeatureFlags.swift`.
+
+### 9.2  Data-Layer Work
+- [ ] **Episode model extensions**  
+  - [ ] Verify `Episode` already conforms to `Identifiable` & `Equatable`.  
+  - [ ] Add computed `remainingTime` & `formattedDuration` helpers.
+- [ ] **QueueViewModel upgrades**  
+  - [ ] Expose `episodes: [Episode]` and `currentEpisode: Episode?` exactly as spec.  
+  - [ ] Add reordering API: `beginDrag`, `moveEpisode`, `endDrag`.  
+  - [ ] Add playback API: `play(episode:)`.  
+  - [ ] Add convenience helpers `totalRemainingTime`, `index(of:)`.
+
+### 9.3  UI-Layer – Component Construction
+- [ ] **QueueTabView**  
+  - [ ] Scaffold root `QueueTabView` using `VStack`.  
+  - [ ] Inject `@StateObject private var viewModel = QueueViewModel.shared`.
+- [ ] **QueueHeaderView**  
+  - [ ] Build header stack with title "Up Next" & dynamic subtitle.  
+  - [ ] Bind to `viewModel.episodes.count` & `viewModel.totalRemainingTime`.  
+  - [ ] Add top/bottom padding (16 / 8 pt).
+- [ ] **EpisodeCellView**  
+  - [ ] Construct background `RoundedRectangle(cornerRadius:12)` with shadow.  
+  - [ ] Build HStack: Artwork (56×56), Text Stack, Drag Handle.  
+  - [ ] Highlight tint when `isPlaying == true`.  
+  - [ ] Clamp height to 80 pt with internal padding.
+  - [ ] Embed `ProgressView` using custom `CarouselProgressStyle()`.
+
+### 9.4  Interaction Logic & Gestures
+- [ ] **Drag-and-Drop Reordering**  
+  - [ ] Add `onLongPressGesture` → call `viewModel.beginDrag`.  
+  - [ ] Implement `DragGesture` to update positions in real-time.  
+  - [ ] Show placeholder cell with dashed border.  
+  - [ ] Provide `.medium` & `.success` haptics.
+- [ ] **Tap-to-Play Logic**  
+  - [ ] Attach `.onTapGesture` to `EpisodeCellView`.  
+  - [ ] Call `viewModel.play(episode:)` and animate movement to top.
+- [ ] **Swipe Actions**  
+  - [ ] Implement horizontal `DragGesture(minimumDistance:20)`.  
+  - [ ] Partial reveal thresholds ±60 pt, full action ±150 pt.  
+  - [ ] Right swipe → "Move to Top"; Left swipe → "Move to Bottom"; Either direction full swipe → Delete.  
+  - [ ] Animate background color & icons proportionally.  
+  - [ ] Trigger haptic `.light` on full action.
+
+### 9.5  Animations
+- [ ] Reordering: `withAnimation(.spring(response:0.4,dampingFraction:0.8))`.  
+- [ ] Swipe reveal: linear 0.25 s, layout spring when releasing.  
+- [ ] Cell accent-tint fade for currently playing episode.
+
+### 9.6  Theming & Styling
+- [ ] Use semantic colors per spec (`systemBackground`, `secondarySystemBackground`, `tintColor`).  
+- [ ] Confirm dynamic type & color contrast.  
+- [ ] Centralize constants in `QueueTabStyle.swift`.
+
+### 9.7  Accessibility & Localization
+- [ ] **VoiceOver**  
+  - [ ] Add `accessibilityLabel` that concatenates episode title, artist, remaining time.  
+  - [ ] Expose swipe buttons with proper hints.
+- [ ] **Dynamic Type**  
+  - [ ] Ensure text uses `.font(.system(size:, weight:, design:))` with `relativeTo:` where needed.
+- [ ] **Localization**  
+  - [ ] Add strings to `Localizable.strings` with placeholders.
+
+### 9.8  Testing & Validation
+- [ ] **Unit Tests – ViewModel**  
+  - [ ] Reorder logic preserves data integrity.  
+  - [ ] Play logic moves tapped episode to index 0.  
+  - [ ] Swipe helper methods call correct ViewModel actions.
+- [ ] **UI Tests**  
+  - [ ] Drag reordering reflects visual change & persists order.  
+  - [ ] Tap episode starts playback & moves item.  
+  - [ ] Swipe actions reveal buttons & execute.  
+- [ ] **Accessibility Tests**  
+  - [ ] VoiceOver reads EpisodeCell correctly.  
+  - [ ] Dynamic type doesn't clip UI.
+
+### 9.9  Documentation & PR
+- [ ] Update `docs/` with GIFs of new interactions.  
+- [ ] Write migration notes if any API changed.  
+- [ ] Create PR template checklist link to this task list.
+
+> **Completion Rule:** All nested check-boxes **must** be checked before marking parent task complete.

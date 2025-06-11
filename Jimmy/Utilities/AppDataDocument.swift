@@ -17,17 +17,13 @@ struct AppDataDocument: FileDocument {
     
     init() {
         let podcasts = PodcastService.shared.loadPodcasts()
-        let episodes = Task { @MainActor in
-            return UnifiedEpisodeController.shared.episodes
-        }
-        let queue = QueueViewModel.shared.queue
         let settings: [String: String] = [:]
         
         // Since we can't await in init, we'll create empty data and populate later
         self.appData = AppData(
             podcasts: podcasts,
             episodes: [],
-            queue: queue,
+            queue: [],
             settings: settings,
             exportDate: Date()
         )
@@ -133,7 +129,9 @@ struct AppDataDocument: FileDocument {
         PodcastService.shared.savePodcasts(existingPodcasts)
         
         // Import queue
-        QueueViewModel.shared.queue = appData.queue
+        await MainActor.run {
+            QueueViewModel.shared.queue = appData.queue
+        }
     }
 }
 

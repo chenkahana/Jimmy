@@ -49,6 +49,7 @@ class DebugHelper {
     }
     
     // Print current app state
+    @MainActor
     func printAppState() {
         let podcasts = PodcastService.shared.loadPodcasts()
         let queue = QueueViewModel.shared.queue

@@ -11,10 +11,13 @@ final class OptimizedNetworkManager {
     // MARK: - Configuration
     fileprivate struct Config {
         static let maxConcurrentRequests = 6
-        static let requestTimeout: TimeInterval = 30.0
+        static let requestTimeout: TimeInterval = 45.0  // Increased from 30s
+        static let resourceTimeout: TimeInterval = 90.0  // Increased from 60s
         static let cacheExpiry: TimeInterval = 15 * 60 // 15 minutes
         static let backgroundQueueQoS: DispatchQoS = .utility
         static let maxCacheSize = 50 // Maximum cached responses
+        static let maxRetries = 3  // Maximum retry attempts
+        static let baseRetryDelay: TimeInterval = 2.0  // Base delay for exponential backoff
     }
     
     // MARK: - Properties
@@ -26,6 +29,7 @@ final class OptimizedNetworkManager {
     private var responseCache: [String: CachedResponse] = [:]
     private var requestQueue: [String: [(Result<Data, Error>) -> Void]] = [:]
     private var activeRequests: Set<String> = []
+    private var retryAttempts: [String: Int] = [:]
     
     // URLSession with optimized configuration
     private lazy var urlSession: URLSession = {
@@ -33,9 +37,12 @@ final class OptimizedNetworkManager {
         config.requestCachePolicy = .returnCacheDataElseLoad
         config.urlCache = URLCache(memoryCapacity: 20 * 1024 * 1024, diskCapacity: 100 * 1024 * 1024) // 20MB memory, 100MB disk
         config.timeoutIntervalForRequest = Config.requestTimeout
-        config.timeoutIntervalForResource = Config.requestTimeout * 2
+        config.timeoutIntervalForResource = Config.resourceTimeout
         config.httpMaximumConnectionsPerHost = 4
         config.waitsForConnectivity = true
+        config.allowsCellularAccess = true
+        config.allowsExpensiveNetworkAccess = true
+        config.allowsConstrainedNetworkAccess = true
         return URLSession(configuration: config)
     }()
     
@@ -71,11 +78,12 @@ final class OptimizedNetworkManager {
                 return
             }
             
-            // Mark request as active
+            // Mark request as active and reset retry count
             self.activeRequests.insert(cacheKey)
+            self.retryAttempts[cacheKey] = 0
             
             // Perform network request in background
-            self.performNetworkRequest(url: url, cacheKey: cacheKey, completion: completion)
+            self.performNetworkRequestWithRetry(url: url, cacheKey: cacheKey, completion: completion)
         }
     }
     
@@ -136,7 +144,7 @@ final class OptimizedNetworkManager {
     
     // MARK: - Private Methods
     
-    private func performNetworkRequest(url: URL, cacheKey: String, completion: @escaping (Result<Data, Error>) -> Void) {
+    private func performNetworkRequestWithRetry(url: URL, cacheKey: String, completion: @escaping (Result<Data, Error>) -> Void) {
         backgroundQueue.async { [weak self] in
             guard let self = self else { return }
             
@@ -147,48 +155,110 @@ final class OptimizedNetworkManager {
             request.cachePolicy = .reloadIgnoringLocalCacheData // We handle caching ourselves
             request.setValue("Jimmy/1.0", forHTTPHeaderField: "User-Agent")
             request.setValue("application/rss+xml, application/xml, text/xml", forHTTPHeaderField: "Accept")
+            request.setValue("gzip, deflate", forHTTPHeaderField: "Accept-Encoding")
+            request.setValue("no-cache", forHTTPHeaderField: "Cache-Control")
             
             let task = self.urlSession.dataTask(with: request) { [weak self] data, response, error in
                 defer {
                     self?.semaphore.signal()
-                    self?.cleanupRequest(cacheKey: cacheKey)
                 }
                 
                 guard let self = self else { return }
                 
                 if let error = error {
-                    // If main URLSession fails, try with a simple fallback
-                    self.attemptFallbackRequest(url: url, cacheKey: cacheKey, completion: completion)
+                    self.handleNetworkError(error: error, url: url, cacheKey: cacheKey, completion: completion)
                     return
                 }
                 
                 guard let data = data, !data.isEmpty else {
-                    let error = NSError(domain: "OptimizedNetworkManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "Empty response"])
-                    self.notifyAllWaiters(cacheKey: cacheKey, result: .failure(error))
+                    let error = NSError(domain: "OptimizedNetworkManager", code: -1, userInfo: [
+                        NSLocalizedDescriptionKey: "Empty response",
+                        NSLocalizedRecoverySuggestionErrorKey: "The podcast feed returned no data. The feed may be temporarily unavailable."
+                    ])
+                    self.handleNetworkError(error: error, url: url, cacheKey: cacheKey, completion: completion)
                     return
                 }
                 
                 // Validate RSS/XML content
                 if let dataString = String(data: data, encoding: .utf8) {
                     if !dataString.contains("<rss") && !dataString.contains("<feed") && !dataString.contains("<?xml") {
-                        let error = NSError(domain: "OptimizedNetworkManager", code: -2, userInfo: [NSLocalizedDescriptionKey: "Invalid RSS/XML format"])
-                        self.notifyAllWaiters(cacheKey: cacheKey, result: .failure(error))
+                        let error = NSError(domain: "OptimizedNetworkManager", code: -2, userInfo: [
+                            NSLocalizedDescriptionKey: "Invalid RSS/XML format",
+                            NSLocalizedRecoverySuggestionErrorKey: "The response is not a valid RSS feed. The URL may be incorrect or the podcast may have moved."
+                        ])
+                        self.handleNetworkError(error: error, url: url, cacheKey: cacheKey, completion: completion)
                         return
                     }
                 }
                 
-                // Cache successful response
-                let cachedResponse = CachedResponse(data: data, timestamp: Date())
-                self.cacheQueue.async {
-                    self.responseCache[cacheKey] = cachedResponse
-                    self.clearExpiredCache()
-                }
-                
-                self.notifyAllWaiters(cacheKey: cacheKey, result: .success(data))
+                // Success - cache and notify
+                self.handleSuccessfulResponse(data: data, cacheKey: cacheKey)
             }
             
             task.resume()
         }
+    }
+    
+    private func handleNetworkError(error: Error, url: URL, cacheKey: String, completion: @escaping (Result<Data, Error>) -> Void) {
+        let currentAttempt = retryAttempts[cacheKey] ?? 0
+        
+        // Check if we should retry
+        if currentAttempt < Config.maxRetries && shouldRetryError(error) {
+            retryAttempts[cacheKey] = currentAttempt + 1
+            let delay = Config.baseRetryDelay * pow(2.0, Double(currentAttempt)) // Exponential backoff
+            
+            logger.warning("Network request failed (attempt \(currentAttempt + 1)/\(Config.maxRetries + 1)): \(error.localizedDescription). Retrying in \(delay)s")
+            
+            // Retry after delay
+            backgroundQueue.asyncAfter(deadline: .now() + delay) { [weak self] in
+                self?.performNetworkRequestWithRetry(url: url, cacheKey: cacheKey, completion: completion)
+            }
+        } else {
+            // All retries exhausted, try fallback
+            logger.error("All retry attempts exhausted. Attempting fallback request.")
+            attemptFallbackRequest(url: url, cacheKey: cacheKey, completion: completion)
+        }
+    }
+    
+    private func shouldRetryError(_ error: Error) -> Bool {
+        let nsError = error as NSError
+        
+        // Retry on network-related errors
+        switch nsError.code {
+        case NSURLErrorTimedOut,
+             NSURLErrorCannotConnectToHost,
+             NSURLErrorNetworkConnectionLost,
+             NSURLErrorDNSLookupFailed,
+             NSURLErrorNotConnectedToInternet,
+             NSURLErrorInternationalRoamingOff,
+             NSURLErrorCallIsActive,
+             NSURLErrorDataNotAllowed:
+            return true
+        default:
+            // Don't retry on client errors (4xx) or server errors that are unlikely to resolve
+            if let httpResponse = error as? URLError,
+               let statusCode = (httpResponse.userInfo[NSURLErrorFailingURLStringErrorKey] as? String)?.contains("4") {
+                return false
+            }
+            return true
+        }
+    }
+    
+    private func handleSuccessfulResponse(data: Data, cacheKey: String) {
+        // Cache successful response
+        let cachedResponse = CachedResponse(data: data, timestamp: Date())
+        cacheQueue.async { [weak self] in
+            guard let self = self else { return }
+            self.responseCache[cacheKey] = cachedResponse
+            self.clearExpiredCache()
+        }
+        
+        // Clean up retry tracking
+        retryAttempts.removeValue(forKey: cacheKey)
+        
+        // Notify all waiters
+        notifyAllWaiters(cacheKey: cacheKey, result: .success(data))
+        cleanupRequest(cacheKey: cacheKey)
     }
     
     private func notifyAllWaiters(cacheKey: String, result: Result<Data, Error>) {
@@ -207,7 +277,9 @@ final class OptimizedNetworkManager {
     
     private func cleanupRequest(cacheKey: String) {
         cacheQueue.async { [weak self] in
-            self?.activeRequests.remove(cacheKey)
+            guard let self = self else { return }
+            self.activeRequests.remove(cacheKey)
+            self.retryAttempts.removeValue(forKey: cacheKey)
         }
     }
     
@@ -223,50 +295,101 @@ final class OptimizedNetworkManager {
         }
     }
     
-    // MARK: - Fallback Network Request
+    // MARK: - Enhanced Fallback Network Request
     
     private func attemptFallbackRequest(url: URL, cacheKey: String, completion: @escaping (Result<Data, Error>) -> Void) {
-        // Create a simple URLSession with minimal configuration
-        let config = URLSessionConfiguration.default
-        config.timeoutIntervalForRequest = 60.0  // Longer timeout
-        config.timeoutIntervalForResource = 120.0
-        config.requestCachePolicy = .reloadIgnoringLocalAndRemoteCacheData
-        config.urlCache = nil  // Disable caching
+        logger.info("Attempting fallback request for: \(url.absoluteString)")
         
-        let simpleSession = URLSession(configuration: config)
+        // Create multiple fallback configurations to try
+        let fallbackConfigs = createFallbackConfigurations()
+        
+        attemptFallbackWithConfigs(url: url, cacheKey: cacheKey, configs: fallbackConfigs, configIndex: 0, completion: completion)
+    }
+    
+    private func createFallbackConfigurations() -> [URLSessionConfiguration] {
+        var configs: [URLSessionConfiguration] = []
+        
+        // Config 1: Simple with longer timeout
+        let config1 = URLSessionConfiguration.default
+        config1.timeoutIntervalForRequest = 90.0
+        config1.timeoutIntervalForResource = 180.0
+        config1.requestCachePolicy = .reloadIgnoringLocalAndRemoteCacheData
+        config1.urlCache = nil
+        config1.waitsForConnectivity = true
+        configs.append(config1)
+        
+        // Config 2: Ephemeral session (no caching, no cookies)
+        let config2 = URLSessionConfiguration.ephemeral
+        config2.timeoutIntervalForRequest = 120.0
+        config2.timeoutIntervalForResource = 240.0
+        config2.waitsForConnectivity = true
+        configs.append(config2)
+        
+        // Config 3: Background session for persistent downloads
+        let config3 = URLSessionConfiguration.default
+        config3.timeoutIntervalForRequest = 150.0
+        config3.timeoutIntervalForResource = 300.0
+        config3.allowsCellularAccess = true
+        config3.allowsExpensiveNetworkAccess = true
+        config3.allowsConstrainedNetworkAccess = true
+        config3.waitsForConnectivity = true
+        configs.append(config3)
+        
+        return configs
+    }
+    
+    private func attemptFallbackWithConfigs(url: URL, cacheKey: String, configs: [URLSessionConfiguration], configIndex: Int, completion: @escaping (Result<Data, Error>) -> Void) {
+        guard configIndex < configs.count else {
+            // All fallback attempts failed
+            let finalError = NSError(domain: "OptimizedNetworkManager", code: -3, userInfo: [
+                NSLocalizedDescriptionKey: "All network attempts failed",
+                NSLocalizedRecoverySuggestionErrorKey: "Unable to connect to the podcast feed. Please check your internet connection and try again later."
+            ])
+            notifyAllWaiters(cacheKey: cacheKey, result: .failure(finalError))
+            cleanupRequest(cacheKey: cacheKey)
+            return
+        }
+        
+        let config = configs[configIndex]
+        let session = URLSession(configuration: config)
         
         var request = URLRequest(url: url)
-        request.setValue("Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15", forHTTPHeaderField: "User-Agent")
+        // Try different User-Agent strings
+        let userAgents = [
+            "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15",
+            "Jimmy/1.0 (iOS Podcast Client)",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
+        ]
+        request.setValue(userAgents[configIndex % userAgents.count], forHTTPHeaderField: "User-Agent")
+        request.setValue("application/rss+xml, application/xml, text/xml, */*", forHTTPHeaderField: "Accept")
         
-        simpleSession.dataTask(with: request) { [weak self] data, response, error in
+        logger.info("Trying fallback config \(configIndex + 1)/\(configs.count)")
+        
+        session.dataTask(with: request) { [weak self] data, response, error in
             defer {
-                simpleSession.invalidateAndCancel()
+                session.invalidateAndCancel()
             }
             
             guard let self = self else { return }
             
             if let error = error {
-                print("❌ Fallback request also failed: \(error.localizedDescription)")
-                self.notifyAllWaiters(cacheKey: cacheKey, result: .failure(error))
+                self.logger.warning("Fallback config \(configIndex + 1) failed: \(error.localizedDescription)")
+                // Try next configuration
+                self.attemptFallbackWithConfigs(url: url, cacheKey: cacheKey, configs: configs, configIndex: configIndex + 1, completion: completion)
                 return
             }
             
             guard let data = data, !data.isEmpty else {
-                let error = NSError(domain: "OptimizedNetworkManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "Empty response from fallback"])
-                self.notifyAllWaiters(cacheKey: cacheKey, result: .failure(error))
+                self.logger.warning("Fallback config \(configIndex + 1) returned empty data")
+                // Try next configuration
+                self.attemptFallbackWithConfigs(url: url, cacheKey: cacheKey, configs: configs, configIndex: configIndex + 1, completion: completion)
                 return
             }
             
-            print("✅ Fallback request succeeded: \(data.count) bytes")
+            self.logger.info("✅ Fallback config \(configIndex + 1) succeeded: \(data.count) bytes")
             
-            // Cache successful response
-            let cachedResponse = CachedResponse(data: data, timestamp: Date())
-            self.cacheQueue.async {
-                self.responseCache[cacheKey] = cachedResponse
-                self.clearExpiredCache()
-            }
-            
-            self.notifyAllWaiters(cacheKey: cacheKey, result: .success(data))
+            // Success - handle the response
+            self.handleSuccessfulResponse(data: data, cacheKey: cacheKey)
         }.resume()
     }
 }

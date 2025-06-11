@@ -1,0 +1,175 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# iOS 26 Liquid Glass Design Language
+
+## Overview
+All components in the Jimmy podcast app should adopt iOS 26's Liquid Glass design language for a modern, cohesive user experience. This design system emphasizes translucency, depth, and fluid interactions.
+
+## Core Principles
+
+### Material Design
+- **Translucent Backgrounds**: Use `.opacity(0.5-0.8)` for glass-like effects
+- **Layered Depth**: Implement multiple shadow layers for realistic depth
+- **Blur Effects**: Apply `.background(.ultraThinMaterial)` or `.background(.thinMaterial)` for glass blur
+- **Color Harmony**: Maintain color consistency while allowing background content to show through
+
+### Visual Hierarchy
+- **Primary Elements**: 70-80% opacity with stronger shadows
+- **Secondary Elements**: 50-60% opacity with subtle shadows  
+- **Background Elements**: 30-40% opacity with minimal shadows
+
+## Implementation Guidelines
+
+### Tab Bar & Navigation
+Reference: [ContentView.swift](mdc:Jimmy/Views/ContentView.swift)
+```swift
+.background(
+    RoundedRectangle(cornerRadius: 24)
+        .fill(.ultraThinMaterial)
+        .overlay(
+            RoundedRectangle(cornerRadius: 24)
+                .stroke(.white.opacity(0.2), lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.15), radius: 20, x: 0, y: 8)
+        .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
+)
+```
+
+### Cards & Containers
+Apply to podcast cards, episode rows, and content containers:
+- Use `.background(.regularMaterial)` for content cards
+- Add subtle border highlights with `.stroke(.white.opacity(0.1))`
+- Implement multi-layer shadows for depth
+- Round corners with 12-16pt radius for modern feel
+
+### Player Interface
+Reference: [CurrentPlayView.swift](mdc:Jimmy/Views/CurrentPlayView.swift) and [MiniPlayerView.swift](mdc:Jimmy/Views/MiniPlayerView.swift)
+- Full-screen player: `.background(.thickMaterial)`
+- Mini player: `.background(.ultraThinMaterial)`
+- Control buttons: Glass effect with subtle borders
+- Progress bars: Translucent track with solid progress
+
+### Lists & Collections
+Reference: [LibraryView.swift](mdc:Jimmy/Views/LibraryView.swift) and [EpisodeListView.swift](mdc:Jimmy/Views/EpisodeListView.swift)
+- Section headers: `.background(.thinMaterial)`
+- List items: Subtle glass effect on selection
+- Search bars: `.background(.regularMaterial)`
+
+### Modals & Sheets
+Reference: [SettingsView.swift](mdc:Jimmy/Views/SettingsView.swift)
+- Modal backgrounds: `.background(.thickMaterial)`
+- Sheet content: Layered glass effects
+- Action sheets: Ultra-thin material with borders
+
+## Material Types Usage
+
+### .ultraThinMaterial
+- Floating elements (tab bars, toolbars)
+- Overlay content
+- Temporary UI elements
+
+### .thinMaterial  
+- Secondary containers
+- Section backgrounds
+- Sidebar elements
+
+### .regularMaterial
+- Primary content cards
+- Main containers
+- Form backgrounds
+
+### .thickMaterial
+- Full-screen overlays
+- Modal backgrounds
+- High-emphasis containers
+
+## Animation & Transitions
+
+### Glass Effect Animations
+```swift
+.scaleEffect(isPressed ? 0.95 : 1.0)
+.opacity(isPressed ? 0.8 : 1.0)
+.animation(.spring(response: 0.3, dampingFraction: 0.6), value: isPressed)
+```
+
+### Blur Transitions
+- Animate material thickness changes
+- Use spring animations for natural feel
+- Maintain 60fps performance
+
+## Color Considerations
+
+### Adaptive Colors
+- Use system colors that work with translucency
+- Ensure sufficient contrast through glass
+- Test in both light and dark modes
+
+### Accent Colors
+- Maintain brand colors while allowing transparency
+- Use `.opacity()` modifiers for glass integration
+- Ensure accessibility compliance
+
+## Performance Guidelines
+
+### Optimization Rules
+- Limit blur effects to essential UI elements
+- Use `.drawingGroup()` for complex glass effects
+- Avoid excessive layering of materials
+- Test on older devices for performance
+
+### Memory Management
+- Cache material configurations
+- Reuse glass effect modifiers
+- Monitor GPU usage with complex effects
+
+## Accessibility
+
+### Contrast Requirements
+- Ensure text remains readable through glass
+- Provide high-contrast alternatives
+- Test with accessibility settings enabled
+
+### Reduced Motion
+- Respect `UIAccessibility.isReduceMotionEnabled`
+- Provide static alternatives to glass animations
+- Maintain functionality without effects
+
+## Implementation Priority
+
+### Phase 1: Core Navigation
+1. Update [ContentView.swift](mdc:Jimmy/Views/ContentView.swift) tab bar
+2. Modernize [LibraryView.swift](mdc:Jimmy/Views/LibraryView.swift) interface
+3. Enhance [CurrentPlayView.swift](mdc:Jimmy/Views/CurrentPlayView.swift) player
+
+### Phase 2: Content Views
+1. Update podcast cards in [PodcastDetailView.swift](mdc:Jimmy/Views/PodcastDetailView.swift)
+2. Modernize episode lists in [EpisodeListView.swift](mdc:Jimmy/Views/EpisodeListView.swift)
+3. Enhance search in [PodcastSearchView.swift](mdc:Jimmy/Views/PodcastSearchView.swift)
+
+### Phase 3: Supporting Views
+1. Settings and preferences
+2. CarPlay interface updates
+3. Watch app synchronization
+
+## Testing Checklist
+
+### Visual Testing
+- [ ] Glass effects render correctly in light/dark mode
+- [ ] Translucency doesn't compromise readability
+- [ ] Animations are smooth and natural
+- [ ] Performance remains optimal
+
+### Accessibility Testing
+- [ ] VoiceOver compatibility maintained
+- [ ] High contrast mode support
+- [ ] Reduced motion alternatives work
+- [ ] Color contrast meets WCAG guidelines
+
+## References
+- Apple's Liquid Glass Documentation: https://developer.apple.com/documentation/technologyoverviews/adopting-liquid-glass
+- SwiftUI Material Documentation
+- iOS Human Interface Guidelines
+- Jimmy App Architecture: [JimmyApp.swift](mdc:Jimmy/JimmyApp.swift)

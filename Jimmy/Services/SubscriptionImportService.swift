@@ -11,6 +11,12 @@ class SubscriptionImportService {
         let appleURL: String?
     }
     
+    struct JSONPodcast: Codable {
+        let title: String
+        let publisher: String?
+        let url: String?
+    }
+    
     /// Parse the subscription text file and import podcasts
     func importFromSubscriptionFile(filePath: String, completion: @escaping ([Podcast], Error?) -> Void) {
         guard let fileURL = URL(string: filePath) else {
@@ -38,6 +44,40 @@ class SubscriptionImportService {
     /// Parse subscription content directly from string
     func importFromSubscriptionContent(_ content: String, completion: @escaping ([Podcast], Error?) -> Void) {
         parseSubscriptions(content: content, completion: completion)
+    }
+    
+    /// Import podcasts from JSON file
+    func importFromJSONFile(data: Data, completion: @escaping ([Podcast], Error?) -> Void) {
+        do {
+            let jsonPodcasts = try JSONDecoder().decode([JSONPodcast].self, from: data)
+            
+            guard !jsonPodcasts.isEmpty else {
+                completion([], SubscriptionImportError.noValidPodcasts)
+                return
+            }
+            
+            print("📋 Parsed \(jsonPodcasts.count) podcasts from JSON file")
+            
+            // Simple approach: just take URLs and fetch podcast data directly
+            let validURLs = jsonPodcasts.compactMap { jsonPodcast -> String? in
+                guard let urlString = jsonPodcast.url, !urlString.isEmpty else { return nil }
+                return urlString
+            }
+            
+            guard !validURLs.isEmpty else {
+                completion([], SubscriptionImportError.noValidPodcasts)
+                return
+            }
+            
+            print("📋 Found \(validURLs.count) valid URLs to process")
+            
+            // Process URLs directly
+            processURLsDirectly(validURLs, completion: completion)
+            
+        } catch {
+            print("❌ JSON parsing error: \(error)")
+            completion([], error)
+        }
     }
     
     private func parseSubscriptions(content: String, completion: @escaping ([Podcast], Error?) -> Void) {
@@ -185,7 +225,77 @@ class SubscriptionImportService {
         
         group.notify(queue: .main) {
             print("📋 Successfully resolved \(podcasts.count) out of \(parsedPodcasts.count) podcasts")
+            
+            // 🎯 AUTOMATIC TRIGGER: Notify DataFetchCoordinator that subscriptions were imported
+            if !podcasts.isEmpty {
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("subscriptionImported"),
+                    object: podcasts
+                )
+            }
+            
             completion(podcasts, nil)
+        }
+    }
+    
+    /// Process URLs directly by resolving them to RSS feeds and fetching podcast data
+    private func processURLsDirectly(_ urls: [String], completion: @escaping ([Podcast], Error?) -> Void) {
+        Task {
+            let podcasts = await withTaskGroup(of: Podcast?.self) { group in
+                var results: [Podcast] = []
+                
+                for urlString in urls {
+                    group.addTask {
+                        print("🔗 Processing URL: \(urlString)")
+                        
+                        // Use PodcastURLResolver to convert Apple Podcasts URLs to RSS feeds
+                        let rssURL = await withCheckedContinuation { continuation in
+                            PodcastURLResolver.shared.resolveToRSSFeed(from: urlString) { rssURL in
+                                continuation.resume(returning: rssURL)
+                            }
+                        }
+                        
+                        guard let rssURL = rssURL else {
+                            print("❌ Could not resolve URL: \(urlString)")
+                            return nil
+                        }
+                        
+                        print("✅ Resolved to RSS feed: \(rssURL.absoluteString)")
+                        
+                        do {
+                            let podcast = try await PodcastService.shared.addPodcast(from: rssURL)
+                            print("🎉 Successfully added podcast: \(podcast.title)")
+                            return podcast
+                        } catch {
+                            print("❌ Failed to add podcast: \(error.localizedDescription)")
+                            return nil
+                        }
+                    }
+                }
+                
+                for await podcast in group {
+                    if let podcast = podcast {
+                        results.append(podcast)
+                    }
+                }
+                
+                return results
+            }
+            
+            // Return to main thread for completion
+            await MainActor.run {
+                print("📋 Successfully processed \(podcasts.count) out of \(urls.count) URLs")
+                
+                // 🎯 AUTOMATIC TRIGGER: Notify DataFetchCoordinator that subscriptions were imported
+                if !podcasts.isEmpty {
+                    NotificationCenter.default.post(
+                        name: NSNotification.Name("subscriptionImported"),
+                        object: podcasts
+                    )
+                }
+                
+                completion(podcasts, nil)
+            }
         }
     }
     

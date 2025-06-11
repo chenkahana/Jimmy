@@ -113,7 +113,7 @@ struct PodcastSearchView: View {
                     if (searchScope == .all || searchScope == .web) && !searchResults.isEmpty {
                         Section("Discover New Podcasts") {
                             ForEach(searchResults) { result in
-                                NavigationLink(destination: SearchResultDetailView(result: result)) {
+                                NavigationLink(destination: PodcastDetailView(podcast: result.toPodcast())) {
                                     SearchResultRow(
                                         result: result,
                                         isSubscribed: isSubscribed(result)

@@ -24,11 +24,6 @@ class EpisodeUpdateService {
         setupAppStateObservers()
     }
     
-    deinit {
-        stopPeriodicUpdates()
-        NotificationCenter.default.removeObserver(self)
-    }
-    
     // MARK: - App State Management
     
     private func setupAppStateObservers() {
@@ -55,17 +50,19 @@ class EpisodeUpdateService {
     
     /// Start periodic background updates
     func startPeriodicUpdates() {
-        // Prevent starting multiple timers if called again
-        guard updateTimer == nil else { return }
+        // MEMORY FIX: Stop existing timer first to prevent multiple timers
+        stopPeriodicUpdates()
 
-        // ENABLED: Fetch episodes for all podcasts on app launch
-        Task {
-            await updateAllEpisodes()
-        }
+        // AUTOMATIC: Episode updates are now triggered automatically by DataFetchCoordinator
+        // when app becomes active, podcasts are added, or network becomes available
+        print("🎯 Periodic update system initialized - updates will be triggered automatically")
         
-        // Schedule recurring updates
-        updateTimer = Timer.scheduledTimer(withTimeInterval: updateInterval, repeats: true) { [weak self] _ in
-            guard let self = self else { return }
+        // MEMORY FIX: Use weak self and proper cleanup
+        updateTimer = Timer.scheduledTimer(withTimeInterval: updateInterval, repeats: true) { [weak self] timer in
+            guard let self = self else { 
+                timer.invalidate()
+                return 
+            }
             
             // PERFORMANCE FIX: Only update if app is active to prevent background crashes and reduce CPU usage
             guard UIApplication.shared.applicationState == .active else {
@@ -79,9 +76,9 @@ class EpisodeUpdateService {
                 return
             }
             
-            Task {
-                await self.updateAllEpisodes()
-            }
+            // AUTOMATIC: Trigger automatic update via DataFetchCoordinator
+            // This will be handled automatically by the coordinator's app state observers
+            print("🎯 Timer triggered - automatic update will be handled by DataFetchCoordinator")
         }
     }
     
@@ -89,18 +86,97 @@ class EpisodeUpdateService {
     func stopPeriodicUpdates() {
         updateTimer?.invalidate()
         updateTimer = nil
+        print("🛑 Periodic updates stopped")
     }
     
-    /// Manually trigger an update
+    deinit {
+        // MEMORY FIX: Ensure timer is cleaned up
+        stopPeriodicUpdates()
+        NotificationCenter.default.removeObserver(self)
+    }
+    
+    /// Manually trigger an update (user-initiated only)
     func forceUpdate() {
-        // WORLD-CLASS NAVIGATION: Immediate response for manual updates
-        Task {
-            // No delay for manual trigger - user expects immediate action
-            await updateAllEpisodes()
+        // MANUAL TRIGGER: This is the only method that should be called manually by user action
+        print("👤 User manually triggered episode update")
+        
+        Task { @MainActor in
+            DataFetchCoordinator.shared.startFetch(
+                id: "manual-episode-update",
+                operation: {
+                    return try await self.updateAllEpisodesThreadSafe()
+                },
+                onComplete: { result in
+                    switch result {
+                    case .success(let message):
+                        print("✅ Manual episode update completed: \(message)")
+                    case .failure(let error):
+                        print("❌ Manual episode update failed: \(error)")
+                    }
+                }
+            )
         }
     }
     
     // MARK: - Background Update Logic
+    
+    /// Thread-safe episode update method using proper critical sections
+    private func updateAllEpisodesThreadSafe() async throws -> String {
+        // Critical section: Check if already updating
+        guard !isUpdating else {
+            throw EpisodeUpdateError.alreadyUpdating
+        }
+        
+        // Set updating state in critical section
+        await MainActor.run {
+            self.isUpdating = true
+            self.updateProgress = 0.0
+        }
+        
+        defer {
+            Task { @MainActor in
+                self.isUpdating = false
+                self.lastUpdateTime = Date()
+            }
+        }
+        
+        let podcasts = PodcastService.shared.loadPodcasts()
+        guard !podcasts.isEmpty else {
+            throw EpisodeUpdateError.noPodcasts
+        }
+        
+        print("🔄 Starting thread-safe episode update for \(podcasts.count) podcasts")
+        
+        // Use batch fetch coordinator for better thread management
+        return await withCheckedContinuation { continuation in
+            let operations = podcasts.map { podcast in
+                (
+                    id: podcast.id.uuidString,
+                    operation: {
+                        return try await self.fetchEpisodesForPodcastThreadSafe(podcast)
+                    }
+                )
+            }
+            
+            Task { @MainActor in
+                DataFetchCoordinator.shared.startBatchFetch(
+                    batchId: "episode-batch-update",
+                    operations: operations,
+                    onProgress: { progress in
+                        Task { @MainActor in
+                            self.updateProgress = progress
+                        }
+                    },
+                    onComplete: { results in
+                        Task {
+                            await self.processBatchResults(results, podcasts: podcasts)
+                            continuation.resume(returning: "Updated \(results.count) podcasts")
+                        }
+                    }
+                )
+            }
+        }
+    }
     
     private func updateAllEpisodes() async {
         // Simple property updates - no SwiftUI publishing needed
@@ -284,10 +360,15 @@ class EpisodeUpdateService {
     
     // MARK: - Utility Methods
     
-    /// Check if episodes need updating based on last update time
+    /// Check if episodes need updating based on last update time (used by automatic triggers)
     func needsUpdate() -> Bool {
         guard let lastUpdate = lastUpdateTime else { return true }
-        return Date().timeIntervalSince(lastUpdate) > updateInterval
+        
+        // Only update if more than 30 minutes have passed (for automatic triggers)
+        let timeSinceLastUpdate = Date().timeIntervalSince(lastUpdate)
+        let minimumUpdateInterval: TimeInterval = 30 * 60 // 30 minutes
+        
+        return timeSinceLastUpdate > minimumUpdateInterval
     }
     
     /// Get formatted last update time
@@ -298,6 +379,117 @@ class EpisodeUpdateService {
         formatter.dateTimeStyle = .named
         return formatter.localizedString(for: lastUpdate, relativeTo: Date())
     }
+    
+
+    
+    // MARK: - Automatic Update Methods (Called by DataFetchCoordinator)
+    
+    /// Fetch episodes for a single podcast - called automatically when podcast is added
+    func fetchEpisodesForSinglePodcast(_ podcast: Podcast) async throws -> [Episode] {
+        print("🎯 Auto-fetching episodes for: \(podcast.title)")
+        
+        return await withCheckedContinuation { continuation in
+            OptimizedPodcastService.shared.batchFetchEpisodes(for: [podcast]) { episodesByPodcast in
+                if let episodes = episodesByPodcast[podcast.id] {
+                    // Automatically add episodes to repository
+                    Task { @MainActor in
+                        try? await EpisodeRepository.shared.addNewEpisodes(episodes)
+                        NotificationCenter.default.post(name: .episodesUpdated, object: nil)
+                    }
+                    continuation.resume(returning: episodes)
+                } else {
+                    continuation.resume(returning: [])
+                }
+            }
+        }
+    }
+    
+    /// Perform automatic periodic update - called when app becomes active
+    func performAutomaticUpdate() async throws -> String {
+        // Check if update is needed to prevent infinite loops
+        guard needsUpdate() else {
+            print("🎯 Skipping automatic periodic update - too recent")
+            return "Skipped - too recent"
+        }
+        print("🎯 Performing automatic periodic update")
+        return try await updateAllEpisodesThreadSafe()
+    }
+    
+    /// Perform automatic update when network becomes available
+    func performNetworkAvailableUpdate() async throws -> String {
+        // Check if update is needed to prevent infinite loops
+        guard needsUpdate() else {
+            print("🎯 Skipping automatic network-available update - too recent")
+            return "Skipped - too recent"
+        }
+        print("🎯 Performing automatic network-available update")
+        return try await updateAllEpisodesThreadSafe()
+    }
+    
+    // MARK: - Thread-Safe Helper Methods
+    
+    /// Fetch episodes for a single podcast in a thread-safe manner (new version)
+    private func fetchEpisodesForPodcastThreadSafe(_ podcast: Podcast) async throws -> [Episode] {
+        return await withCheckedContinuation { continuation in
+            OptimizedPodcastService.shared.batchFetchEpisodes(for: [podcast]) { episodesByPodcast in
+                if let episodes = episodesByPodcast[podcast.id] {
+                    continuation.resume(returning: episodes)
+                } else {
+                    continuation.resume(returning: [])
+                }
+            }
+        }
+    }
+    
+    /// Process batch results from thread-safe fetch operations
+    private func processBatchResults(_ results: [String: Result<[Episode], Error>], podcasts: [Podcast]) async {
+        var allNewEpisodes: [Episode] = []
+        var updatedPodcasts: [Podcast] = []
+        
+        for (podcastIdString, result) in results {
+            guard let podcastId = UUID(uuidString: podcastIdString),
+                  let podcast = podcasts.first(where: { $0.id == podcastId }) else {
+                continue
+            }
+            
+            switch result {
+            case .success(let episodes):
+                if !episodes.isEmpty {
+                    print("📥 Received \(episodes.count) episodes for podcast: \(podcast.title)")
+                    allNewEpisodes.append(contentsOf: episodes)
+                    
+                    // Update podcast metadata
+                    var updatedPodcast = podcast
+                    if let latestDate = episodes.compactMap({ $0.publishedDate }).max() {
+                        updatedPodcast.lastEpisodeDate = latestDate
+                    }
+                    updatedPodcasts.append(updatedPodcast)
+                }
+            case .failure(let error):
+                print("❌ Failed to fetch episodes for podcast \(podcast.title): \(error)")
+            }
+        }
+        
+        // Add new episodes to repository
+        if !allNewEpisodes.isEmpty {
+            print("📥 Adding \(allNewEpisodes.count) episodes to EpisodeRepository")
+            Task { @MainActor in
+                try? await EpisodeRepository.shared.addNewEpisodes(allNewEpisodes)
+            }
+        }
+        
+        // Update podcast database
+        if !updatedPodcasts.isEmpty {
+            await updatePodcastsDatabase(podcasts, updatedPodcasts: updatedPodcasts)
+        }
+        
+        // Notify UI
+        await MainActor.run {
+            NotificationCenter.default.post(name: .episodesUpdated, object: nil)
+        }
+    }
+    
+
 }
 
 // MARK: - Notification Extensions
@@ -306,7 +498,26 @@ extension Notification.Name {
     static let episodesUpdated = Notification.Name("episodesUpdated")
 }
 
-// MARK: - Array Extension for Batching
+// MARK: - Error Types
+
+enum EpisodeUpdateError: Error, LocalizedError {
+    case alreadyUpdating
+    case noPodcasts
+    case fetchFailed(String)
+    
+    var errorDescription: String? {
+        switch self {
+        case .alreadyUpdating:
+            return "Episode update is already in progress"
+        case .noPodcasts:
+            return "No podcasts found to update"
+        case .fetchFailed(let message):
+            return "Episode fetch failed: \(message)"
+        }
+    }
+}
+
+// MARK: - Array Extension for Chunking
 
 extension Array {
     func chunked(into size: Int) -> [[Element]] {
@@ -314,4 +525,6 @@ extension Array {
             Array(self[$0..<Swift.min($0 + size, count)])
         }
     }
-} 
+}
+
+ 

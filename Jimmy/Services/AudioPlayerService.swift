@@ -216,7 +216,9 @@ class AudioPlayerService: NSObject, ObservableObject {
             }
             
             // Play next episode in queue
-            QueueViewModel.shared.playNextEpisode()
+            Task { @MainActor in
+                QueueViewModel.shared.playNextEpisode()
+            }
         }
     }
     
@@ -596,7 +598,7 @@ class AudioPlayerService: NSObject, ObservableObject {
             if let queueViewModel = QueueViewModel.shared as QueueViewModel?,
                let index = queueViewModel.queue.firstIndex(where: { $0.id == episode.id }) {
                 queueViewModel.queue[index].playbackPosition = position
-                queueViewModel.debouncedSaveQueue()
+                queueViewModel.saveQueue()
             }
         }
     }
@@ -634,7 +636,8 @@ class AudioPlayerService: NSObject, ObservableObject {
     }
     
     private func getPodcast(for episode: Episode, completion: @escaping (Podcast?) -> Void) {
-        PodcastService.shared.loadPodcastsAsync { podcasts in
+        Task {
+            let podcasts = await PodcastService.shared.loadPodcastsAsync()
             let matchingPodcast = podcasts.first { $0.id == episode.podcastID }
             completion(matchingPodcast)
         }

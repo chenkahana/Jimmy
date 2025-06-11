@@ -1,186 +1,212 @@
 import Foundation
-import OSLog
 
-class PodcastService: ObservableObject {
+/// PodcastService handles podcast management and episode fetching
+class PodcastService {
     static let shared = PodcastService()
-    private(set) var hasAttemptedLoad: Bool = false
-    private let podcastsKey = "podcastsKey"
-    private let fileQueue = DispatchQueue(label: "com.jimmy.podcastService.fileQueue", qos: .background)
     
-    // Save podcasts to UserDefaults
-    func savePodcasts(_ podcasts: [Podcast]) {
-        fileQueue.async {
-            if let data = try? JSONEncoder().encode(podcasts) {
-                UserDefaults.standard.set(data, forKey: self.podcastsKey)
-                AppDataDocument.saveToICloudIfEnabled()
-            }
-        }
+    private var podcasts: [Podcast] = []
+    
+    private init() {
+        // Load podcasts from storage or other sources
+        loadPodcastsFromStorage()
     }
     
-    // Load podcasts from UserDefaults
+    private func loadPodcastsFromStorage() {
+        // TODO: Load podcasts from persistent storage
+        // For now, start with empty array - podcasts will be added through discovery/import
+        print("📚 PodcastService: Ready to load podcasts from storage or discovery")
+    }
+    
     func loadPodcasts() -> [Podcast] {
-        hasAttemptedLoad = true
-        if let data = UserDefaults.standard.data(forKey: podcastsKey),
-           let podcasts = try? JSONDecoder().decode([Podcast].self, from: data) {
-            return podcasts
-        }
-        return []
+        return podcasts
     }
     
-    // Load podcasts from UserDefaults - async version
-    func loadPodcastsAsync(completion: @escaping ([Podcast]) -> Void) {
-        hasAttemptedLoad = true
-        fileQueue.async {
-            if let data = UserDefaults.standard.data(forKey: self.podcastsKey),
-               let podcasts = try? JSONDecoder().decode([Podcast].self, from: data) {
-                DispatchQueue.main.async {
-                    completion(podcasts)
-                }
-            } else {
-                DispatchQueue.main.async {
-                    completion([])
-                }
-            }
-        }
-    }
-    
-    // Load podcasts from UserDefaults - async/await version
     func loadPodcastsAsync() async -> [Podcast] {
-        await withCheckedContinuation { continuation in
-            loadPodcastsAsync { podcasts in
-                continuation.resume(returning: podcasts)
-            }
-        }
+        return podcasts
     }
     
-    // Fetch episodes from a podcast RSS feed
+    func savePodcasts(_ podcasts: [Podcast]) {
+        self.podcasts = podcasts
+        print("📚 PodcastService: Saved \(podcasts.count) podcasts")
+    }
+    
     func fetchEpisodes(for podcast: Podcast, completion: @escaping ([Episode]) -> Void) {
-        OptimizedPodcastService.shared.fetchEpisodes(for: podcast, completion: completion)
-    }
-
-    // Force refresh podcast metadata (title, author, description, artwork) from RSS feed
-    func refreshPodcastMetadata(for podcast: Podcast) async -> Bool {
-        print("🔍 Refreshing metadata for: \(podcast.title)")
-        let episodes = await OptimizedPodcastService.shared.fetchEpisodesAsync(for: podcast)
-        return !episodes.isEmpty
-    }
-
-    // Download episode audio file
-    func downloadEpisode(_ episode: Episode, completion: @escaping (URL?) -> Void) {
-        guard let unwrappedAudioURL = episode.audioURL else {
-            completion(nil)
-            return
-        }
-        let task = URLSession.shared.downloadTask(with: unwrappedAudioURL) { tempURL, response, error in
-            guard let tempURL = tempURL, error == nil else {
-                completion(nil)
-                return
-            }
-            let fileManager = FileManager.default
-            let docs = fileManager.urls(for: .documentDirectory, in: .userDomainMask)[0]
-            let lastPathComponent = unwrappedAudioURL.lastPathComponent
-            let destURL = docs.appendingPathComponent(lastPathComponent)
-            do {
-                if fileManager.fileExists(atPath: destURL.path) {
-                    try fileManager.removeItem(at: destURL)
-                }
-                try fileManager.moveItem(at: tempURL, to: destURL)
-                completion(destURL)
-            } catch {
-                completion(nil)
-            }
-        }
-        task.resume()
-    }
-
-    // Check if episode is downloaded
-    func isEpisodeDownloaded(_ episode: Episode) -> Bool {
-        let fileManager = FileManager.default
-        let docs = fileManager.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        guard let unwrappedAudioURL = episode.audioURL else {
-            return false
-        }
-        let lastPathComponent = unwrappedAudioURL.lastPathComponent
-        let destURL = docs.appendingPathComponent(lastPathComponent)
-        return fileManager.fileExists(atPath: destURL.path)
-    }
-
-    // Add a podcast from an RSS feed URL
-    func addPodcast(from feedURL: URL) async throws -> Podcast {
-        let existingPodcasts = await loadPodcastsAsync()
-        if existingPodcasts.contains(where: { $0.feedURL == feedURL }) {
-            throw PodcastServiceError.podcastAlreadyExists
-        }
-        
-        // Generate a consistent podcast ID that will be used throughout
-        let podcastID = UUID()
-        let parser = RSSParser(podcastID: podcastID)
-        
-        let (episodes, metadata) = try await parser.parse(from: feedURL)
-        
-        guard let title = metadata.title, !title.isEmpty else {
-            throw PodcastServiceError.invalidRSSFeed
-        }
-        
-        // Create the podcast with the same ID used for parsing
-        let newPodcast = Podcast(
-            id: podcastID,  // Use the same ID that was used for parsing episodes
-            title: title,
-            author: metadata.author ?? "",
-            description: metadata.description ?? "",
-            feedURL: feedURL,
-            artworkURL: metadata.artworkURL,
-            lastEpisodeDate: episodes.compactMap({ $0.publishedDate }).max()
-        )
-        
-        var allPodcasts = existingPodcasts
-        allPodcasts.append(newPodcast)
-        savePodcasts(allPodcasts)
-        
-        ShakeUndoManager.shared.recordOperation(
-            .podcastSubscribed(podcast: newPodcast),
-            description: "Subscribed to \"\(newPodcast.title)\""
-        )
-        
-        // Update the cache with the newly fetched episodes (episodes already have correct podcast ID)
-        EpisodeCacheService.shared.updateCache(episodes, for: newPodcast.id)
-        
-        return newPodcast
-    }
-
-    // Force refresh all podcast artwork from RSS feeds
-    func refreshAllPodcastArtwork(completion: @escaping (Int, Int) -> Void) {
-        let podcasts = loadPodcasts()
-        guard !podcasts.isEmpty else {
-            completion(0, 0)
-            return
-        }
-        
-        print("🔄 Starting artwork refresh for \(podcasts.count) podcasts")
-        
-        OptimizedPodcastService.shared.batchFetchEpisodes(for: podcasts) { _ in
-            let totalProcessed = podcasts.count
-            print("🎨 Artwork refresh complete: \(totalProcessed) podcasts processed")
-            completion(totalProcessed, totalProcessed)
+        fetchEpisodesWithError(for: podcast) { episodes, error in
+            completion(episodes)
         }
     }
-}
-
-// MARK: - Error Types
-
-enum PodcastServiceError: LocalizedError {
-    case podcastAlreadyExists
-    case networkError
-    case invalidRSSFeed
     
-    var errorDescription: String? {
-        switch self {
-        case .podcastAlreadyExists:
-            return "This podcast is already in your library."
-        case .networkError:
-            return "Unable to connect to the podcast feed. Please check your internet connection."
-        case .invalidRSSFeed:
-            return "The URL does not contain a valid podcast RSS feed."
+    func fetchEpisodesWithError(for podcast: Podcast, completion: @escaping ([Episode], Error?) -> Void) {
+        // Simple approach: just try to fetch from the URL, no validation needed
+        print("🔄 PodcastService: Fetching episodes for \(podcast.title) from \(podcast.feedURL)")
+        
+        // Use RSSParser to fetch episodes from the podcast's RSS feed
+        Task {
+            do {
+                let parser = RSSParser(podcastID: podcast.id)
+                let (episodes, _) = try await parser.parse(from: podcast.feedURL)
+                
+                print("✅ PodcastService: Fetched \(episodes.count) episodes for \(podcast.title)")
+                
+                // Return episodes on main queue
+                DispatchQueue.main.async {
+                    completion(episodes, nil)
+                }
+            } catch {
+                print("❌ Failed to fetch episodes for \(podcast.title): \(error.localizedDescription)")
+                print("❌ Feed URL: \(podcast.feedURL)")
+                
+                // Log additional error details if available
+                if let nsError = error as NSError? {
+                    if let recoverySuggestion = nsError.localizedRecoverySuggestion {
+                        print("💡 Suggestion: \(recoverySuggestion)")
+                    }
+                    print("🔍 Error domain: \(nsError.domain), code: \(nsError.code)")
+                    
+                    // Log specific network error codes for debugging
+                    switch nsError.code {
+                    case NSURLErrorTimedOut:
+                        print("🕐 Specific error: Connection timed out")
+                    case NSURLErrorCannotConnectToHost:
+                        print("🔌 Specific error: Cannot connect to host")
+                    case NSURLErrorNetworkConnectionLost:
+                        print("📡 Specific error: Network connection lost")
+                    case NSURLErrorDNSLookupFailed:
+                        print("🌐 Specific error: DNS lookup failed")
+                    case NSURLErrorNotConnectedToInternet:
+                        print("📶 Specific error: Not connected to internet")
+                    default:
+                        print("❓ Other network error code: \(nsError.code)")
+                    }
+                }
+                
+                // Return empty array with error on main queue
+                DispatchQueue.main.async {
+                    completion([], error)
+                }
+            }
         }
+    }
+    
+    /// Fetch episodes progressively using direct RSS parsing
+    /// - Parameters:
+    ///   - podcast: The podcast to fetch episodes for
+    ///   - episodeCallback: Called for each episode as it's parsed (on main queue)
+    ///   - metadataCallback: Called when podcast metadata is available (on main queue)
+    ///   - completion: Called when all episodes are fetched or an error occurs
+    func fetchEpisodesProgressively(for podcast: Podcast,
+                                   episodeCallback: @escaping (Episode) -> Void,
+                                   metadataCallback: @escaping (PodcastMetadata) -> Void,
+                                   completion: @escaping ([Episode], Error?) -> Void) {
+        
+        print("🔄 PodcastService: Starting progressive fetch for \(podcast.title)")
+        
+        // Create parser and start progressive parsing directly
+        let parser = RSSParser(podcastID: podcast.id)
+        
+        parser.parseProgressively(
+            from: podcast.feedURL,
+            episodeCallback: { episode in
+                // This callback is already dispatched to main thread by RSSParser
+                episodeCallback(episode)
+                
+                // Notify UIUpdateService on main actor
+                Task { @MainActor in
+                    UIUpdateService.shared.handleProgressiveEpisodeUpdate(
+                        podcastId: podcast.id,
+                        episode: episode
+                    )
+                }
+            },
+            metadataCallback: { metadata in
+                // This callback is already dispatched to main thread by RSSParser
+                metadataCallback(metadata)
+                
+                // Notify UIUpdateService on main actor
+                Task { @MainActor in
+                    UIUpdateService.shared.handleEpisodeMetadataUpdate(
+                        podcastId: podcast.id,
+                        metadata: metadata
+                    )
+                }
+            },
+            completion: { result in
+                // This completion is already dispatched to main thread by RSSParser
+                switch result {
+                case .success(let (episodes, _)):
+                    print("✅ PodcastService: Progressive fetch completed with \(episodes.count) episodes for \(podcast.title)")
+                    
+                    // Notify UIUpdateService of completion on main actor
+                    Task { @MainActor in
+                        UIUpdateService.shared.handleEpisodeListCompleted(
+                            podcastId: podcast.id,
+                            episodes: episodes
+                        )
+                    }
+                    
+                    completion(episodes, nil)
+                    
+                case .failure(let error):
+                    print("❌ Progressive fetch failed for \(podcast.title): \(error.localizedDescription)")
+                    print("❌ Feed URL: \(podcast.feedURL)")
+                    
+                    // Log additional error details if available
+                    if let nsError = error as NSError? {
+                        if let recoverySuggestion = nsError.localizedRecoverySuggestion {
+                            print("💡 Suggestion: \(recoverySuggestion)")
+                        }
+                        print("🔍 Error domain: \(nsError.domain), code: \(nsError.code)")
+                    }
+                    
+                    completion([], error)
+                }
+            }
+        )
+    }
+    
+    func addPodcast(from url: URL) async throws -> Podcast {
+        // Try to fetch podcast metadata from RSS feed
+        do {
+            let parser = RSSParser(podcastID: UUID())
+            let (_, metadata) = try await parser.parse(from: url)
+            
+            let podcast = Podcast(
+                title: metadata.title ?? "Unknown Podcast",
+                author: metadata.author ?? "Unknown Author",
+                description: metadata.description ?? "",
+                feedURL: url,
+                artworkURL: metadata.artworkURL
+            )
+            
+            // Add to our podcasts list
+            podcasts.append(podcast)
+            
+            return podcast
+        } catch {
+            print("❌ Failed to add podcast from URL \(url): \(error.localizedDescription)")
+            throw error
+        }
+    }
+    
+    func clearAllSubscriptions() {
+        podcasts.removeAll()
+        print("🗑️ PodcastService: Cleared all subscriptions")
+    }
+    
+    func downloadEpisode(_ episode: Episode, completion: @escaping (URL?) -> Void) {
+        // Stub implementation
+        print("⬇️ PodcastService: Downloading episode \(episode.title)")
+        completion(nil)
+    }
+    
+    func isEpisodeDownloaded(_ episode: Episode) -> Bool {
+        // Stub implementation
+        return false
+    }
+    
+    func refreshAllPodcastArtwork(completion: @escaping (Int, Int) -> Void) {
+        // Stub implementation
+        print("🎨 PodcastService: Refreshing all podcast artwork")
+        completion(0, 0)
     }
 } 

@@ -65,57 +65,13 @@ struct Enhanced3DCardBackground: ViewModifier {
     func body(content: Content) -> some View {
         content
             .background {
-                ZStack {
-                    // Main surface
-                    RoundedRectangle(cornerRadius: cornerRadius)
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color("SurfaceElevated"),
-                                    Color("SurfaceElevated").opacity(0.8)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                    
-                    // Inner highlight
-                    RoundedRectangle(cornerRadius: cornerRadius)
-                        .stroke(
-                            LinearGradient(
-                                colors: [
-                                    Color("SurfaceHighlighted").opacity(0.3),
-                                    Color.clear,
-                                    Color.black.opacity(0.1)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ),
-                            lineWidth: 1
-                        )
-                    
-                    // Top highlight line
-                    RoundedRectangle(cornerRadius: cornerRadius)
-                        .stroke(
-                            LinearGradient(
-                                colors: [
-                                    Color("SurfaceHighlighted").opacity(0.4),
-                                    Color("SurfaceHighlighted").opacity(0.2),
-                                    Color.clear
-                                ],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            ),
-                            lineWidth: 1
-                        )
-                        .mask(
-                            Rectangle()
-                                .frame(height: 1)
-                                .offset(y: -cornerRadius * 0.8)
-                        )
-                }
-                .shadow(color: .black.opacity(0.15), radius: elevation * 2, x: 0, y: elevation)
-                .shadow(color: .black.opacity(0.05), radius: elevation, x: 0, y: elevation * 0.5)
+                RoundedRectangle(cornerRadius: cornerRadius)
+                    .fill(Color.clear)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: cornerRadius)
+                            .stroke(Color(.separator).opacity(0.2), lineWidth: 0.5)
+                    )
+                    .shadow(color: .black.opacity(0.1), radius: elevation, x: 0, y: elevation/2)
             }
     }
 }

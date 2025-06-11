@@ -226,17 +226,25 @@ class CrashPreventionManager {
     }
     
     private func startMonitoring() {
-        // Memory monitoring every 10 seconds
-        memoryMonitorTimer = Timer.scheduledTimer(withTimeInterval: 10.0, repeats: true) { [weak self] _ in
+        // MEMORY FIX: Reduce memory monitoring frequency from 10s to 60s to reduce overhead
+        memoryMonitorTimer = Timer.scheduledTimer(withTimeInterval: 60.0, repeats: true) { [weak self] timer in
+            guard let self = self else {
+                timer.invalidate()
+                return
+            }
             Task { @MainActor in
-                self?.monitorMemoryUsage()
+                self.monitorMemoryUsage()
             }
         }
         
-        // Audio session monitoring every 30 seconds
-        audioSessionMonitorTimer = Timer.scheduledTimer(withTimeInterval: 30.0, repeats: true) { [weak self] _ in
+        // MEMORY FIX: Reduce audio session monitoring frequency from 30s to 120s
+        audioSessionMonitorTimer = Timer.scheduledTimer(withTimeInterval: 120.0, repeats: true) { [weak self] timer in
+            guard let self = self else {
+                timer.invalidate()
+                return
+            }
             Task { @MainActor in
-                self?.monitorAudioSession()
+                self.monitorAudioSession()
             }
         }
     }
@@ -306,6 +314,7 @@ class CrashPreventionManager {
     private func performEmergencyCleanup() {
         logger.warning("🚨 Performing emergency cleanup")
         
+        // MEMORY FIX: More aggressive cleanup
         // Clear all caches
         AudioPlayerService.shared.clearPlayerItemCache()
         // Clear image cache if available
@@ -315,9 +324,14 @@ class CrashPreventionManager {
         // Stop non-essential operations
         EpisodeUpdateService.shared.stopPeriodicUpdates()
         
-        // Force garbage collection
-        autoreleasepool {
-            // This helps trigger garbage collection
+        // MEMORY FIX: Cancel all background tasks
+        BackgroundTaskCoordinator.shared.cancelAllTasks()
+        
+        // MEMORY FIX: Force multiple garbage collection cycles
+        for _ in 0..<3 {
+            autoreleasepool {
+                // This helps trigger garbage collection
+            }
         }
         
         logger.info("✅ Emergency cleanup completed")

@@ -15,241 +15,270 @@ struct SettingsView: View {
     @State private var isImportingFromApplePodcasts = false
     @State private var showingManualImport = false
     @State private var showingShortcutsGuide = false
-    @State private var isOPMLImporting = false
-    @State private var opmlImportMessage: String?
-    @State private var showingAppleImportGuide = false
-    @State private var showingAppleBulkGuide = false
-    @State private var isAppleJSONImporting = false
-    @State private var appleJSONImportMessage: String?
-    @State private var showingSpotifyImportGuide = false
     @State private var isSpotifyImporting = false
     @State private var spotifyImportMessage: String?
     @State private var showingFeedbackForm = false
     @State private var activeAlert: SettingsAlert?
-    @State private var isSubscriptionImporting = false
-    @State private var subscriptionImportMessage: String?
     @State private var showDeleteConfirmation = false
+    @State private var isJSONImporting = false
+    @State private var jsonImportMessage: String?
+    @State private var showClearSubscriptionsConfirmation = false
 
     enum SettingsAlert {
         case resetData
         case appleImport(String)
-        case opmlImport(String)
-        case subscriptionImport(String)
-        case appleBulkImport(String)
         case spotifyImport(String)
+        case jsonImport(String)
+        case clearSubscriptions
+        case subscriptionImport(String) // Keep for management operations
     }
 
     var body: some View {
-        Form {
-            Section(header: Text("Playback")) {
-                HStack {
-                    Text("Speed")
-                    Spacer()
-                    Picker("", selection: $playbackSpeed) {
-                        Text("0.75x").tag(0.75)
-                        Text("1x").tag(1.0)
-                        Text("1.25x").tag(1.25)
-                        Text("1.5x").tag(1.5)
-                        Text("2x").tag(2.0)
-                    }
-                    .pickerStyle(MenuPickerStyle())
-                    .onChange(of: playbackSpeed) { oldValue, newValue in
-                        AudioPlayerService.shared.updatePlaybackSpeed(Float(newValue))
+        ScrollView {
+            LazyVStack(spacing: 24) {
+                // Header
+                VStack(spacing: 12) {
+                    Image(systemName: "gearshape.fill")
+                        .font(.system(size: 60))
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [.blue, .purple],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                    
+                    Text("Settings")
+                        .font(.largeTitle.bold())
+                        .foregroundColor(.primary)
+                    
+                    Text("Customize your podcast experience")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                .padding(.top, 20)
+                
+                // Playback Section
+                SettingsCard(
+                    title: "Playback",
+                    icon: "play.circle.fill",
+                    iconColor: .green
+                ) {
+                    VStack(spacing: 16) {
+                        HStack {
+                            Image(systemName: "speedometer")
+                                .foregroundColor(.green)
+                                .font(.title3)
+                            Text("Playback Speed")
+                                .font(.body.weight(.medium))
+                            Spacer()
+                            Picker("", selection: $playbackSpeed) {
+                                Text("0.75x").tag(0.75)
+                                Text("1x").tag(1.0)
+                                Text("1.25x").tag(1.25)
+                                Text("1.5x").tag(1.5)
+                                Text("2x").tag(2.0)
+                            }
+                            .pickerStyle(MenuPickerStyle())
+                            .onChange(of: playbackSpeed) { oldValue, newValue in
+                                AudioPlayerService.shared.updatePlaybackSpeed(Float(newValue))
+                            }
+                        }
+                        
+                        SettingsToggle(
+                            title: "Auto-Load Last Episode",
+                            subtitle: "Loads your last episode when the app opens",
+                            icon: "arrow.clockwise.circle.fill",
+                            isOn: $autoRestoreLastEpisode
+                        )
                     }
                 }
                 
-                Toggle(isOn: $autoRestoreLastEpisode) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Auto-Load Last Episode")
-                        Text("When enabled, loads your last episode when the app opens (ready to play, but won't auto-start)")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                // Appearance Section
+                SettingsCard(
+                    title: "Appearance",
+                    icon: "paintbrush.fill",
+                    iconColor: .purple
+                ) {
+                    VStack(spacing: 12) {
+                        SettingsToggle(
+                            title: "Dark Mode",
+                            subtitle: darkMode ? "Currently using dark appearance" : "Currently using light appearance",
+                            icon: darkMode ? "moon.fill" : "sun.max.fill",
+                            isOn: $darkMode
+                        )
+                        
+                        SettingsToggle(
+                            title: "High Contrast Mode",
+                            icon: "eye.circle.fill",
+                            isOn: $highContrastMode
+                        )
                     }
                 }
-            }
-            Section(header: Text("Appearance")) {
-                Toggle(isOn: $darkMode) {
-                    Text("Dark Mode")
+                
+                // Data & Sync Section
+                SettingsCard(
+                    title: "Data & Sync",
+                    icon: "icloud.fill",
+                    iconColor: .blue
+                ) {
+                    VStack(spacing: 12) {
+                        SettingsToggle(
+                            title: "iCloud Sync",
+                            subtitle: "Sync your data across devices",
+                            icon: "icloud.circle.fill",
+                            isOn: $iCloudSyncEnabled
+                        )
+                        
+                        SettingsButton(
+                            title: "Export App Data",
+                            subtitle: "Backup your podcasts and settings",
+                            icon: "square.and.arrow.up.circle.fill",
+                            action: { isExporting = true }
+                        )
+                    }
                 }
-                Toggle(isOn: $highContrastMode) {
-                    Text("High Contrast Mode")
+                // Podcast Import Section
+                SettingsCard(
+                    title: "Podcast Import",
+                    icon: "square.and.arrow.down.fill",
+                    iconColor: .orange
+                ) {
+                    VStack(spacing: 16) {
+                        // JSON import - primary option
+                        ImportButton(
+                            title: "Import from JSON File",
+                            subtitle: "Import podcasts from a JSON file with title, publisher, and url fields",
+                            icon: "doc.text.fill",
+                            isLoading: isJSONImporting,
+                            action: { isJSONImporting = true }
+                        )
+                        
+                        Divider()
+                            .padding(.vertical, 8)
+                        
+                        // Other import methods
+                        ImportButton(
+                            title: "Import from Spotify",
+                            subtitle: "Import from Spotify playlist export",
+                            icon: "music.note.list",
+                            action: { isSpotifyImporting = true }
+                        )
+                        
+                        ImportButton(
+                            title: "Import from Apple Podcasts",
+                            subtitle: "Get all your Apple Podcasts subscriptions",
+                            icon: "externaldrive.badge.plus",
+                            isLoading: isImportingFromApplePodcasts,
+                            action: { performComprehensiveApplePodcastsImport() }
+                        )
+                        
+                        ImportButton(
+                            title: "Add Single Podcast by URL",
+                            subtitle: "Import one podcast by RSS feed URL",
+                            icon: "plus.circle.fill",
+                            action: { showingManualImport = true }
+                        )
+                    }
                 }
-            }
-            Section(header: Text("Swipe Actions")) {
-                Picker("Episode List Swipe", selection: $episodeSwipeAction) {
-                    Text("Add to Queue").tag("addToQueue")
-                    Text("Download").tag("download")
-                    Text("Mark as Played").tag("markAsPlayed")
-                }
-                Picker("Queue Swipe", selection: $queueSwipeAction) {
-                    Text("Mark as Played").tag("markAsPlayed")
-                    Text("Download").tag("download")
-                    Text("Remove").tag("remove")
-                }
-            }
-            Section(header: Text("Data & Sync")) {
-                Toggle(isOn: $iCloudSyncEnabled) {
-                    Text("Enable iCloud Sync")
-                }
-            }
-            Section(header: Text("Backup & Restore")) {
-                Button("Export App Data") {
-                    isExporting = true
-                }
-            }
-            
-            Section(header: Text("Import from Apple Podcasts")) {
-                VStack(alignment: .leading, spacing: 12) {
-                    
-                    // Primary import button
-                    Button(action: {
-                        performComprehensiveApplePodcastsImport()
-                    }) {
-                        HStack {
-                            Image(systemName: "externaldrive.badge.plus")
-                                .foregroundColor(.white)
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("Get All My Subscriptions")
-                                    .fontWeight(.semibold)
-                                    .foregroundColor(.white)
-                                Text("Import all podcasts from Apple Podcasts")
+                
+                // Management Section
+                SettingsCard(
+                    title: "Management",
+                    icon: "folder.fill",
+                    iconColor: .red
+                ) {
+                    VStack(spacing: 12) {
+                        SettingsButton(
+                            title: "Clear All Subscriptions",
+                            subtitle: "Remove all podcasts and episodes",
+                            icon: "trash.circle.fill",
+                            isDestructive: true,
+                            action: { showClearSubscriptionsConfirmation = true }
+                        )
+                        
+                        NavigationLink(destination: DocumentationView()) {
+                            HStack {
+                                Image(systemName: "book.circle.fill")
+                                    .foregroundColor(.blue)
+                                    .font(.title3)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Browse Documentation")
+                                        .font(.body.weight(.medium))
+                                        .foregroundColor(.primary)
+                                    Text("Help and guides")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .foregroundColor(.secondary)
                                     .font(.caption)
-                                    .foregroundColor(.white.opacity(0.8))
-                            }
-                            Spacer()
-                            if isImportingFromApplePodcasts {
-                                ProgressView()
-                                    .scaleEffect(0.8)
-                                    .tint(.white)
                             }
                         }
-                        .padding(.vertical, 8)
+                        .buttonStyle(PlainButtonStyle())
+                        
+                        SettingsButton(
+                            title: "Submit Feedback",
+                            subtitle: "Report bugs or request features",
+                            icon: "envelope.circle.fill",
+                            action: { showingFeedbackForm = true }
+                        )
                     }
-                    .disabled(isImportingFromApplePodcasts)
-                    .buttonStyle(PlainButtonStyle())
-                    
-                    // Guidance button
-                    Button(action: {
-                        showingAppleImportGuide = true
-                    }) {
-                        HStack {
-                            Image(systemName: "questionmark.circle")
-                                .foregroundColor(.accentColor)
-                            Text("How to Import All Subscriptions")
-                                .foregroundColor(.accentColor)
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .foregroundColor(.secondary)
-                                .font(.caption)
-                        }
-                    }
-                    .buttonStyle(PlainButtonStyle())
-
-                    Button(action: {
-                        showingAppleBulkGuide = true
-                    }) {
-                        HStack {
-                            Image(systemName: "tray.and.arrow.down")
-                                .foregroundColor(.accentColor)
-                            Text("Import from Extractor File")
-                                .foregroundColor(.accentColor)
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .foregroundColor(.secondary)
-                                .font(.caption)
-                        }
-                    }
-                    .buttonStyle(PlainButtonStyle())
                 }
-                .padding(.vertical, 4)
-            }
-            
-            Section(header: Text("Other Import Options")) {
-                Button("Import Podcast From URL") {
-                    showingManualImport = true
-                }
-
-                Button("Import OPML File") {
-                    isOPMLImporting = true
-                }
-
-                Button("Import Apple JSON File") {
-                    isAppleJSONImporting = true
-                }
-
-                Button("Import Spotify File") {
-                    isSpotifyImporting = true
-                }
-
-                Button("Spotify Import Guide") {
-                    showingSpotifyImportGuide = true
-                }
-
-                Button("Import from Subscription File") {
-                    importFromSubscriptionFile()
-                }
-                .disabled(isSubscriptionImporting)
                 
-                if isSubscriptionImporting {
-                    HStack {
-                        ProgressView()
-                            .scaleEffect(0.8)
-                        Text("Importing subscriptions...")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                // Debug Section (Developer Mode)
+                SettingsCard(
+                    title: "Developer Tools",
+                    icon: "hammer.fill",
+                    iconColor: .gray
+                ) {
+                    VStack(spacing: 12) {
+                        SettingsButton(
+                            title: "View Analytics",
+                            subtitle: "App usage statistics",
+                            icon: "chart.bar.fill",
+                            action: { showingAnalytics = true }
+                        )
+                        
+                        SettingsButton(
+                            title: "Clear Episode Cache",
+                            subtitle: "Free up storage space",
+                            icon: "trash.circle.fill",
+                            isDestructive: true,
+                            action: { clearEpisodeCache() }
+                        )
+                        
+                        SettingsButton(
+                            title: "Force Fetch Episodes",
+                            subtitle: "Refresh all episode data",
+                            icon: "arrow.clockwise.circle.fill",
+                            action: { forceFetchAllEpisodes() }
+                        )
+                        
+                        SettingsButton(
+                            title: "Recover Episodes & Queue",
+                            subtitle: "Fix missing episodes",
+                            icon: "wrench.and.screwdriver.fill",
+                            isDestructive: true,
+                            action: { recoverEpisodesAndQueue() }
+                        )
+                        
+                        SettingsButton(
+                            title: "Reset All Data",
+                            subtitle: "Complete app reset",
+                            icon: "exclamationmark.triangle.fill",
+                            isDestructive: true,
+                            action: { activeAlert = .resetData }
+                        )
                     }
                 }
+                
+                // Footer spacing
+                Color.clear
+                    .frame(height: 50)
             }
-
-            Section(header: Text("Guides & Documentation")) {
-                NavigationLink(destination: DocumentationView()) {
-                    HStack {
-                        Image(systemName: "book.closed")
-                            .foregroundColor(.accentColor)
-                        Text("Browse Documentation")
-                        Spacer()
-                        Image(systemName: "chevron.right")
-                            .foregroundColor(.secondary)
-                            .font(.caption)
-                    }
-                }
-            }
-            
-            Section(header: Text("Feedback")) {
-                Button("Submit a Request or Bug") {
-                    showingFeedbackForm = true
-                }
-            }
-
-            Section(header: Text("Debug/Developer Mode")) {
-                Button("View Analytics") {
-                    showingAnalytics = true
-                }
-                Button("Clear Episode Cache", role: .destructive) {
-                    clearEpisodeCache()
-                }
-                Button("Force Fetch Episodes") {
-                    forceFetchAllEpisodes()
-                }
-                Button("Recover Episodes & Queue", role: .destructive) {
-                    recoverEpisodesAndQueue()
-                }
-                Button("Diagnose Podcast Artwork") {
-                    diagnosePodcastArtwork()
-                }
-                Button("Fix Podcast Artwork") {
-                    refreshAllPodcastMetadata()
-                }
-                Button("Reset All Data", role: .destructive) {
-                    activeAlert = .resetData
-                }
-                Button("Delete All Local Storage", role: .destructive) {
-                    showDeleteConfirmation = true
-                }
-                Button("Test Notification") {
-                    DebugHelper.shared.sendTestNotification()
-                }
-            }
+            .padding(.horizontal, 20)
         }
         .navigationTitle("Settings")
         .onAppear {
@@ -296,28 +325,31 @@ struct SettingsView: View {
                 importError = error.localizedDescription
             }
         }
-        .fileImporter(isPresented: $isOPMLImporting, allowedContentTypes: [.xml, .data]) { result in
-            switch result {
-            case .success(let url):
-                importOPMLFile(from: url)
-            case .failure(let error):
-                opmlImportMessage = "Error selecting file: \(error.localizedDescription)"
-            }
-        }
-        .fileImporter(isPresented: $isAppleJSONImporting, allowedContentTypes: [.json]) { result in
-            switch result {
-            case .success(let url):
-                importAppleJSONFile(from: url)
-            case .failure(let error):
-                appleJSONImportMessage = "Error selecting file: \(error.localizedDescription)"
-            }
-        }
+
         .fileImporter(isPresented: $isSpotifyImporting, allowedContentTypes: [.text, .data]) { result in
             switch result {
             case .success(let url):
                 importSpotifyFile(from: url)
             case .failure(let error):
                 spotifyImportMessage = "Error selecting file: \(error.localizedDescription)"
+            }
+        }
+        .fileImporter(
+            isPresented: $isJSONImporting, 
+            allowedContentTypes: [.json, .plainText, .data, .text]
+        ) { result in
+            switch result {
+            case .success(let url):
+                print("📁 Selected file: \(url.lastPathComponent)")
+                print("📁 File path: \(url.path)")
+                print("📁 File exists: \(FileManager.default.fileExists(atPath: url.path))")
+                importJSONFile(from: url)
+            case .failure(let error):
+                print("❌ File selection error: \(error)")
+                DispatchQueue.main.async {
+                    self.jsonImportMessage = "Error selecting file: \(error.localizedDescription)"
+                    self.activeAlert = .jsonImport(self.jsonImportMessage ?? "Unknown error")
+                }
             }
         }
         .sheet(isPresented: $showingAnalytics) {
@@ -340,15 +372,7 @@ struct SettingsView: View {
         .sheet(isPresented: $showingShortcutsGuide) {
             ShortcutsGuideSheet()
         }
-        .sheet(isPresented: $showingAppleImportGuide) {
-            ApplePodcastImportGuideSheet()
-        }
-        .sheet(isPresented: $showingAppleBulkGuide) {
-            AppleBulkImportGuideSheet()
-        }
-        .sheet(isPresented: $showingSpotifyImportGuide) {
-            SpotifyImportGuideSheet()
-        }
+
         .sheet(isPresented: $showingFeedbackForm) {
             FeedbackFormView()
         }
@@ -358,6 +382,16 @@ struct SettingsView: View {
                 message: Text("Are you sure you want to delete all subscriptions and listening history? This action cannot be undone."),
                 primaryButton: .destructive(Text("Delete")) {
                     deleteAllLocalStorage()
+                },
+                secondaryButton: .cancel()
+            )
+        }
+        .alert(isPresented: $showClearSubscriptionsConfirmation) {
+            Alert(
+                title: Text("Clear All Subscriptions"),
+                message: Text("Are you sure you want to remove all podcast subscriptions? This will also clear your episode queue. This action cannot be undone."),
+                primaryButton: .destructive(Text("Clear")) {
+                    clearAllSubscriptions()
                 },
                 secondaryButton: .cancel()
             )
@@ -407,84 +441,7 @@ struct SettingsView: View {
         }
     }
     
-    private func importOPMLFile(from url: URL) {
-        opmlImportMessage = "Processing OPML file..."
-        
-        // Start accessing the security-scoped resource
-        let _ = url.startAccessingSecurityScopedResource()
-        defer { url.stopAccessingSecurityScopedResource() }
-        
-        let parser = OPMLParser()
-        let importedPodcasts = parser.parseOPML(from: url)
-        
-        var currentPodcasts = PodcastService.shared.loadPodcasts()
-        var newPodcastsCount = 0
-        var skippedCount = 0
-        
-        for podcast in importedPodcasts {
-            // Check if podcast already exists
-            if currentPodcasts.contains(where: { $0.feedURL.absoluteString == podcast.feedURL.absoluteString }) {
-                skippedCount += 1
-                continue
-            }
-            
-            currentPodcasts.append(podcast)
-            newPodcastsCount += 1
-        }
-        
-        // Save updated podcasts
-        PodcastService.shared.savePodcasts(currentPodcasts)
 
-        // Show success message
-        if newPodcastsCount > 0 {
-            if skippedCount > 0 {
-                opmlImportMessage = "🎉 Successfully imported \(newPodcastsCount) new podcasts! (\(skippedCount) already in library)"
-            } else {
-                opmlImportMessage = "🎉 Successfully imported \(newPodcastsCount) podcasts from OPML file!"
-            }
-        } else {
-            opmlImportMessage = "No new podcasts to import. All \(importedPodcasts.count) podcasts are already in your library."
-        }
-    }
-
-    private func importAppleJSONFile(from url: URL) {
-        appleJSONImportMessage = "Processing file..."
-        let _ = url.startAccessingSecurityScopedResource()
-        defer { url.stopAccessingSecurityScopedResource() }
-
-        // PERFORMANCE FIX: Move file operations to background thread
-        DispatchQueue.global(qos: .userInitiated).async {
-            guard let data = try? Data(contentsOf: url) else {
-                DispatchQueue.main.async {
-                    self.appleJSONImportMessage = "Could not read file"
-                }
-                return
-            }
-
-            do {
-                let podcasts = try AppleBulkImportParser.parse(data: data)
-                
-                DispatchQueue.main.async {
-                    var current = PodcastService.shared.loadPodcasts()
-                    var newCount = 0
-                    for p in podcasts {
-                        if !current.contains(where: { $0.feedURL == p.feedURL }) {
-                            current.append(p)
-                            newCount += 1
-                        }
-                    }
-                    PodcastService.shared.savePodcasts(current)
-                    self.appleJSONImportMessage = "🎉 Imported \(newCount) podcast(s)"
-                    self.activeAlert = .appleBulkImport(self.appleJSONImportMessage ?? "Import finished")
-                }
-            } catch {
-                DispatchQueue.main.async {
-                    self.appleJSONImportMessage = "Import failed: \(error.localizedDescription)"
-                    self.activeAlert = .appleBulkImport(self.appleJSONImportMessage ?? "Import finished")
-                }
-            }
-        }
-    }
 
     private func importSpotifyFile(from url: URL) {
         spotifyImportMessage = "Processing file..."
@@ -545,91 +502,170 @@ struct SettingsView: View {
         }
     }
     
-    private func importFromSubscriptionFile() {
-        isSubscriptionImporting = true
+
+    
+    private func importJSONFile(from url: URL) {
+        print("📁 Starting JSON import from: \(url.lastPathComponent)")
+        print("📁 File URL: \(url.absoluteString)")
+        print("📁 Is file URL: \(url.isFileURL)")
+        print("📁 File exists: \(FileManager.default.fileExists(atPath: url.path))")
         
-        // Read the subscriptions.txt file from the app bundle or documents directory
-        guard let fileURL = Bundle.main.url(forResource: "subscriptions", withExtension: "txt") ??
-                FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("subscriptions.txt") else {
+        // Reset state
+        isJSONImporting = true
+        jsonImportMessage = "Processing JSON file..."
+        
+        // Try multiple approaches for file access
+        var data: Data?
+        var accessError: Error?
+        
+        // Approach 1: Direct access with security scoping
+        if url.startAccessingSecurityScopedResource() {
+            defer { url.stopAccessingSecurityScopedResource() }
             
-            // If file doesn't exist, create it with the subscription content for testing
-            createTestSubscriptionFile()
+            do {
+                data = try Data(contentsOf: url)
+                print("✅ Successfully read file with security scoping")
+            } catch {
+                print("❌ Security scoped access failed: \(error)")
+                accessError = error
+            }
+        }
+        
+        // Approach 2: Try coordinator-based access if first approach failed
+        if data == nil {
+            var coordinatorError: NSError?
+            NSFileCoordinator().coordinate(readingItemAt: url, options: [], error: &coordinatorError) { (readingURL) in
+                do {
+                    data = try Data(contentsOf: readingURL)
+                    print("✅ Successfully read file with coordinator")
+                } catch {
+                    print("❌ Coordinator access failed: \(error)")
+                    accessError = error
+                }
+            }
+            
+            if let coordinatorError = coordinatorError {
+                print("❌ Coordinator error: \(coordinatorError)")
+                accessError = coordinatorError
+            }
+        }
+        
+        // If we still don't have data, show error
+        guard let fileData = data else {
+            isJSONImporting = false
+            let errorMessage = "Could not read JSON file: \(accessError?.localizedDescription ?? "Unknown access error")"
+            jsonImportMessage = errorMessage
+            activeAlert = .jsonImport(errorMessage)
             return
         }
         
-        guard let content = try? String(contentsOf: fileURL, encoding: .utf8) else {
-            isSubscriptionImporting = false
-            activeAlert = .subscriptionImport("Could not read subscription file")
+        print("📁 Successfully read \(fileData.count) bytes from file")
+        
+        // Validate JSON format
+        do {
+            let _ = try JSONSerialization.jsonObject(with: fileData, options: [])
+            print("✅ Valid JSON format confirmed")
+        } catch {
+            print("❌ Invalid JSON format: \(error)")
+            isJSONImporting = false
+            jsonImportMessage = "Invalid JSON format: \(error.localizedDescription)"
+            activeAlert = .jsonImport(jsonImportMessage ?? "Unknown error")
             return
         }
         
-        SubscriptionImportService.shared.importFromSubscriptionContent(content) { podcasts, error in
-            DispatchQueue.main.async {
-                self.isSubscriptionImporting = false
+        // Preview file content for debugging
+        if let jsonString = String(data: fileData, encoding: .utf8) {
+            print("📄 File content preview: \(String(jsonString.prefix(200)))...")
+        }
+        
+        // Process the JSON data with proper background handling
+        SubscriptionImportService.shared.importFromJSONFile(data: fileData) { podcasts, error in
+            Task { @MainActor in
+                self.isJSONImporting = false
                 
-                let message: String
                 if let error = error {
-                    message = "Import failed: \(error.localizedDescription)"
-                } else if podcasts.isEmpty {
-                    message = "No podcasts could be imported. Please check the file format."
-                } else {
-                    var currentPodcasts = PodcastService.shared.loadPodcasts()
-                    var newPodcastsCount = 0
-                    var skippedCount = 0
+                    print("❌ Import error: \(error)")
+                    self.jsonImportMessage = "Import failed: \(error.localizedDescription)"
+                    self.activeAlert = .jsonImport(self.jsonImportMessage ?? "Unknown error")
+                    return
+                }
+                
+                guard !podcasts.isEmpty else {
+                    self.jsonImportMessage = "No podcasts could be imported. Please check the JSON file format."
+                    self.activeAlert = .jsonImport(self.jsonImportMessage ?? "No podcasts found")
+                    return
+                }
+                
+                // STEP 1: Add podcasts to library IMMEDIATELY (no episode fetching)
+                let currentPodcasts = PodcastService.shared.loadPodcasts()
+                var newPodcasts: [Podcast] = []
+                var skippedCount = 0
+                
+                for podcast in podcasts {
+                    // Check if podcast already exists
+                    if currentPodcasts.contains(where: { $0.feedURL.absoluteString == podcast.feedURL.absoluteString }) {
+                        skippedCount += 1
+                        continue
+                    }
+                    newPodcasts.append(podcast)
+                }
+                
+                if !newPodcasts.isEmpty {
+                    // Add all new podcasts to library immediately
+                    let allPodcasts = currentPodcasts + newPodcasts
+                    PodcastService.shared.savePodcasts(allPodcasts)
                     
-                    for podcast in podcasts {
-                        // Check if podcast already exists
-                        if currentPodcasts.contains(where: { $0.feedURL.absoluteString == podcast.feedURL.absoluteString }) {
-                            skippedCount += 1
-                            continue
+                    // STEP 2: Update UI immediately to show new podcasts
+                    LibraryController.shared.reloadData()
+                    
+                    print("✅ Added \(newPodcasts.count) podcasts to library immediately")
+                    
+                    // STEP 3: Fetch episodes in background (non-blocking)
+                    Task.detached(priority: .background) {
+                        print("🔄 Starting background episode fetch for \(newPodcasts.count) podcasts...")
+                        
+                        for podcast in newPodcasts {
+                            // Fetch episodes for each podcast in background
+                            do {
+                                let episodes = try await EpisodeUpdateService.shared.fetchEpisodesForSinglePodcast(podcast)
+                                print("📥 Fetched \(episodes.count) episodes for \(podcast.title)")
+                                
+                                // Update UI dynamically as each podcast's episodes are fetched
+                                await MainActor.run {
+                                    LibraryController.shared.refreshEpisodeData()
+                                }
+                            } catch {
+                                print("❌ Failed to fetch episodes for \(podcast.title): \(error)")
+                            }
                         }
                         
-                        currentPodcasts.append(podcast)
-                        newPodcastsCount += 1
-                    }
-                    
-                    // Save updated podcasts
-                    PodcastService.shared.savePodcasts(currentPodcasts)
-                    
-                    if newPodcastsCount > 0 {
-                        if skippedCount > 0 {
-                            message = "🎉 Successfully imported \(newPodcastsCount) new podcasts! (\(skippedCount) already in library)"
-                        } else {
-                            message = "🎉 Successfully imported \(newPodcastsCount) podcasts from subscription file!"
-                        }
-                    } else {
-                        message = "No new podcasts to import. All \(podcasts.count) podcasts are already in your library."
+                        print("✅ Background episode fetch completed for all podcasts")
                     }
                 }
                 
-                self.activeAlert = .subscriptionImport(message)
+                // STEP 4: Show success message immediately
+                let message: String
+                if newPodcasts.count > 0 {
+                    if skippedCount > 0 {
+                        message = "🎉 Successfully imported \(newPodcasts.count) new podcasts! (\(skippedCount) already in library)\n\n📥 Episodes are being fetched in the background..."
+                    } else {
+                        message = "🎉 Successfully imported \(newPodcasts.count) podcasts from JSON file!\n\n📥 Episodes are being fetched in the background..."
+                    }
+                } else {
+                    message = "No new podcasts to import. All \(podcasts.count) podcasts are already in your library."
+                }
+                
+                self.jsonImportMessage = message
+                self.activeAlert = .jsonImport(message)
             }
         }
     }
     
-    private func createTestSubscriptionFile() {
-        guard let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
-            isSubscriptionImporting = false
-            activeAlert = .subscriptionImport("Could not access documents directory")
-            return
-        }
+    private func clearAllSubscriptions() {
+        PodcastService.shared.clearAllSubscriptions()
         
-        let fileURL = documentsDirectory.appendingPathComponent("subscriptions.txt")
-        
-        // Use the actual subscription data from the user's file
-        let subscriptionContent = """
-עושים פוליטיקה Osim Politika by רשת עושים היסטוריה (https://podcasts.apple.com/us/podcast/%D7%A2%D7%95%D7%A9%D7%99%D7%9D-%D7%A4%D7%95%D7%9C%D7%99%D7%98%D7%99%D7%A7%D7%94-osim-politika/id1215589622?uo=4)--//--שיר אחד One Song by כאן | Kan (https://podcasts.apple.com/us/podcast/%D7%A9%D7%99%D7%A8-%D7%90%D7%97%D7%93-one-song/id1201883177?uo=4)--//--חיות כיס Hayot Kiss by כאן | Kan (https://podcasts.apple.com/us/podcast/%D7%97%D7%99%D7%95%D7%AA-%D7%9B%D7%99%D7%A1-hayot-kiss/id1198989209?uo=4)--//--The Joe Rogan Experience by Joe Rogan (https://podcasts.apple.com/us/podcast/the-joe-rogan-experience/id360084272?uo=4)
-"""
-        
-        do {
-            try subscriptionContent.write(to: fileURL, atomically: true, encoding: .utf8)
-            print("Created test subscription file at: \(fileURL.path)")
-            // Now try to import again
-            importFromSubscriptionFile()
-        } catch {
-            isSubscriptionImporting = false
-            activeAlert = .subscriptionImport("Could not create subscription file: \(error.localizedDescription)")
-        }
+        // Show success message
+        activeAlert = .subscriptionImport("🗑️ All subscriptions have been cleared successfully!")
     }
     
     private func clearEpisodeCache() {
@@ -736,7 +772,7 @@ struct SettingsView: View {
         if let bundleID = Bundle.main.bundleIdentifier {
             UserDefaults.standard.removePersistentDomain(forName: bundleID)
         }
-        PodcastDataManager.shared.podcasts.removeAll()
+        PodcastService.shared.clearAllSubscriptions()
 
         // 2. Delete All Episodes and History
         Task {
@@ -777,14 +813,14 @@ struct SettingsView: View {
             return "Reset All Data"
         case .appleImport(_):
             return "Apple Podcasts Import"
-        case .opmlImport(_):
-            return "OPML Import"
         case .subscriptionImport(_):
             return "Subscription Import"
-        case .appleBulkImport(_):
-            return "Apple JSON Import"
         case .spotifyImport(_):
             return "Spotify Import"
+        case .jsonImport(_):
+            return "JSON Import"
+        case .clearSubscriptions:
+            return "Clear Subscriptions"
         case .none:
             return ""
         }
@@ -804,7 +840,19 @@ struct SettingsView: View {
                     }
                 }
             )
-        case .appleImport(_), .opmlImport(_), .subscriptionImport(_), .appleBulkImport(_), .spotifyImport(_), .none:
+        case .clearSubscriptions:
+            return AnyView(
+                Group {
+                    Button("Cancel", role: .cancel) { 
+                        activeAlert = nil
+                    }
+                    Button("Clear", role: .destructive) {
+                        clearAllSubscriptions()
+                        activeAlert = nil
+                    }
+                }
+            )
+        case .appleImport(_), .subscriptionImport(_), .spotifyImport(_), .jsonImport(_), .none:
             return AnyView(
                 Button("OK") {
                     activeAlert = nil
@@ -819,14 +867,14 @@ struct SettingsView: View {
             return Text("This will delete all subscriptions, queue, and settings. This action cannot be undone.")
         case .appleImport(let message):
             return Text(message)
-        case .opmlImport(let message):
-            return Text(message)
         case .subscriptionImport(let message):
-            return Text(message)
-        case .appleBulkImport(let message):
             return Text(message)
         case .spotifyImport(let message):
             return Text(message)
+        case .jsonImport(let message):
+            return Text(message)
+        case .clearSubscriptions:
+            return Text("This will remove all podcast subscriptions and clear your episode queue. This action cannot be undone.")
         case .none:
             return Text("")
         }
@@ -1373,5 +1421,197 @@ struct SpotifyImportGuideSheet: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - Custom Components
+
+struct SettingsCard<Content: View>: View {
+    let title: String
+    let icon: String
+    let iconColor: Color
+    let content: Content
+    
+    init(title: String, icon: String, iconColor: Color, @ViewBuilder content: () -> Content) {
+        self.title = title
+        self.icon = icon
+        self.iconColor = iconColor
+        self.content = content()
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            // Header
+            HStack(spacing: 12) {
+                Image(systemName: icon)
+                    .font(.title2.weight(.semibold))
+                    .foregroundColor(iconColor)
+                    .frame(width: 32, height: 32)
+                    .background(
+                        Circle()
+                            .fill(iconColor.opacity(0.15))
+                    )
+                
+                Text(title)
+                    .font(.title3.weight(.semibold))
+                    .foregroundColor(.primary)
+                
+                Spacer()
+            }
+            
+            // Content
+            content
+        }
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color(.systemBackground))
+                .shadow(
+                    color: Color.black.opacity(0.05),
+                    radius: 8,
+                    x: 0,
+                    y: 2
+                )
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(Color(.systemGray5), lineWidth: 1)
+        )
+    }
+}
+
+struct SettingsToggle: View {
+    let title: String
+    let subtitle: String?
+    let icon: String
+    @Binding var isOn: Bool
+    
+    init(title: String, subtitle: String? = nil, icon: String, isOn: Binding<Bool>) {
+        self.title = title
+        self.subtitle = subtitle
+        self.icon = icon
+        self._isOn = isOn
+    }
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .foregroundColor(.blue)
+                .font(.title3)
+                .frame(width: 24)
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.body.weight(.medium))
+                    .foregroundColor(.primary)
+                
+                if let subtitle = subtitle {
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            
+            Spacer()
+            
+            Toggle("", isOn: $isOn)
+                .labelsHidden()
+        }
+    }
+}
+
+struct SettingsButton: View {
+    let title: String
+    let subtitle: String?
+    let icon: String
+    let isDestructive: Bool
+    let action: () -> Void
+    
+    init(title: String, subtitle: String? = nil, icon: String, isDestructive: Bool = false, action: @escaping () -> Void) {
+        self.title = title
+        self.subtitle = subtitle
+        self.icon = icon
+        self.isDestructive = isDestructive
+        self.action = action
+    }
+    
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                Image(systemName: icon)
+                    .foregroundColor(isDestructive ? .red : .blue)
+                    .font(.title3)
+                    .frame(width: 24)
+                
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.body.weight(.medium))
+                        .foregroundColor(isDestructive ? .red : .primary)
+                    
+                    if let subtitle = subtitle {
+                        Text(subtitle)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                
+                Spacer()
+                
+                Image(systemName: "chevron.right")
+                    .foregroundColor(.secondary)
+                    .font(.caption)
+            }
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+}
+
+struct ImportButton: View {
+    let title: String
+    let subtitle: String
+    let icon: String
+    let isLoading: Bool
+    let action: () -> Void
+    
+    init(title: String, subtitle: String, icon: String, isLoading: Bool = false, action: @escaping () -> Void) {
+        self.title = title
+        self.subtitle = subtitle
+        self.icon = icon
+        self.isLoading = isLoading
+        self.action = action
+    }
+    
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                Image(systemName: icon)
+                    .foregroundColor(.orange)
+                    .font(.title3)
+                    .frame(width: 24)
+                
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.body.weight(.medium))
+                        .foregroundColor(.primary)
+                    
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                
+                Spacer()
+                
+                if isLoading {
+                    ProgressView()
+                        .scaleEffect(0.8)
+                } else {
+                    Image(systemName: "chevron.right")
+                        .foregroundColor(.secondary)
+                        .font(.caption)
+                }
+            }
+        }
+        .buttonStyle(PlainButtonStyle())
+        .disabled(isLoading)
     }
 }

@@ -216,7 +216,7 @@ struct EpisodeArchitectureDebugView: View {
                     
                     Button("Clear Repository") {
                         Task {
-                            await repository.clearAllEpisodes()
+                            try? await repository.clearAllEpisodes()
                         }
                     }
                     .foregroundColor(.red)
@@ -267,10 +267,12 @@ struct EpisodeArchitectureDebugView: View {
             return .green
         case .stale:
             return .orange
-        case .empty, .error:
+        case .error:
             return .red
-        case .unknown:
-            return .gray
+        case .loading:
+            return .blue
+        case .loaded:
+            return .green
         }
     }
     
