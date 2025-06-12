@@ -94,7 +94,9 @@ final class MemoryMonitor {
         // (Episode text data is minimal, but file cache can grow)
         let currentUsage = getCurrentMemoryUsage()
         if currentUsage > Config.criticalThreshold {
-            EpisodeCacheService.shared.clearAllCache()
+            Task {
+                await EpisodeCacheService.shared.clearAllCache()
+            }
             logger.warning("🗑️ Cleared file caches due to critical memory usage")
         }
         
