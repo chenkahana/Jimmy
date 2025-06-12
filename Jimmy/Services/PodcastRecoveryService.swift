@@ -47,11 +47,11 @@ class PodcastRecoveryService {
         logger.info("🔧 Starting podcast recovery from orphaned episodes")
         #endif
         
-        let episodeController = await UnifiedEpisodeController.shared
+        let libraryViewModel = await LibraryViewModel.shared
         let podcastService = PodcastService.shared
         
         // Get all episodes and existing podcasts
-        let allEpisodes = await episodeController.getAllEpisodes()
+        let allEpisodes = await LibraryViewModel.shared.allEpisodes
         let existingPodcasts = await podcastService.loadPodcastsAsync()
         let existingPodcastIDs = Set(existingPodcasts.map(\.id))
         
@@ -140,8 +140,52 @@ class PodcastRecoveryService {
     
     /// Extract podcast author from episodes
     private func extractPodcastAuthor(from episodes: [Episode]) -> String? {
-        // For now, return nil - we don't have author info in episodes
-        // This could be enhanced to parse from episode descriptions or other metadata
+        // Try to extract author from episode descriptions or metadata
+        for episode in episodes {
+            // Look for common author patterns in episode descriptions
+            if let description = episode.description {
+                // Look for patterns like "by Author Name" or "with Author Name"
+                let patterns = [
+                    #"(?:by|with|hosted by)\s+([A-Za-z\s]+)"#,
+                    #"Author:\s*([A-Za-z\s]+)"#,
+                    #"Host:\s*([A-Za-z\s]+)"#
+                ]
+                
+                for pattern in patterns {
+                    if let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) {
+                        let range = NSRange(description.startIndex..<description.endIndex, in: description)
+                        if let match = regex.firstMatch(in: description, options: [], range: range) {
+                            if let authorRange = Range(match.range(at: 1), in: description) {
+                                let author = String(description[authorRange]).trimmingCharacters(in: .whitespacesAndNewlines)
+                                if !author.isEmpty && author.count > 2 {
+                                    return author
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        // If no author found in descriptions, try to extract from episode titles
+        // Look for consistent patterns across episodes
+        let titles = episodes.map { $0.title }
+        
+        // Look for patterns like "Show Name with Author Name - Episode Title"
+        for title in titles {
+            if let regex = try? NSRegularExpression(pattern: #"with\s+([A-Za-z\s]+)\s*[-–]"#, options: .caseInsensitive) {
+                let range = NSRange(title.startIndex..<title.endIndex, in: title)
+                if let match = regex.firstMatch(in: title, options: [], range: range) {
+                    if let authorRange = Range(match.range(at: 1), in: title) {
+                        let author = String(title[authorRange]).trimmingCharacters(in: .whitespacesAndNewlines)
+                        if !author.isEmpty && author.count > 2 {
+                            return author
+                        }
+                    }
+                }
+            }
+        }
+        
         return nil
     }
 } 

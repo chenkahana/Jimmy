@@ -178,6 +178,10 @@ final class CleanLibraryViewModel: ObservableObject {
             return podcasts // Would need subscription date in model
         }
     }
+    
+    deinit {
+        cancellables.forEach { $0.cancel() }
+    }
 }
 
 /// Queue ViewModel following clean architecture principles
@@ -247,6 +251,10 @@ final class CleanQueueViewModel: ObservableObject {
         queue = await queueStore.getQueue()
         currentEpisode = await queueStore.getCurrentEpisode()
         currentIndex = await queueStore.getCurrentIndex()
+    }
+    
+    deinit {
+        cancellables.forEach { $0.cancel() }
     }
 }
 
@@ -318,6 +326,10 @@ final class CleanDiscoveryViewModel: ObservableObject {
         }
         
         isSearching = false
+    }
+    
+    deinit {
+        cancellables.forEach { $0.cancel() }
     }
 }
 

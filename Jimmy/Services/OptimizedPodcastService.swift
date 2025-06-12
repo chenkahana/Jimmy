@@ -28,11 +28,7 @@ class OptimizedPodcastService {
                     lock.lock()
                     results[podcast.id] = episodes
                     lock.unlock()
-                    
-                    print("✅ Fetched \(episodes.count) episodes for \(podcast.title)")
                 } catch {
-                    print("❌ Failed to fetch episodes for \(podcast.title): \(error.localizedDescription)")
-                    
                     lock.lock()
                     results[podcast.id] = []
                     lock.unlock()

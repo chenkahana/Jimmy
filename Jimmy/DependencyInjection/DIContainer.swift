@@ -27,6 +27,7 @@ final class DIContainer {
     lazy var episodeRepository: EpisodeRepositoryProtocol = ConcreteEpisodeRepository(
         networkRepository: networkRepository,
         storageRepository: storageRepository,
+        podcastRepository: podcastRepository,
         rssParser: rssParser
     )
     

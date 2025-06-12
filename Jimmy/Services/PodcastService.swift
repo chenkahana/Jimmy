@@ -1,7 +1,13 @@
 import Foundation
 
+// Protocol for dependency injection
+protocol PodcastServiceProtocol {
+    func loadPodcasts() -> [Podcast]
+    func addPodcast(_ podcast: Podcast) throws
+}
+
 /// PodcastService handles podcast management and episode fetching
-class PodcastService {
+class PodcastService: PodcastServiceProtocol {
     static let shared = PodcastService()
     
     private var podcasts: [Podcast] = []
@@ -12,9 +18,28 @@ class PodcastService {
     }
     
     private func loadPodcastsFromStorage() {
-        // TODO: Load podcasts from persistent storage
-        // For now, start with empty array - podcasts will be added through discovery/import
-        print("📚 PodcastService: Ready to load podcasts from storage or discovery")
+        // Load podcasts from UserDefaults or file storage
+        Task {
+            do {
+                if let data = UserDefaults.standard.data(forKey: "saved_podcasts") {
+                    let decoder = JSONDecoder()
+                    let loadedPodcasts = try decoder.decode([Podcast].self, from: data)
+                    
+                    await MainActor.run {
+                        self.podcasts = loadedPodcasts
+                        print("📚 PodcastService: Loaded \(loadedPodcasts.count) podcasts from storage")
+                    }
+                } else {
+                    print("📚 PodcastService: No saved podcasts found, starting with empty array")
+                }
+            } catch {
+                print("❌ PodcastService: Failed to load podcasts from storage: \(error)")
+                // Start with empty array on error
+                await MainActor.run {
+                    self.podcasts = []
+                }
+            }
+        }
     }
     
     func loadPodcasts() -> [Podcast] {
@@ -27,7 +52,18 @@ class PodcastService {
     
     func savePodcasts(_ podcasts: [Podcast]) {
         self.podcasts = podcasts
-        print("📚 PodcastService: Saved \(podcasts.count) podcasts")
+        
+        // Persist to storage
+        Task {
+            do {
+                let encoder = JSONEncoder()
+                let data = try encoder.encode(podcasts)
+                UserDefaults.standard.set(data, forKey: "saved_podcasts")
+                print("📚 PodcastService: Saved \(podcasts.count) podcasts to storage")
+            } catch {
+                print("❌ PodcastService: Failed to save podcasts to storage: \(error)")
+            }
+        }
     }
     
     func fetchEpisodes(for podcast: Podcast, completion: @escaping ([Episode]) -> Void) {
@@ -110,19 +146,14 @@ class PodcastService {
                 // This callback is already dispatched to main thread by RSSParser
                 episodeCallback(episode)
                 
-                // Notify UIUpdateService on main actor
-                Task { @MainActor in
-                    UIUpdateService.shared.handleProgressiveEpisodeUpdate(
-                        podcastId: podcast.id,
-                        episode: episode
-                    )
-                }
+                // OPTIMIZED: Removed excessive UIUpdateService calls that were causing main thread pressure
+                // UIUpdateService will be notified in completion instead
             },
             metadataCallback: { metadata in
                 // This callback is already dispatched to main thread by RSSParser
                 metadataCallback(metadata)
                 
-                // Notify UIUpdateService on main actor
+                // OPTIMIZED: Only notify UIUpdateService for metadata once
                 Task { @MainActor in
                     UIUpdateService.shared.handleEpisodeMetadataUpdate(
                         podcastId: podcast.id,
@@ -186,6 +217,11 @@ class PodcastService {
             print("❌ Failed to add podcast from URL \(url): \(error.localizedDescription)")
             throw error
         }
+    }
+    
+    func addPodcast(_ podcast: Podcast) throws {
+        podcasts.append(podcast)
+        print("📚 PodcastService: Added podcast \(podcast.title)")
     }
     
     func clearAllSubscriptions() {

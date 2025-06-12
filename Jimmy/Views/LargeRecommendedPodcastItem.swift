@@ -71,7 +71,16 @@ struct LargeRecommendedPodcastItem: View {
         }
         .padding(8)
         .background(gradient)
-        .enhanced3DCard(cornerRadius: 20, elevation: 3)
+        .background(
+            RoundedRectangle(cornerRadius: 20)
+                .fill(.regularMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20)
+                        .stroke(.white.opacity(0.1), lineWidth: 1)
+                )
+                .shadow(color: .black.opacity(0.1), radius: 12, x: 0, y: 6)
+                .shadow(color: .black.opacity(0.05), radius: 3, x: 0, y: 2)
+        )
     }
 }
 

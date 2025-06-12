@@ -20,10 +20,8 @@ class FetchWorker {
                     do {
                         let parser = RSSParser(podcastID: podcast.id)
                         let (episodes, _) = try await parser.parse(from: podcast.feedURL)
-                        print("✅ FetchWorker: Fetched \(episodes.count) episodes for \(podcast.title)")
                         return (podcast.id, episodes)
                     } catch {
-                        print("❌ FetchWorker: Failed to fetch episodes for \(podcast.title): \(error.localizedDescription)")
                         return (podcast.id, [])
                     }
                 }

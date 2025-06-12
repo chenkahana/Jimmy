@@ -6,7 +6,7 @@ import SwiftUI
 struct EpisodeArchitectureDebugView: View {
     @ObservedObject private var repository = EpisodeRepository.shared
     @ObservedObject private var fetchWorker = EpisodeFetchWorker.shared
-    @ObservedObject private var controller = EnhancedEpisodeController.shared
+    @ObservedObject private var libraryViewModel = LibraryViewModel.shared
     
     @State private var repositoryStats: (count: Int, lastUpdate: Date?, needsRefresh: Bool) = (0, nil, true)
     @State private var queueStatus: (count: Int, processing: Bool, nextRequest: FetchEpisodesRequest?) = (0, false, nil)
@@ -138,35 +138,20 @@ struct EpisodeArchitectureDebugView: View {
                     }
                 }
                 
-                // Enhanced Controller Section
-                Section("Enhanced Controller") {
-                    LabeledContent("Cache Status") {
-                        HStack {
-                            Circle()
-                                .fill(cacheStatusColor)
-                                .frame(width: 8, height: 8)
-                            Text(controller.cacheStatus.displayText)
-                                .foregroundColor(cacheStatusColor)
-                        }
-                    }
-                    
+                // Library ViewModel Section
+                Section("Library ViewModel") {
                     LabeledContent("Episodes Count") {
-                        Text("\(controller.episodeCount)")
+                        Text("\(libraryViewModel.allEpisodes.count)")
                             .foregroundColor(.primary)
                     }
                     
                     LabeledContent("Loading State") {
                         HStack {
-                            if controller.isLoading {
+                            if libraryViewModel.isLoading {
                                 ProgressView()
                                     .scaleEffect(0.8)
                                 Text("Loading")
                                     .foregroundColor(.orange)
-                            } else if controller.isRefreshing {
-                                ProgressView()
-                                    .scaleEffect(0.8)
-                                Text("Refreshing")
-                                    .foregroundColor(.blue)
                             } else {
                                 Image(systemName: "checkmark.circle.fill")
                                     .foregroundColor(.green)
@@ -176,7 +161,7 @@ struct EpisodeArchitectureDebugView: View {
                         }
                     }
                     
-                    if let errorMessage = controller.errorMessage {
+                    if let errorMessage = libraryViewModel.errorMessage {
                         LabeledContent("Error") {
                             Text(errorMessage)
                                 .foregroundColor(.red)
@@ -189,10 +174,10 @@ struct EpisodeArchitectureDebugView: View {
                 Section("Actions") {
                     Button("Refresh Episodes") {
                         Task {
-                            await controller.refreshEpisodes()
+                            await libraryViewModel.refreshEpisodeData()
                         }
                     }
-                    .disabled(controller.isRefreshing)
+                    .disabled(libraryViewModel.isLoading)
                     
                     Button("Process Queue Immediately") {
                         Task {
@@ -224,8 +209,8 @@ struct EpisodeArchitectureDebugView: View {
                 
                 // Debug Info Section
                 Section("Debug Info") {
-                    DisclosureGroup("Controller Debug Info") {
-                        Text(controller.getDebugInfo())
+                    DisclosureGroup("Library ViewModel Debug Info") {
+                        Text("Episodes: \(libraryViewModel.allEpisodes.count)\nLoading: \(libraryViewModel.isLoading)")
                             .font(.system(.caption, design: .monospaced))
                             .foregroundColor(.secondary)
                     }
@@ -260,21 +245,6 @@ struct EpisodeArchitectureDebugView: View {
     }
     
     // MARK: - Helper Properties
-    
-    private var cacheStatusColor: Color {
-        switch controller.cacheStatus {
-        case .fresh:
-            return .green
-        case .stale:
-            return .orange
-        case .error:
-            return .red
-        case .loading:
-            return .blue
-        case .loaded:
-            return .green
-        }
-    }
     
     // MARK: - Helper Methods
     

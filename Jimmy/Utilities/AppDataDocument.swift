@@ -95,15 +95,15 @@ struct AppDataDocument: FileDocument {
         
         // Import queue
         await MainActor.run {
-            QueueViewModel.shared.queue = validAppData.queue
+            QueueViewModel.shared.queuedEpisodes = validAppData.queue
         }
     }
     
     @MainActor
     func exportAppData() -> AppData {
-        let episodes = UnifiedEpisodeController.shared.episodes
+        let episodes = LibraryViewModel.shared.allEpisodes
         let podcasts = PodcastService.shared.loadPodcasts()
-        let queue = QueueViewModel.shared.queue
+        let queue = QueueViewModel.shared.queuedEpisodes
         let settings: [String: String] = [:]
         
         return AppData(
@@ -130,7 +130,7 @@ struct AppDataDocument: FileDocument {
         
         // Import queue
         await MainActor.run {
-            QueueViewModel.shared.queue = appData.queue
+            QueueViewModel.shared.queuedEpisodes = appData.queue
         }
     }
 }

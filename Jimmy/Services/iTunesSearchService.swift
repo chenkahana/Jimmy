@@ -1,6 +1,11 @@
 import Foundation
 
-struct iTunesSearchService {
+// Protocol for dependency injection
+protocol ITunesSearchServiceProtocol {
+    func searchPodcasts(query: String) async -> [PodcastSearchResult]
+}
+
+struct iTunesSearchService: ITunesSearchServiceProtocol {
     static let shared = iTunesSearchService()
     
     private init() {}
@@ -8,6 +13,15 @@ struct iTunesSearchService {
     // Search for podcasts using iTunes Search API
     func searchPodcasts(query: String, completion: @escaping ([PodcastSearchResult]) -> Void) {
         searchPodcastsWithRetry(query: query, retryCount: 0, completion: completion)
+    }
+    
+    // Async version for protocol conformance
+    func searchPodcasts(query: String) async -> [PodcastSearchResult] {
+        return await withCheckedContinuation { continuation in
+            searchPodcasts(query: query) { results in
+                continuation.resume(returning: results)
+            }
+        }
     }
     
     private func searchPodcastsWithRetry(query: String, retryCount: Int, completion: @escaping ([PodcastSearchResult]) -> Void) {

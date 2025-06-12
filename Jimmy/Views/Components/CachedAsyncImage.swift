@@ -44,7 +44,7 @@ struct CachedAsyncImage<Content: View, Placeholder: View>: View {
                     }
             }
         }
-        .animation(.easeInOut(duration: 0.2), value: image)
+        .animation(.proMotionEaseInOut(duration: 0.2), value: image)
         .onChange(of: url) { _, newURL in
             // Only reset image if the new URL is different and not cached
             if let newURL = newURL, !imageCache.isImageCached(url: newURL) {
@@ -75,7 +75,7 @@ struct CachedAsyncImage<Content: View, Placeholder: View>: View {
             imageCache.loadImage(from: url) { [url] loadedImage in
                 // Only update if the URL hasn't changed while loading
                 if self.url == url {
-                    withAnimation(.easeInOut(duration: 0.2)) {
+                    withAnimation(.proMotionEaseInOut(duration: 0.2)) {
                         self.image = loadedImage
                     }
                     self.isLoading = false
@@ -197,7 +197,7 @@ struct CachedAsyncImagePhase<Content: View>: View {
             imageCache.loadImage(from: url) { [url] loadedImage in
                 // Only update if the URL hasn't changed while loading
                 if self.url == url {
-                    withAnimation(.easeInOut(duration: 0.2)) {
+                    withAnimation(.proMotionEaseInOut(duration: 0.2)) {
                         if let loadedImage = loadedImage {
                             self.phase = .success(Image(uiImage: loadedImage))
                         } else {

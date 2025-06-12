@@ -37,9 +37,6 @@ class RSSParser: NSObject, XMLParserDelegate {
     private var metadataCallback: ((PodcastMetadata) -> Void)?
     private var progressiveCompletion: ((Result<([Episode], PodcastMetadata), Error>) -> Void)?
     private var episodeCount: Int = 0
-    private var batchSize: Int = 5 // Update UI every 5 episodes
-    private var lastUIUpdate: Date = Date()
-    private let minUIUpdateInterval: TimeInterval = 0.5 // Minimum 0.5s between UI updates
     
     private let logger = Logger(subsystem: "com.jimmy.app", category: "RSSParser")
     
@@ -67,7 +64,6 @@ class RSSParser: NSObject, XMLParserDelegate {
         self.metadataCallback = metadataCallback
         self.episodeCount = 0
         self.episodes = []
-        self.lastUIUpdate = Date()
         
         // Reset podcast metadata
         self.podcastTitle = ""
@@ -78,11 +74,10 @@ class RSSParser: NSObject, XMLParserDelegate {
         logger.info("🚀 Starting progressive parsing for podcast ID: \(self.podcastID)")
         
         // Use OptimizedNetworkManager for better network handling
-        OptimizedNetworkManager.shared.fetchRSSFeed(url: url) { [weak self] result in
-            guard let self = self else { return }
-            
-            switch result {
-            case .success(let data):
+        Task {
+            do {
+                let data = try await OptimizedNetworkManager.shared.fetchData(url: url)
+                
                 guard !data.isEmpty else {
                     self.logger.error("❌ No data received from RSS feed: \(url)")
                     let error = NSError(domain: "RSSParser", code: 1, userInfo: [
@@ -111,7 +106,7 @@ class RSSParser: NSObject, XMLParserDelegate {
                 // Parse progressively
                 self.parseDataProgressively(data: data, completion: completion)
                 
-            case .failure(let error):
+            } catch {
                 self.logger.error("❌ Network error fetching RSS feed: \(error.localizedDescription)")
                 DispatchQueue.main.async {
                     completion(.failure(error))
@@ -166,11 +161,10 @@ class RSSParser: NSObject, XMLParserDelegate {
             self.continuation = continuation
             
             // Use OptimizedNetworkManager for better network handling
-            OptimizedNetworkManager.shared.fetchRSSFeed(url: url) { [weak self] result in
-                guard let self = self else { return }
-                
-                switch result {
-                case .success(let data):
+            Task {
+                do {
+                    let data = try await OptimizedNetworkManager.shared.fetchData(url: url)
+                    
                     guard !data.isEmpty else {
                         self.logger.error("❌ No data received from RSS feed: \(url)")
                         let error = NSError(domain: "RSSParser", code: 1, userInfo: [
@@ -232,7 +226,7 @@ class RSSParser: NSObject, XMLParserDelegate {
                         }
                     }
                     
-                case .failure(let error):
+                } catch {
                     self.logger.error("❌ Network error fetching RSS feed: \(error.localizedDescription)")
                     
                     // Provide more specific error messages based on the type of error
@@ -424,20 +418,18 @@ class RSSParser: NSObject, XMLParserDelegate {
             createEpisode()
             isParsingItem = false
             
-            // Progressive UI update
+            // Progressive UI update - OPTIMIZED: Reduce main thread pressure
             if let progressiveCallback = progressiveCallback {
                 episodeCount += 1
-                let now = Date()
                 
-                // Update UI every batch or after minimum interval
-                if episodeCount % batchSize == 0 || now.timeIntervalSince(lastUIUpdate) >= minUIUpdateInterval {
+                // Only update UI every 10 episodes or at the end to reduce main thread pressure
+                if episodeCount % 10 == 0 {
                     if let lastEpisode = episodes.last {
                         DispatchQueue.main.async {
                             progressiveCallback(lastEpisode)
                         }
-                        lastUIUpdate = now
                         
-                        if episodeCount <= 10 { // Log first 10 episodes
+                        if episodeCount <= 30 { // Log first 30 episodes
                             logger.info("📱 Progressive update: Episode #\(self.episodeCount) - \(lastEpisode.title)")
                         }
                     }
@@ -451,14 +443,16 @@ class RSSParser: NSObject, XMLParserDelegate {
     func parserDidEndDocument(_ parser: XMLParser) {
         logger.info("✅ Successfully finished parsing document. Found \(self.episodes.count) episodes.")
         
-        // For progressive parsing, send any remaining episodes
+        // For progressive parsing, send any remaining episodes in a single batch
         if let progressiveCallback = progressiveCallback {
-            // Send any episodes that weren't sent in batches
-            let remainingStart = (episodeCount / batchSize) * batchSize
-            for i in remainingStart..<episodes.count {
-                let episode = episodes[i]
+            // Send remaining episodes that weren't sent in batches - OPTIMIZED: Single main thread call
+            let remainingStart = (episodeCount / 10) * 10
+            if remainingStart < episodes.count {
                 DispatchQueue.main.async {
-                    progressiveCallback(episode)
+                    // Send all remaining episodes at once
+                    for i in remainingStart..<self.episodes.count {
+                        progressiveCallback(self.episodes[i])
+                    }
                 }
             }
         }

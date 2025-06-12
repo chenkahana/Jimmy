@@ -11,7 +11,7 @@ struct DiscoveryCacheData: Codable {
 
 
 struct DiscoverView: View {
-    @ObservedObject private var controller = UnifiedDiscoveryController.shared
+    @StateObject private var viewModel = DiscoveryViewModel.shared
 
     var body: some View {
         NavigationView {
@@ -20,9 +20,9 @@ struct DiscoverView: View {
             Color(.systemBackground)
                 .ignoresSafeArea()
             
-            if !controller.searchText.isEmpty {
+            if !viewModel.searchText.isEmpty {
                 searchResultsSection
-            } else if controller.isLoading && !controller.hasAnyData {
+            } else if viewModel.isLoading && !viewModel.hasAnyData {
                 loadingView
             } else {
                 ScrollView {
@@ -34,27 +34,27 @@ struct DiscoverView: View {
                     .padding(.vertical, 20)
                 }
                 .refreshable {
-                    await controller.refreshData()
+                    await viewModel.refreshData()
                 }
             }
         }
         .navigationTitle("Discover")
         .navigationBarTitleDisplayMode(.large)
-        .searchable(text: $controller.searchText, prompt: "Search for podcasts")
-        .onChange(of: controller.searchText) { _ in
-            Task { [weak controller] in
-                await controller?.searchPodcasts()
+        .searchable(text: $viewModel.searchText, prompt: "Search for podcasts")
+        .onChange(of: viewModel.searchText) { _ in
+            Task { [weak viewModel] in
+                await viewModel?.searchPodcasts()
             }
         }
         .onAppear {
-            Task { [weak controller] in
-                await controller?.loadDataIfNeeded()
+            Task { [weak viewModel] in
+                await viewModel?.loadDataIfNeeded()
             }
         }
-        .alert("Subscription", isPresented: $controller.showingSubscriptionAlert) {
+        .alert("Subscription", isPresented: $viewModel.showingSubscriptionAlert) {
             Button("OK", role: .cancel) { }
         } message: {
-            Text(controller.subscriptionMessage)
+            Text(viewModel.subscriptionMessage)
         }
         }
     }
@@ -67,12 +67,12 @@ struct DiscoverView: View {
                         .font(.title.bold())
                         .foregroundColor(.primary)
                     
-                    if controller.isSearching {
+                    if viewModel.isSearching {
                         Text("Searching...")
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                     } else {
-                        Text("\(controller.searchResults.count) podcasts found")
+                        Text("\(viewModel.searchResults.count) podcasts found")
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                     }
@@ -86,7 +86,7 @@ struct DiscoverView: View {
             }
             .padding(.horizontal, 20)
             
-            if controller.isSearching {
+            if viewModel.isSearching {
                 VStack(spacing: 16) {
                     ProgressView()
                         .scaleEffect(1.2)
@@ -98,7 +98,7 @@ struct DiscoverView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 40)
-            } else if controller.searchResults.isEmpty {
+            } else if viewModel.searchResults.isEmpty {
                 VStack(spacing: 16) {
                     Image(systemName: "magnifyingglass.circle")
                         .font(.system(size: 48))
@@ -116,14 +116,14 @@ struct DiscoverView: View {
                 .padding(.vertical, 40)
             } else {
                 LazyVStack(spacing: 12) {
-                    ForEach(controller.searchResults) { result in
+                    ForEach(viewModel.searchResults) { result in
                         NavigationLink(destination: PodcastDetailView(podcast: result.toPodcast())) {
                             DiscoverSearchResultRow(
                                 result: result,
-                                isSubscribed: controller.isSubscribed(result),
+                                isSubscribed: viewModel.isSubscribed(result),
                                 onSubscribe: {
                                     Task {
-                                        await controller.subscribe(to: result)
+                                        await viewModel.subscribe(to: result)
                                     }
                                 }
                             )
@@ -175,14 +175,14 @@ struct DiscoverView: View {
             
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 20) {
-                    ForEach(Array(controller.featured.prefix(5))) { podcast in
+                    ForEach(Array(viewModel.featured.prefix(5))) { podcast in
                         NavigationLink(destination: PodcastDetailView(podcast: podcast.toPodcast())) {
                             EnhancedFeaturedPodcastCard(
                                 result: podcast,
-                                isSubscribed: controller.isSubscribed(podcast),
+                                isSubscribed: viewModel.isSubscribed(podcast),
                                 onSubscribe: { 
                                     Task {
-                                        await controller.subscribe(to: podcast)
+                                        await viewModel.subscribe(to: podcast)
                                     }
                                 }
                             )
@@ -226,7 +226,7 @@ struct DiscoverView: View {
             
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 16) {
-                    ForEach(Array(controller.trending.prefix(5)), id: \.id) { (episode: TrendingEpisode) in
+                    ForEach(Array(viewModel.trending.prefix(5)), id: \.id) { (episode: TrendingEpisode) in
                         NavigationLink(destination: TrendingEpisodeDetailView(episode: episode)) {
                             EnhancedTrendingEpisodeCard(
                                 episode: episode,
@@ -243,7 +243,7 @@ struct DiscoverView: View {
                                         trackCount: 1
                                     )
                                     Task {
-                                        await controller.subscribe(to: podcastResult)
+                                        await viewModel.subscribe(to: podcastResult)
                                     }
                                 }
                             )
@@ -280,15 +280,15 @@ struct DiscoverView: View {
             .padding(.horizontal, 20)
             
             LazyVStack(spacing: 12) {
-                ForEach(Array(controller.charts.enumerated()), id: \.element.id) { index, result in
+                ForEach(Array(viewModel.charts.enumerated()), id: \.element.id) { index, result in
                     NavigationLink(destination: PodcastDetailView(podcast: result.toPodcast())) {
                         EnhancedTopChartRow(
                             index: index + 1,
                             result: result,
-                            isSubscribed: controller.isSubscribed(result),
+                            isSubscribed: viewModel.isSubscribed(result),
                             onSubscribe: { 
                                 Task {
-                                    await controller.subscribe(to: result)
+                                    await viewModel.subscribe(to: result)
                                 }
                             }
                         )

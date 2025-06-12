@@ -141,16 +141,25 @@ struct FloatingMiniPlayerView: View {
                     }
                     .padding(.horizontal, 16)
                     .padding(.vertical, 12)
-                    .enhanced3DCard(cornerRadius: 16, elevation: 6)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(.regularMaterial)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .stroke(.white.opacity(0.1), lineWidth: 1)
+                            )
+                            .shadow(color: .black.opacity(0.15), radius: 12, x: 0, y: 6)
+                            .shadow(color: .black.opacity(0.05), radius: 3, x: 0, y: 2)
+                    )
                     .overlay(
                         // Small X button in top-right corner
                         VStack {
                             HStack {
                                 Spacer()
                                 Button(action: {
-                                    withAnimation(.easeInOut(duration: 0.2)) {
-                                        isMiniPlayerHidden = true
-                                    }
+                                                            withAnimation(.proMotionEaseInOut(duration: 0.2)) {
+                            isMiniPlayerHidden = true
+                        }
                                 }) {
                                     Image(systemName: "xmark")
                                         .font(.system(size: 12, weight: .medium))
@@ -179,8 +188,8 @@ struct FloatingMiniPlayerView: View {
                     insertion: .scale(scale: 0.9).combined(with: .opacity).combined(with: .move(edge: .bottom)),
                     removal: .scale(scale: 0.9).combined(with: .opacity).combined(with: .move(edge: .bottom))
                 ))
-                .animation(.spring(response: 0.5, dampingFraction: 0.8), value: audioPlayer.currentEpisode?.id)
-                .animation(.easeInOut(duration: 0.2), value: audioPlayer.isPlaying)
+                .animation(.proMotionSpring(response: 0.5, dampingFraction: 0.8), value: audioPlayer.currentEpisode?.id)
+                .animation(.proMotionEaseInOut(duration: 0.2), value: audioPlayer.isPlaying)
             }
         }
         
@@ -201,7 +210,7 @@ struct FloatingMiniPlayerView: View {
         func makeBody(configuration: Configuration) -> some View {
             configuration.label
                 .scaleEffect(configuration.isPressed ? 0.95 : 1.0)
-                .animation(.easeInOut(duration: 0.1), value: configuration.isPressed)
+                .animation(.proMotionEaseInOut(duration: 0.1), value: configuration.isPressed)
         }
     }
     
@@ -427,7 +436,16 @@ struct FloatingMiniPlayerView: View {
                     }
                     .padding(.horizontal, 20)
                     .padding(.vertical, 14)
-                    .enhanced3DCard(cornerRadius: 0, elevation: 8)
+                    .background(
+                        RoundedRectangle(cornerRadius: 0)
+                            .fill(.regularMaterial)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 0)
+                                    .stroke(.white.opacity(0.1), lineWidth: 1)
+                            )
+                            .shadow(color: .black.opacity(0.2), radius: 16, x: 0, y: 8)
+                            .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+                    )
                     .overlay(
                         // Top highlight line for 3D effect
                         Rectangle()
@@ -444,7 +462,7 @@ struct FloatingMiniPlayerView: View {
                             )
                             .frame(height: 1)
                             .offset(y: -7),
-                        alignment: .top
+                        alignment: Alignment.top
                     )
                     .onTapGesture {
                         onTap()

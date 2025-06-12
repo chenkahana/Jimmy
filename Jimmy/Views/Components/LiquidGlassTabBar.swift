@@ -37,20 +37,20 @@ struct LiquidGlassTabBar: View {
         let spacing: CGFloat = 8
         let availableWidth = geo.size.width - (hPadding * 2) - (spacing * CGFloat(tabCount - 1))
         let tabWidth = availableWidth / CGFloat(tabCount)
-        let vPadding: CGFloat = 12
+        let vPadding: CGFloat = 5//DONT TOUCH WITHOUT APPROVAL!!!
         
         return (tabWidth, spacing, hPadding, vPadding)
     }
 
     private func pillPosition(for index: Int, metrics: (width: CGFloat, spacing: CGFloat, hPadding: CGFloat, vPadding: CGFloat)) -> CGPoint {
         let tabCenterX = metrics.hPadding + (CGFloat(index) * (metrics.width + metrics.spacing)) + (metrics.width / 2)
-        let tabCenterY: CGFloat = 37  //DONT TOUCH WITH APPROVAL!!!
+        let tabCenterY: CGFloat = 30  //DONT TOUCH WITHOUT APPROVAL!!!
         return CGPoint(x: tabCenterX, y: tabCenterY)
     }
 
     private func pillSize(tabWidth: CGFloat) -> CGSize {
-        let height: CGFloat = 52   //DONT TOUCH WITH APPROVAL!!!
-        let width = tabWidth*1.2 //DONT TOUCH WITH APPROVAL!!!
+        let height: CGFloat = 52   //DONT TOUCH WITHOUT APPROVAL!!!
+        let width = tabWidth*1.2 //DONT TOUCH WITHOUT APPROVAL!!!
         return CGSize(width: width, height: height)
     }
 
@@ -83,8 +83,8 @@ struct LiquidGlassTabBar: View {
                     .frame(width: pillSize.width, height: pillSize.height)
                     .shadow(color: .black.opacity(isPressing ? 0.25 : 0.15), radius: 8, x: 0, y: 4)
                     .position(pillPos)
-                    .animation(.interactiveSpring(response: 0.25, dampingFraction: 0.85), value: pillPos)
-                    .animation(.interactiveSpring(response: 0.25, dampingFraction: 0.9), value: isPressing)
+                    .animation(.proMotionSpring(response: 0.25, dampingFraction: 0.85), value: pillPos)
+                    .animation(.proMotionSpring(response: 0.25, dampingFraction: 0.9), value: isPressing)
                     .allowsHitTesting(false)
 
                 // Tabs
@@ -102,7 +102,7 @@ struct LiquidGlassTabBar: View {
                         .foregroundStyle(selectedIndex == tab.tag ? Color.accentColor : Color.secondary)
                         .contentShape(Rectangle())
                         .onTapGesture {
-                            withAnimation(.spring(duration: 0.35, bounce: 0.5)) {
+                            withAnimation(.proMotionSpring(response: 0.35, dampingFraction: 0.7)) {
                                 selectedIndex = tab.tag
                                 animatedSelection = tab.tag
                             }
@@ -115,9 +115,9 @@ struct LiquidGlassTabBar: View {
             }
             .gesture(longPressGesture(in: geo))
         }
-        .frame(height: 70)  // narrower tab bar (was 80)
+        .frame(height: 50) //DONT TOUCH WITHOUT APPROVAL!!!
         .padding(.horizontal, 24)
-        .padding(.bottom, 12)
+        .padding(.bottom, 10) //TODO FIX THIS LATER
     }
 
     // MARK: – Gesture

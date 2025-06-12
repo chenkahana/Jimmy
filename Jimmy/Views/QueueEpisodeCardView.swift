@@ -96,7 +96,16 @@ struct QueueEpisodeCardView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
-        .enhanced3DCard(cornerRadius: 16, elevation: 3)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(.regularMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(.white.opacity(0.1), lineWidth: 1)
+                )
+                .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
+                .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
+        )
         .contentShape(Rectangle())
         .onTapGesture {
             if !isEditMode && !isLoading {

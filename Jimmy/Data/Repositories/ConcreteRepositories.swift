@@ -100,6 +100,7 @@ final class ConcretePodcastRepository: PodcastRepositoryProtocol {
 final class ConcreteEpisodeRepository: EpisodeRepositoryProtocol {
     private let networkRepository: NetworkRepositoryProtocol
     private let storageRepository: StorageRepositoryProtocol
+    private let podcastRepository: PodcastRepositoryProtocol
     private let rssParser: RSSParserProtocol
     private let changesSubject = PassthroughSubject<CleanEpisodeChanges, Never>()
     
@@ -108,18 +109,48 @@ final class ConcreteEpisodeRepository: EpisodeRepositoryProtocol {
     init(
         networkRepository: NetworkRepositoryProtocol,
         storageRepository: StorageRepositoryProtocol,
+        podcastRepository: PodcastRepositoryProtocol,
         rssParser: RSSParserProtocol
     ) {
         self.networkRepository = networkRepository
         self.storageRepository = storageRepository
+        self.podcastRepository = podcastRepository
         self.rssParser = rssParser
     }
     
     func fetchEpisodes(for podcastID: UUID) async throws -> [Episode] {
-        // This would typically fetch from RSS feed for the specific podcast
-        // For now, we'll load from storage and filter
-        let allEpisodes = try await fetchAllEpisodes()
-        return allEpisodes.filter { $0.podcastID == podcastID }
+        // First, try to get the podcast to get its RSS feed URL
+        let allPodcasts = try await podcastRepository.fetchPodcasts()
+        guard let podcast = allPodcasts.first(where: { $0.id == podcastID }) else {
+            // If podcast not found, fall back to loading from storage
+            let allEpisodes = try await fetchAllEpisodes()
+            return allEpisodes.filter { $0.podcastID == podcastID }
+        }
+        
+        // Fetch fresh episodes from RSS feed
+        do {
+            let rssData = try await networkRepository.fetchRSSFeed(from: podcast.feedURL)
+            let (episodes, _) = try await rssParser.parse(data: rssData, podcastID: podcastID)
+            
+            // Save the fetched episodes to storage
+            var allEpisodes = try await fetchAllEpisodes()
+            
+            // Remove old episodes for this podcast
+            allEpisodes.removeAll { $0.podcastID == podcastID }
+            
+            // Add new episodes
+            allEpisodes.append(contentsOf: episodes)
+            
+            // Save updated episodes
+            try await saveEpisodes(allEpisodes)
+            
+            return episodes
+        } catch {
+            // If RSS fetch fails, fall back to cached episodes
+            print("⚠️ Failed to fetch episodes from RSS, using cached: \(error)")
+            let allEpisodes = try await fetchAllEpisodes()
+            return allEpisodes.filter { $0.podcastID == podcastID }
+        }
     }
     
     func fetchAllEpisodes() async throws -> [Episode] {
@@ -294,11 +325,188 @@ struct RSSMetadata {
 /// Concrete RSS parser implementation
 final class ConcreteRSSParser: RSSParserProtocol {
     func parse(data: Data, podcastID: UUID) async throws -> ([Episode], RSSMetadata) {
-        // This would implement actual RSS parsing
-        // For now, return empty results
-        let metadata = RSSMetadata(title: nil, author: nil, description: nil, artworkURL: nil)
-        return ([], metadata)
+        // Parse the RSS data
+        do {
+            // Convert data to string to get URL (this is a simplified approach)
+            // In a real implementation, you'd parse the RSS XML directly
+            guard let xmlString = String(data: data, encoding: .utf8) else {
+                throw RSSParserError.invalidData
+            }
+            
+            // Extract basic metadata from XML
+            let metadata = extractMetadata(from: xmlString)
+            
+            // Parse episodes from XML
+            let episodes = try await parseEpisodes(from: xmlString, podcastID: podcastID)
+            
+            return (episodes, metadata)
+        } catch {
+            throw RSSParserError.parsingFailed(error)
+        }
     }
+    
+    private func extractMetadata(from xmlString: String) -> RSSMetadata {
+        // Simple XML parsing for metadata
+        let title = extractValue(from: xmlString, tag: "title")
+        let author = extractValue(from: xmlString, tag: "itunes:author") ?? 
+                    extractValue(from: xmlString, tag: "author")
+        let description = extractValue(from: xmlString, tag: "description")
+        
+        // Extract artwork URL
+        var artworkURL: URL?
+        if let artworkString = extractValue(from: xmlString, tag: "itunes:image") {
+            artworkURL = URL(string: artworkString)
+        }
+        
+        return RSSMetadata(
+            title: title,
+            author: author,
+            description: description,
+            artworkURL: artworkURL
+        )
+    }
+    
+    private func parseEpisodes(from xmlString: String, podcastID: UUID) async throws -> [Episode] {
+        // This is a simplified implementation
+        // In production, you'd use a proper XML parser like XMLParser or a third-party library
+        
+        var episodes: [Episode] = []
+        
+        // Split by <item> tags to get individual episodes
+        let itemComponents = xmlString.components(separatedBy: "<item>")
+        
+        for (index, itemString) in itemComponents.enumerated() {
+            guard index > 0 else { continue } // Skip the first component (before first <item>)
+            
+            let title = extractValue(from: itemString, tag: "title") ?? "Unknown Episode"
+            let description = extractValue(from: itemString, tag: "description")
+            let audioURLString = extractAttribute(from: itemString, tag: "enclosure", attribute: "url")
+            let pubDateString = extractValue(from: itemString, tag: "pubDate")
+            
+            // Extract episode-specific artwork
+            let episodeArtworkURL = extractEpisodeArtwork(from: itemString)
+            
+            // Parse publication date
+            let publishedDate = parsePubDate(pubDateString) ?? Date()
+            
+            // Create episode
+            let episode = Episode(
+                id: UUID(),
+                title: title,
+                artworkURL: episodeArtworkURL,
+                audioURL: audioURLString.flatMap { URL(string: $0) },
+                description: description,
+                played: false,
+                podcastID: podcastID,
+                publishedDate: publishedDate,
+                localFileURL: nil,
+                playbackPosition: 0
+            )
+            
+            episodes.append(episode)
+        }
+        
+        return episodes
+    }
+    
+    private func extractValue(from xml: String, tag: String) -> String? {
+        let pattern = "<\(tag)[^>]*>([^<]*)</\(tag)>"
+        let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive)
+        let range = NSRange(xml.startIndex..<xml.endIndex, in: xml)
+        
+        if let match = regex?.firstMatch(in: xml, options: [], range: range),
+           let valueRange = Range(match.range(at: 1), in: xml) {
+            return String(xml[valueRange]).trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        
+        return nil
+    }
+    
+    private func extractAttribute(from xml: String, tag: String, attribute: String) -> String? {
+        let pattern = "<\(tag)[^>]*\(attribute)=\"([^\"]*)\""
+        let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive)
+        let range = NSRange(xml.startIndex..<xml.endIndex, in: xml)
+        
+        if let match = regex?.firstMatch(in: xml, options: [], range: range),
+           let valueRange = Range(match.range(at: 1), in: xml) {
+            return String(xml[valueRange])
+        }
+        
+        return nil
+    }
+    
+    private func parsePubDate(_ dateString: String?) -> Date? {
+        guard let dateString = dateString else { return nil }
+        
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEE, dd MMM yyyy HH:mm:ss Z"
+        return formatter.date(from: dateString)
+    }
+    
+    private func extractEpisodeArtwork(from itemString: String) -> URL? {
+        // Try multiple common episode artwork tags in order of preference
+        
+        // 1. iTunes episode image (most common)
+        if let itunesImageURL = extractAttribute(from: itemString, tag: "itunes:image", attribute: "href") {
+            return URL(string: itunesImageURL)
+        }
+        
+        // 2. Media thumbnail (common in many feeds)
+        if let mediaThumbnailURL = extractAttribute(from: itemString, tag: "media:thumbnail", attribute: "url") {
+            return URL(string: mediaThumbnailURL)
+        }
+        
+        // 3. Media content with image type
+        if let mediaContentURL = extractMediaContentImage(from: itemString) {
+            return URL(string: mediaContentURL)
+        }
+        
+        // 4. Standard image tag
+        if let imageURL = extractValue(from: itemString, tag: "image") {
+            return URL(string: imageURL.trimmingCharacters(in: .whitespacesAndNewlines))
+        }
+        
+        // 5. Enclosure with image type
+        if let enclosureImageURL = extractImageEnclosure(from: itemString) {
+            return URL(string: enclosureImageURL)
+        }
+        
+        // No episode-specific artwork found
+        return nil
+    }
+    
+    private func extractMediaContentImage(from xmlString: String) -> String? {
+        // Look for media:content tags with image MIME types
+        let pattern = "<media:content[^>]*type=[\"']image/[^\"']*[\"'][^>]*url=[\"']([^\"']*)[\"'][^>]*>"
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) else { return nil }
+        
+        let range = NSRange(location: 0, length: xmlString.count)
+        guard let match = regex.firstMatch(in: xmlString, options: [], range: range) else { return nil }
+        
+        let matchRange = match.range(at: 1)
+        guard let swiftRange = Range(matchRange, in: xmlString) else { return nil }
+        
+        return String(xmlString[swiftRange])
+    }
+    
+    private func extractImageEnclosure(from xmlString: String) -> String? {
+        // Look for enclosure tags with image MIME types
+        let pattern = "<enclosure[^>]*type=[\"']image/[^\"']*[\"'][^>]*url=[\"']([^\"']*)[\"'][^>]*>"
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) else { return nil }
+        
+        let range = NSRange(location: 0, length: xmlString.count)
+        guard let match = regex.firstMatch(in: xmlString, options: [], range: range) else { return nil }
+        
+        let matchRange = match.range(at: 1)
+        guard let swiftRange = Range(matchRange, in: xmlString) else { return nil }
+        
+        return String(xmlString[swiftRange])
+    }
+}
+
+enum RSSParserError: Error {
+    case invalidData
+    case parsingFailed(Error)
 }
 
 /// Simple network monitor implementation

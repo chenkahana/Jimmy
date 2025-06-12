@@ -29,18 +29,15 @@ class EpisodeFetchWorker: ObservableObject {
     
     func processImmediately() async {
         // Stub implementation
-        print("🔄 Processing queue immediately")
     }
     
     func clearQueue() async {
         // Stub implementation
-        print("🗑️ Clearing queue")
         queueCount = 0
     }
     
     func resetProcessingStats() async {
         // Stub implementation
-        print("📊 Resetting processing stats")
         processingStats = ProcessingStats()
     }
 } 

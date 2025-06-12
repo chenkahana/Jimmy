@@ -3,18 +3,12 @@ import SwiftUI
 struct PodcastDetailView: View {
     let podcast: Podcast
     
-    @State private var episodes: [Episode] = []
     @State private var selectedTab: EpisodeTab = .episodes
     @State private var isSubscribed = false
     @State private var subscriptionMessage = ""
     @State private var showingSubscriptionAlert = false
     
-    @ObservedObject private var audioPlayer = AudioPlayerService.shared
-    @ObservedObject private var episodeCache = EpisodeCacheService.shared
-    @EnvironmentObject private var uiUpdateService: UIUpdateService
     @Environment(\.dismiss) private var dismiss
-    @State private var loadingError: String?
-    @State private var isLoading = false
     
     private enum EpisodeTab: String, CaseIterable, Identifiable {
         case episodes = "Episodes"
@@ -31,12 +25,6 @@ struct PodcastDetailView: View {
         }
         .navigationTitle(podcast.title)
         .navigationBarTitleDisplayMode(.large)
-        .onAppear {
-            loadEpisodes()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .episodeAdded)) { notification in
-            handleEpisodeAdded(notification)
-        }
         .alert("Subscription", isPresented: $showingSubscriptionAlert) {
             Button("OK") { }
         } message: {
@@ -70,85 +58,11 @@ struct PodcastDetailView: View {
     }
     
     private var episodesTabView: some View {
-        Group {
-            if isLoading && episodes.isEmpty {
-                loadingView
-            } else if episodes.isEmpty {
-                emptyStateView
-            } else {
-                episodesList
-            }
-        }
-    }
-    
-    private var loadingView: some View {
-        VStack {
-            ProgressView()
-            Text("Loading episodes...")
-                .foregroundColor(.secondary)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-    
-    private var emptyStateView: some View {
-        VStack {
-            Text("No episodes available")
-                .foregroundColor(.secondary)
-            if let error = loadingError {
-                Text(error)
-                    .foregroundColor(.red)
-                    .font(.caption)
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-    
-    private var episodesList: some View {
-        List(episodes) { episode in
-            EpisodeRowView(
-                episode: episode,
-                podcast: podcast,
-                isCurrentlyPlaying: audioPlayer.currentEpisode?.id == episode.id,
-                onTap: {
-                    audioPlayer.loadEpisode(episode)
-                }
-            )
-        }
+        PaginatedEpisodeListView(podcast: podcast)
     }
     
     private var aboutTabView: some View {
         PodcastAboutView(podcast: podcast)
-    }
-    
-    private func handleEpisodeAdded(_ notification: Notification) {
-        if let episode = notification.object as? Episode {
-            if !episodes.contains(where: { $0.id == episode.id }) {
-                episodes.append(episode)
-                episodes.sort(by: { $0.publishedDate ?? Date.distantPast > $1.publishedDate ?? Date.distantPast })
-            }
-        }
-    }
-    
-    private func loadEpisodes() {
-        isLoading = true
-        loadingError = nil
-        
-        episodeCache.loadEpisodesProgressively(
-            for: podcast,
-            forceRefresh: false,
-            progressCallback: { episode in
-                // Add episode if not already present
-                if !episodes.contains(where: { $0.id == episode.id }) {
-                    episodes.append(episode)
-                    episodes.sort(by: { $0.publishedDate ?? Date.distantPast > $1.publishedDate ?? Date.distantPast })
-                }
-            },
-            completion: { allEpisodes in
-                episodes = allEpisodes
-                episodes.sort(by: { $0.publishedDate ?? Date.distantPast > $1.publishedDate ?? Date.distantPast })
-                isLoading = false
-            }
-        )
     }
     
     private func toggleSubscription() {

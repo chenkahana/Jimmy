@@ -134,32 +134,25 @@ final class BackgroundRefreshService {
         
         let startTime = Date()
         
-        do {
-            // Get subscribed podcasts using the correct method
-            let podcasts = await PodcastService.shared.loadPodcastsAsync()
-            
-            #if canImport(OSLog)
-            logger.info("📡 Refreshing \(podcasts.count) podcasts in background")
-            #endif
-            
-            // Batch fetch episodes (optimized for background)
-            let episodesByPodcast = await fetchWorker.batchFetchEpisodes(for: podcasts)
-            
-            // Batch write to store
-            await podcastStore.batchWrite(episodesByPodcast)
-            
-            let duration = Date().timeIntervalSince(startTime)
-            let totalEpisodes = episodesByPodcast.values.reduce(0) { $0 + $1.count }
-            
-            #if canImport(OSLog)
-            logger.info("✅ Background refresh completed: \(totalEpisodes) episodes in \(String(format: "%.2f", duration))s")
-            #endif
-            
-        } catch {
-            #if canImport(OSLog)
-            logger.error("❌ Background refresh error: \(error.localizedDescription)")
-            #endif
-        }
+        // Get subscribed podcasts using the correct method
+        let podcasts = await PodcastService.shared.loadPodcastsAsync()
+        
+        #if canImport(OSLog)
+        logger.info("📡 Refreshing \(podcasts.count) podcasts in background")
+        #endif
+        
+        // Batch fetch episodes (optimized for background)
+        let episodesByPodcast = await fetchWorker.batchFetchEpisodes(for: podcasts)
+        
+        // Batch write to store
+        await podcastStore.batchWrite(episodesByPodcast)
+        
+        let duration = Date().timeIntervalSince(startTime)
+        let totalEpisodes = episodesByPodcast.values.reduce(0) { $0 + $1.count }
+        
+        #if canImport(OSLog)
+        logger.info("✅ Background refresh completed: \(totalEpisodes) episodes in \(String(format: "%.2f", duration))s")
+        #endif
     }
     
     // MARK: - Utility Methods

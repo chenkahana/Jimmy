@@ -1,57 +1,34 @@
 import SwiftUI
 
+/// A customizable loading indicator component
 struct LoadingIndicator: View {
     let size: CGFloat
     let color: Color
-    let message: String?
+    
     @State private var isAnimating = false
     
-    init(size: CGFloat = 20, color: Color = .accentColor, message: String? = nil) {
+    init(size: CGFloat = 20, color: Color = .primary) {
         self.size = size
         self.color = color
-        self.message = message
     }
     
     var body: some View {
-        VStack(spacing: 8) {
-            ZStack {
-                Circle()
-                    .stroke(color.opacity(0.2), lineWidth: 2)
-                    .frame(width: size, height: size)
-                
-                Circle()
-                    .trim(from: 0, to: 0.7)
-                    .stroke(
-                        AngularGradient(
-                            colors: [color.opacity(0.1), color],
-                            center: .center,
-                            startAngle: .degrees(0),
-                            endAngle: .degrees(360)
-                        ),
-                        style: StrokeStyle(lineWidth: 2, lineCap: .round)
-                    )
-                    .frame(width: size, height: size)
-                    .rotationEffect(.degrees(isAnimating ? 360 : 0))
-                    .animation(
-                        .linear(duration: 1)
-                        .repeatForever(autoreverses: false),
-                        value: isAnimating
-                    )
+        Circle()
+            .trim(from: 0, to: 0.7)
+            .stroke(color, lineWidth: size / 10)
+            .frame(width: size, height: size)
+            .rotationEffect(Angle(degrees: isAnimating ? 360 : 0))
+            .animation(
+                Animation.proMotionLinear(duration: 1)
+                    .repeatForever(autoreverses: false),
+                value: isAnimating
+            )
+            .onAppear {
+                isAnimating = true
             }
-            
-            if let message = message {
-                Text(message)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
+            .onDisappear {
+                isAnimating = false
             }
-        }
-        .onAppear {
-            isAnimating = true
-        }
-        .onDisappear {
-            isAnimating = false
-        }
     }
 }
 
@@ -72,7 +49,7 @@ struct PulsingLoadingIndicator: View {
             .scaleEffect(isPulsing ? 1.2 : 0.8)
             .opacity(isPulsing ? 0.6 : 1.0)
             .animation(
-                .easeInOut(duration: 1)
+                .proMotionEaseInOut(duration: 1)
                 .repeatForever(autoreverses: true),
                 value: isPulsing
             )
@@ -112,7 +89,7 @@ struct DotsLoadingIndicator: View {
     
     private func startAnimation() {
         Timer.scheduledTimer(withTimeInterval: 0.4, repeats: true) { _ in
-            withAnimation(.easeInOut(duration: 0.4)) {
+            withAnimation(.proMotionEaseInOut(duration: 0.4)) {
                 animatingDot = (animatingDot + 1) % 3
             }
         }
@@ -165,13 +142,15 @@ struct Enhanced3DLoadingButton: View {
         }
         .disabled(isLoading)
         .buttonStyle(Enhanced3DButtonStyle(depth: isLoading ? 1 : 2))
-        .animation(.easeInOut(duration: 0.2), value: isLoading)
+        .animation(.proMotionEaseInOut(duration: 0.2), value: isLoading)
     }
 }
 
 #Preview {
-    VStack(spacing: 30) {
-        LoadingIndicator(size: 30, message: "Loading episode...")
+    VStack(spacing: 20) {
+        LoadingIndicator(size: 16)
+        LoadingIndicator(size: 24, color: .blue)
+        LoadingIndicator(size: 32, color: .red)
         
         PulsingLoadingIndicator(size: 25)
         

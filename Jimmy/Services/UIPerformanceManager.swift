@@ -1,5 +1,4 @@
 import Foundation
-import SwiftUI
 import OSLog
 
 /// WORLD-CLASS NAVIGATION: Ultra-fast UI performance manager with zero delays
@@ -86,10 +85,7 @@ class UIPerformanceManager: ObservableObject {
     
     private func setupMemoryMonitoring() {
         // PERFORMANCE FIX: Reduce memory monitoring frequency from 60s to 300s (5 minutes)
-        // and only monitor when app is active to reduce CPU usage
         memoryMonitorTimer = Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { [weak self] _ in
-            // Only monitor memory when app is active to reduce background CPU usage
-            guard UIApplication.shared.applicationState == .active else { return }
             Task { @MainActor in
                 await self?.updateMemoryUsage()
             }

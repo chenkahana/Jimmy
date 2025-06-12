@@ -1,6 +1,5 @@
 import Foundation
 import AVFoundation
-import UIKit
 import OSLog
 
 /// Comprehensive crash prevention manager for audio playback and app stability
@@ -194,35 +193,8 @@ class CrashPreventionManager {
     
     private func setupCrashPrevention() {
         // Setup notification observers for system events
-        NotificationCenter.default.addObserver(
-            forName: UIApplication.didReceiveMemoryWarningNotification,
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            Task { @MainActor in
-                self?.handleMemoryWarning()
-            }
-        }
-        
-        NotificationCenter.default.addObserver(
-            forName: UIApplication.didEnterBackgroundNotification,
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            Task { @MainActor in
-                self?.handleAppDidEnterBackground()
-            }
-        }
-        
-        NotificationCenter.default.addObserver(
-            forName: UIApplication.willTerminateNotification,
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            Task { @MainActor in
-                self?.handleAppWillTerminate()
-            }
-        }
+        // Note: Memory warning handling moved to app delegate level
+        logger.info("🛡️ Setting up crash prevention")
     }
     
     private func startMonitoring() {
@@ -292,8 +264,6 @@ class CrashPreventionManager {
     private func setupKVOSafetyNet() {
         // PERFORMANCE FIX: Reduce KVO cleanup frequency from 30s to 300s (5 minutes) to reduce CPU usage
         Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { [weak self] _ in
-            // Only run when app is active to reduce background CPU usage
-            guard UIApplication.shared.applicationState == .active else { return }
             Task { @MainActor in
                 self?.cleanupOrphanedObservers()
             }
@@ -303,8 +273,6 @@ class CrashPreventionManager {
     private func setupOperationLimiting() {
         // PERFORMANCE FIX: Reduce operation monitoring frequency from 5s to 60s (1 minute) to reduce CPU usage
         Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
-            // Only run when app is active to reduce background CPU usage
-            guard UIApplication.shared.applicationState == .active else { return }
             Task { @MainActor in
                 self?.monitorActiveOperations()
             }
@@ -319,7 +287,8 @@ class CrashPreventionManager {
         AudioPlayerService.shared.clearPlayerItemCache()
         // Clear image cache if available
         // ImageCache.shared.clearCache()
-        OptimizedNetworkManager.shared.clearExpiredCache()
+        // Note: OptimizedNetworkManager no longer has clearExpiredCache method
+        // Cache management is now handled internally
         
         // Stop non-essential operations
         EpisodeUpdateService.shared.stopPeriodicUpdates()
@@ -398,7 +367,8 @@ class CrashPreventionManager {
     
     private func performGradualCleanup() {
         // Clear expired caches first
-        OptimizedNetworkManager.shared.clearExpiredCache()
+        // Note: OptimizedNetworkManager no longer has clearExpiredCache method
+        // Cache management is now handled internally
         
         // Reduce image cache size (if available)
         // ImageCache.shared.reduceCache()

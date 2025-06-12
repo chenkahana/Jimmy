@@ -18,10 +18,9 @@ final class CarPlayManager: NSObject {
             
             self.interfaceController = interfaceController
             
-            // Build initial template safely
-            let initialTemplate = self.buildQueueTemplate()
-            
             DispatchQueue.main.async {
+                // Build initial template safely on main actor
+                let initialTemplate = self.buildQueueTemplate()
                 // Set root template first
                 interfaceController.setRootTemplate(CPNowPlayingTemplate.shared, animated: false) { [weak self] success, error in
                     if let error = error {
@@ -54,29 +53,28 @@ final class CarPlayManager: NSObject {
             guard let self = self,
                   let controller = self.interfaceController else { return }
             
-            // Only rebuild template if queue contents have actually changed
-            let newTemplate = self.buildQueueTemplate()
-            
-            // Compare with existing template to avoid unnecessary updates
-            if let existingTemplate = self.queueTemplate,
-               existingTemplate.sections.count == newTemplate.sections.count,
-               let existingItems = existingTemplate.sections.first?.items,
-               let newItems = newTemplate.sections.first?.items,
-               existingItems.count == newItems.count {
-                
-                // Check if the items are actually different - cast to CPListItem for comparison
-                let itemsChanged = zip(existingItems, newItems).contains { existing, new in
-                    guard let existingItem = existing as? CPListItem,
-                          let newItem = new as? CPListItem else { return true }
-                    return existingItem.text != newItem.text || existingItem.detailText != newItem.detailText
-                }
-                
-                if !itemsChanged {
-                    return // No changes needed
-                }
-            }
-            
             DispatchQueue.main.async {
+                // Only rebuild template if queue contents have actually changed
+                let newTemplate = self.buildQueueTemplate()
+                
+                // Compare with existing template to avoid unnecessary updates
+                if let existingTemplate = self.queueTemplate,
+                   existingTemplate.sections.count == newTemplate.sections.count,
+                   let existingItems = existingTemplate.sections.first?.items,
+                   let newItems = newTemplate.sections.first?.items,
+                   existingItems.count == newItems.count {
+                    
+                    // Check if the items are actually different - cast to CPListItem for comparison
+                    let itemsChanged = zip(existingItems, newItems).contains { existing, new in
+                        guard let existingItem = existing as? CPListItem,
+                              let newItem = new as? CPListItem else { return true }
+                        return existingItem.text != newItem.text || existingItem.detailText != newItem.detailText
+                    }
+                    
+                    if !itemsChanged {
+                        return // No changes needed
+                    }
+                }
                 // Update templates more safely
                 if controller.templates.count > 1 {
                     controller.popToRootTemplate(animated: false) { [weak self] success, error in
@@ -110,18 +108,16 @@ final class CarPlayManager: NSObject {
     private func getPodcast(for episode: Episode) -> Podcast? {
         // Safely access PodcastService on main thread
         guard Thread.isMainThread else {
-            return DispatchQueue.main.sync {
-                return PodcastService.shared.loadPodcasts().first { $0.id == episode.podcastID }
-            }
+            // Can't return from async block, so return nil and handle elsewhere
+            return nil
         }
         return PodcastService.shared.loadPodcasts().first { $0.id == episode.podcastID }
     }
 
+    @MainActor
     private func queueSection() -> CPListSection {
-        // Safely access queue data
-        let queueData = DispatchQueue.main.sync {
-            return QueueViewModel.shared.queue
-        }
+        // Safely access queue data - must be called on main thread
+        let queueData = QueueViewModel.shared.queuedEpisodes
         
         let items = queueData.compactMap { episode -> CPListItem? in
             // Ensure we have a valid episode title
@@ -133,11 +129,10 @@ final class CarPlayManager: NSObject {
             let item = CPListItem(text: episode.title, detailText: podcastTitle)
             
             item.handler = { [weak self] _, completion in
-                // Safely execute on main thread
-                DispatchQueue.main.async {
-                    QueueViewModel.shared.playEpisodeFromQueue(episode)
-                    completion()
+                Task {
+                    try? await QueueViewModel.shared.playEpisode(episode)
                 }
+                completion()
             }
             return item
         }
@@ -145,6 +140,7 @@ final class CarPlayManager: NSObject {
         return CPListSection(items: items)
     }
 
+    @MainActor
     private func buildQueueTemplate() -> CPListTemplate {
         let section = queueSection()
         let template = CPListTemplate(title: "Queue", sections: [section])

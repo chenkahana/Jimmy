@@ -1,8 +1,7 @@
 import SwiftUI
 
 struct LibraryView: View {
-    @ObservedObject private var libraryController = LibraryController.shared
-    @ObservedObject private var episodeController = UnifiedEpisodeController.shared
+    @StateObject private var viewModel = LibraryViewModel.shared
     @ObservedObject private var audioPlayer = AudioPlayerService.shared
     @EnvironmentObject private var uiUpdateService: UIUpdateService
     
@@ -20,11 +19,11 @@ struct LibraryView: View {
                 // Enhanced Segmented Control
                 enhancedSegmentedControl
                 
-                // Search Bar
-                searchBar
+                // Compact Search Bar
+                compactSearchBar
                 
                 // Content
-                if libraryController.isLoading || isRefreshing {
+                if viewModel.isLoading || isRefreshing {
                     Spacer()
                     ProgressView("Loading...")
                         .scaleEffect(1.2)
@@ -43,7 +42,7 @@ struct LibraryView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Edit") {
-                        libraryController.toggleEditMode()
+                        viewModel.toggleEditMode()
                     }
                     .foregroundColor(.accentColor)
                 }
@@ -53,7 +52,9 @@ struct LibraryView: View {
             await performRefresh()
         }
         .onAppear {
-            libraryController.loadData()
+            Task {
+                await viewModel.reloadData()
+            }
         }
     }
     
@@ -63,7 +64,7 @@ struct LibraryView: View {
         HStack(spacing: 0) {
             ForEach(LibraryTab.allCases, id: \.self) { tab in
                 Button(action: {
-                    withAnimation(.easeInOut(duration: 0.3)) {
+                    withAnimation(.proMotionEaseInOut(duration: 0.3)) {
                         selectedTab = tab
                     }
                 }) {
@@ -89,40 +90,54 @@ struct LibraryView: View {
         .padding(.bottom, 16)
     }
     
-    private var searchBar: some View {
-        HStack(spacing: 12) {
+    private var compactSearchBar: some View {
+        HStack {
+            // Search field
             HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass")
                     .foregroundColor(.secondary)
-                    .font(.system(size: 16))
+                    .font(.system(size: 14))
                 
-                TextField(selectedTab == .shows ? "Search podcasts" : "Search episodes", text: $libraryController.searchText)
-                    .font(.system(size: 16))
+                TextField(selectedTab == .shows ? "Search podcasts" : "Search episodes", text: $viewModel.searchText)
+                    .font(.system(size: 14))
                 
-                if !libraryController.searchText.isEmpty {
-                    Button("Clear") {
-                        libraryController.clearSearch()
+                if !viewModel.searchText.isEmpty {
+                    Button(action: { viewModel.clearSearch() }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundColor(.secondary)
+                            .font(.system(size: 14))
                     }
-                    .foregroundColor(.accentColor)
-                    .font(.system(size: 14, weight: .medium))
                 }
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
             .background(
-                RoundedRectangle(cornerRadius: 10)
+                RoundedRectangle(cornerRadius: 8)
                     .fill(Color(.tertiarySystemBackground))
             )
+            
+            // Status indicator
+            if !viewModel.searchText.isEmpty {
+                Text("Filtered")
+                    .font(.caption2)
+                    .foregroundColor(.accentColor)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(Color.accentColor.opacity(0.1))
+                    )
+            }
         }
         .padding(.horizontal, 16)
-        .padding(.bottom, 16)
+        .padding(.bottom, 12)
     }
     
     // MARK: - Content Views
     
     @ViewBuilder
     private var showsContent: some View {
-        if libraryController.filteredPodcasts.isEmpty {
+        if viewModel.filteredPodcasts.isEmpty {
             emptyShowsState
         } else {
             ScrollView {
@@ -150,24 +165,26 @@ struct LibraryView: View {
                         GridItem(.flexible(), spacing: 16),
                         GridItem(.flexible(), spacing: 16)
                     ], spacing: 20) {
-                        ForEach(libraryController.filteredPodcasts.sorted { podcast1, podcast2 in
-                            let date1 = libraryController.getLatestEpisodeDate(for: podcast1) ?? Date.distantPast
-                            let date2 = libraryController.getLatestEpisodeDate(for: podcast2) ?? Date.distantPast
+                        ForEach(viewModel.filteredPodcasts.sorted { podcast1, podcast2 in
+                            let date1 = viewModel.getLatestEpisodeDate(for: podcast1) ?? Date.distantPast
+                            let date2 = viewModel.getLatestEpisodeDate(for: podcast2) ?? Date.distantPast
                             return date1 > date2
                         }, id: \.id) { podcast in
                             NavigationLink(destination: PodcastDetailView(podcast: podcast)) {
                                 EnhancedPodcastCard(
                                     podcast: podcast,
-                                    episodeCount: libraryController.getEpisodesCount(for: podcast),
-                                    unplayedCount: libraryController.getUnplayedEpisodesCount(for: podcast),
-                                    isEditMode: libraryController.isEditMode,
+                                    episodeCount: viewModel.getEpisodesCount(for: podcast),
+                                    unplayedCount: viewModel.getUnplayedEpisodesCount(for: podcast),
+                                    isEditMode: viewModel.isEditMode,
                                     onDelete: {
-                                        libraryController.deletePodcast(podcast)
+                                        Task {
+                                            await viewModel.deletePodcast(podcast)
+                                        }
                                     }
                                 )
                             }
                             .buttonStyle(PlainButtonStyle())
-                            .disabled(libraryController.isEditMode)
+                            .disabled(viewModel.isEditMode)
                         }
                     }
                     .padding(.horizontal, 16)
@@ -179,22 +196,22 @@ struct LibraryView: View {
     
     @ViewBuilder
     private var episodesContent: some View {
-        if libraryController.filteredEpisodes.isEmpty {
+        if viewModel.filteredEpisodes.isEmpty {
             emptyEpisodesState
         } else {
             List {
-                ForEach(libraryController.filteredEpisodes.sorted { episode1, episode2 in
+                ForEach(viewModel.filteredEpisodes.sorted { episode1, episode2 in
                     let date1 = episode1.publishedDate ?? Date.distantPast
                     let date2 = episode2.publishedDate ?? Date.distantPast
                     return date1 > date2
                 }, id: \.id) { episode in
                     NavigationLink(destination: EpisodeDetailView(
                         episode: episode,
-                        podcast: libraryController.getPodcast(for: episode) ?? Podcast(title: "Unknown", author: "", description: "", feedURL: URL(string: "https://example.com")!, artworkURL: nil)
+                        podcast: viewModel.getPodcast(for: episode) ?? Podcast(title: "Unknown", author: "", description: "", feedURL: URL(string: "https://example.com")!, artworkURL: nil)
                     )) {
                         EnhancedEpisodeRow(
                             episode: episode,
-                            podcast: libraryController.getPodcast(for: episode)
+                            podcast: viewModel.getPodcast(for: episode)
                         )
                     }
                 }
@@ -261,7 +278,7 @@ struct LibraryView: View {
             isRefreshing = true
         }
         
-        await libraryController.refreshAllData()
+        await viewModel.refreshAllData()
         
         await MainActor.run {
             isRefreshing = false
@@ -360,7 +377,7 @@ struct EnhancedPodcastCard: View {
             }
         }
         .scaleEffect(isEditMode ? 0.95 : 1.0)
-        .animation(.easeInOut(duration: 0.2), value: isEditMode)
+        .animation(.proMotionEaseInOut(duration: 0.2), value: isEditMode)
     }
 }
 

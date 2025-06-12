@@ -1,11 +1,11 @@
 import Foundation
-import SwiftUI
+import Combine
 
-/// Unified controller for discovery functionality
+/// ViewModel for Discovery functionality following MVVM patterns
 @MainActor
-class UnifiedDiscoveryController: ObservableObject {
-    static let shared = UnifiedDiscoveryController()
-    
+class DiscoveryViewModel: ObservableObject {
+    static let shared = DiscoveryViewModel()
+    // MARK: - Published Properties
     @Published var searchText: String = ""
     @Published var isLoading: Bool = false
     @Published var hasAnyData: Bool = false
@@ -16,18 +16,50 @@ class UnifiedDiscoveryController: ObservableObject {
     @Published var featured: [PodcastSearchResult] = []
     @Published var trending: [TrendingEpisode] = []
     @Published var charts: [PodcastSearchResult] = []
+    @Published var errorMessage: String?
     
-    private let discoveryService = DiscoveryService.shared
-    private let searchService = iTunesSearchService.shared
-    private let podcastService = PodcastService.shared
+    // MARK: - Private Properties
+    private let discoveryService: DiscoveryService
+    private let searchService: iTunesSearchService
+    private let podcastService: PodcastService
+    private var cancellables = Set<AnyCancellable>()
+    private var searchTask: Task<Void, Never>?
     
-    private init() {
-        // Start with empty data, load on demand
+    // MARK: - Initialization
+    private init(
+        discoveryService: DiscoveryService = .shared,
+        searchService: iTunesSearchService = .shared,
+        podcastService: PodcastService = .shared
+    ) {
+        self.discoveryService = discoveryService
+        self.searchService = searchService
+        self.podcastService = podcastService
+        setupSearchBinding()
     }
     
+    deinit {
+        cancellables.removeAll()
+        searchTask?.cancel()
+    }
+    
+    // MARK: - Private Methods
+    private func setupSearchBinding() {
+        $searchText
+            .debounce(for: .milliseconds(500), scheduler: RunLoop.main)
+            .removeDuplicates()
+            .sink { [weak self] searchText in
+                self?.searchTask?.cancel()
+                self?.searchTask = Task { [weak self] in
+                    await self?.searchPodcasts()
+                }
+            }
+            .store(in: &cancellables)
+    }
+    
+    // MARK: - Public Methods
     func refreshData() async {
-        print("🔄 UnifiedDiscoveryController: Refreshing data")
         isLoading = true
+        errorMessage = nil
         
         async let featuredTask = discoveryService.fetchFeaturedPodcasts(limit: 20)
         async let trendingTask = discoveryService.fetchTrendingEpisodes(limit: 10)
@@ -44,29 +76,36 @@ class UnifiedDiscoveryController: ObservableObject {
     }
     
     func loadDataIfNeeded() async {
-        print("📚 UnifiedDiscoveryController: Loading data if needed")
-        
         // Only load if we don't have any data
         guard !hasAnyData else { return }
-        
         await refreshData()
     }
     
     func searchPodcasts() async {
-        guard !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        guard !query.isEmpty else {
             searchResults = []
+            isSearching = false
             return
         }
         
         isSearching = true
+        errorMessage = nil
         
         let results = await withCheckedContinuation { continuation in
-            searchService.searchPodcasts(query: searchText) { results in
+            searchService.searchPodcasts(query: query) { results in
                 continuation.resume(returning: results)
             }
         }
         
+        // Check if this search is still current
+        guard query == searchText.trimmingCharacters(in: .whitespacesAndNewlines) else {
+            return
+        }
+        
         searchResults = results
+        
         isSearching = false
     }
     
@@ -91,5 +130,15 @@ class UnifiedDiscoveryController: ObservableObject {
         
         subscriptionMessage = "Successfully subscribed to \(result.title)"
         showingSubscriptionAlert = true
+    }
+    
+    func clearSearch() {
+        searchText = ""
+        searchResults = []
+    }
+    
+    func dismissSubscriptionAlert() {
+        showingSubscriptionAlert = false
+        subscriptionMessage = ""
     }
 } 

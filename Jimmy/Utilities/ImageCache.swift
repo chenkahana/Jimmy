@@ -204,6 +204,19 @@ public class ImageCache: ObservableObject {
         }
     }
     
+    /// Clear memory cache only (keep disk cache)
+    public func clearMemoryCache() {
+        let count = memoryCache.totalCostLimit
+        memoryCache.removeAllObjects()
+        
+        memoryCacheKeysLock.lock()
+        let keyCount = memoryCacheKeys.count
+        memoryCacheKeys.removeAll()
+        memoryCacheKeysLock.unlock()
+        
+        print("🖼️ Cleared image memory cache (\(keyCount) images) to free memory")
+    }
+    
     /// Clear expired entries only
     func clearExpiredEntries() {
         cleanupExpiredEntries()

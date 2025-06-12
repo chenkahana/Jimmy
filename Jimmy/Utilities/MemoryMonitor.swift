@@ -10,14 +10,17 @@ final class MemoryMonitor {
     
     // MARK: - Configuration
     private struct Config {
-        static let warningThreshold: Int = 200 * 1024 * 1024 // 200MB
-        static let criticalThreshold: Int = 300 * 1024 * 1024 // 300MB
-        static let monitoringInterval: TimeInterval = 30.0 // 30 seconds
+        static let warningThreshold: Int = 400 * 1024 * 1024 // 400MB (increased from 200MB)
+        static let criticalThreshold: Int = 600 * 1024 * 1024 // 600MB (increased from 300MB)
+        static let emergencyThreshold: Int = 800 * 1024 * 1024 // 800MB (new emergency level)
+        static let monitoringInterval: TimeInterval = 60.0 // 60 seconds (reduced frequency)
+        static let cleanupCooldown: TimeInterval = 30.0 // Prevent excessive cleanup
     }
     
     // MARK: - Properties
     private var monitoringTimer: Timer?
     private var lastMemoryWarning: Date?
+    private var lastCleanup: Date?
     
     private init() {
         setupMemoryWarningObserver()
@@ -66,19 +69,43 @@ final class MemoryMonitor {
     
     /// Force memory cleanup
     func forceMemoryCleanup() {
-        logger.warning("🧹 Forcing memory cleanup")
+        // Prevent excessive cleanup calls
+        if let lastCleanup = lastCleanup,
+           Date().timeIntervalSince(lastCleanup) < Config.cleanupCooldown {
+            logger.info("⏳ Skipping cleanup - too soon since last cleanup")
+            return
+        }
         
-        // Trigger cleanup in various services
+        lastCleanup = Date()
+        logger.warning("🧹 Forcing memory cleanup - targeting heavy objects")
+        
+        // FOCUS ON REAL MEMORY HOGS:
+        
+        // 1. Clear audio player cache (AVPlayerItems are memory-heavy)
+        AudioPlayerService.shared.clearPlayerItemCache()
+        
+        // 2. Clear image cache (Images can be memory-heavy)
+        ImageCache.shared.clearMemoryCache()
+        
+        // 3. Trigger crash prevention cleanup
         CrashPreventionManager.shared.handleMemoryWarning()
         
-        // Force garbage collection
+        // 4. Clear file-based caches only if really needed
+        // (Episode text data is minimal, but file cache can grow)
+        let currentUsage = getCurrentMemoryUsage()
+        if currentUsage > Config.criticalThreshold {
+            EpisodeCacheService.shared.clearAllCache()
+            logger.warning("🗑️ Cleared file caches due to critical memory usage")
+        }
+        
+        // 5. Force garbage collection for any unreferenced objects
         for _ in 0..<3 {
             autoreleasepool {
                 // Trigger garbage collection
             }
         }
         
-        logger.info("✅ Memory cleanup completed")
+        logger.info("✅ Memory cleanup completed - focused on media assets")
     }
     
     // MARK: - Private Methods
@@ -111,11 +138,18 @@ final class MemoryMonitor {
     private func checkMemoryUsage() {
         let currentUsage = getCurrentMemoryUsage()
         
-        if currentUsage > Config.criticalThreshold {
+        if currentUsage > Config.emergencyThreshold {
+            logger.error("🚨 EMERGENCY: Memory usage is \(self.getFormattedMemoryUsage()) - forcing aggressive cleanup")
+            forceMemoryCleanup()
+            // Also stop non-essential services
+            EpisodeUpdateService.shared.stopPeriodicUpdates()
+        } else if currentUsage > Config.criticalThreshold {
             logger.error("🚨 CRITICAL: Memory usage is \(self.getFormattedMemoryUsage())")
             forceMemoryCleanup()
         } else if currentUsage > Config.warningThreshold {
             logger.warning("⚠️ WARNING: Memory usage is \(self.getFormattedMemoryUsage())")
+            // Light cleanup - just clear caches
+            AudioPlayerService.shared.clearPlayerItemCache()
         }
     }
     

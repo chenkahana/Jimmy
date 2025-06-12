@@ -50,7 +50,6 @@ class BackgroundTaskManager: ObservableObject {
         
         do {
             try BGTaskScheduler.shared.submit(request)
-            print("🔄 Background refresh scheduled for \(request.earliestBeginDate?.formatted() ?? "unknown time")")
         } catch {
             print("❌ Failed to schedule background refresh: \(error.localizedDescription)")
         }
@@ -59,7 +58,6 @@ class BackgroundTaskManager: ObservableObject {
     /// Cancel scheduled background refresh
     func cancelBackgroundRefresh() {
         BGTaskScheduler.shared.cancel(taskRequestWithIdentifier: Config.backgroundRefreshIdentifier)
-        print("🚫 Background refresh cancelled")
     }
     
     /// Force immediate background refresh (for testing)
@@ -72,14 +70,11 @@ class BackgroundTaskManager: ObservableObject {
     // MARK: - Private Methods
     
     private func handleBackgroundRefresh(task: BGAppRefreshTask) {
-        print("🔄 Background refresh task started")
-        
         // Schedule the next refresh immediately
         scheduleBackgroundRefresh()
         
         // Set expiration handler
         task.expirationHandler = {
-            print("⏰ Background refresh task expired")
             task.setTaskCompleted(success: false)
         }
         
@@ -106,7 +101,6 @@ class BackgroundTaskManager: ObservableObject {
             
             // Check if we exceeded time limit
             if Date().timeIntervalSince(startTime) > Config.maxBackgroundTime {
-                print("⏰ Background refresh timeout reached")
                 return false
             }
             

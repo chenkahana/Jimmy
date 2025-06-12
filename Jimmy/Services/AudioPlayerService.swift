@@ -26,9 +26,10 @@ class AudioPlayerService: NSObject, ObservableObject {
     private let updateDebounceInterval: TimeInterval = 0.1
     
     // Cache for prepared AVPlayerItems to reduce loading time (with size limit)
+    // REAL MEMORY ISSUE: AVPlayerItems contain audio buffers and are heavy
     private var playerItemCache: [String: AVPlayerItem] = [:]
     private let cacheQueue = DispatchQueue(label: "player.cache", qos: .utility)
-    private let maxCacheSize = 5 // Limit cache to prevent memory issues
+    private let maxCacheSize = 2 // Very limited - AVPlayerItems are memory-heavy
     
     private override init() {
         super.init()
@@ -216,8 +217,25 @@ class AudioPlayerService: NSObject, ObservableObject {
             }
             
             // Play next episode in queue
-            Task { @MainActor in
-                QueueViewModel.shared.playNextEpisode()
+            if isPlaying {
+                // Check if there's a next episode in the queue
+                Task { @MainActor in
+                    let queueViewModel = QueueViewModel.shared
+                    if let nextEpisode = queueViewModel.getNextEpisode() {
+                        // Load and play the next episode
+                        self.loadEpisode(nextEpisode)
+                        self.play()
+                        
+                        // Remove the completed episode from queue
+                        queueViewModel.removeCurrentEpisode()
+                        
+                        print("🎵 AudioPlayerService: Auto-playing next episode: \(nextEpisode.title)")
+                    } else {
+                        // No more episodes in queue, stop playback
+                        self.stop()
+                        print("🎵 AudioPlayerService: Queue completed, stopping playback")
+                    }
+                }
             }
         }
     }
@@ -453,8 +471,10 @@ class AudioPlayerService: NSObject, ObservableObject {
     
     func clearPlayerItemCache() {
         cacheQueue.async { [weak self] in
-            self?.playerItemCache.removeAll()
-            print("🧹 Cleared player item cache to free memory")
+            guard let self = self else { return }
+            let cacheCount = self.playerItemCache.count
+            self.playerItemCache.removeAll()
+            print("🧹 Cleared player item cache (\(cacheCount) items) to free memory")
         }
     }
     
@@ -468,7 +488,7 @@ class AudioPlayerService: NSObject, ObservableObject {
                 for key in keysToRemove {
                     self.playerItemCache.removeValue(forKey: key)
                 }
-                print("🧹 Trimmed player cache to \(self.maxCacheSize) items")
+                print("🧹 Trimmed player cache to \(self.maxCacheSize) items (memory management)")
             }
         }
     }
@@ -480,12 +500,14 @@ class AudioPlayerService: NSObject, ObservableObject {
     /// Preload episodes for faster playback
     func preloadEpisodes(_ episodes: [Episode]) {
         cacheQueue.async { [weak self] in
-            for episode in episodes.prefix(3) { // Only preload first 3
+            // MEMORY FIX: Only preload 1 episode since AVPlayerItems are memory-heavy
+            for episode in episodes.prefix(1) { // Reduced from 3 to 1
                 guard let audioURL = episode.audioURL,
                       self?.playerItemCache[episode.id.uuidString] == nil else { continue }
                 
                 let playerItem = AVPlayerItem(url: audioURL)
                 self?.playerItemCache[episode.id.uuidString] = playerItem
+                print("🎵 Preloaded player item for: \(episode.title)")
             }
         }
     }
@@ -595,10 +617,9 @@ class AudioPlayerService: NSObject, ObservableObject {
     private func updateQueuePosition(for episode: Episode, position: TimeInterval) {
         // CRITICAL FIX: Execute immediately to prevent main thread queue buildup
         DispatchQueue.main.async {
-            if let queueViewModel = QueueViewModel.shared as QueueViewModel?,
-               let index = queueViewModel.queue.firstIndex(where: { $0.id == episode.id }) {
-                queueViewModel.queue[index].playbackPosition = position
-                queueViewModel.saveQueue()
+            if let queueViewModel = QueueViewModel.shared as? QueueViewModel,
+               let index = queueViewModel.queuedEpisodes.firstIndex(where: { $0.id == episode.id }) {
+                queueViewModel.queuedEpisodes[index].playbackPosition = position
             }
         }
     }
@@ -770,20 +791,44 @@ class AudioPlayerService: NSObject, ObservableObject {
     }
     
     /// Manually restore the last playing episode (useful when auto-restore is disabled)
-          @MainActor func manuallyRestoreLastEpisode() {
-          guard let lastEpisodeId = getLastPlayingEpisodeId(),
-               let episodeUUID = UUID(uuidString: lastEpisodeId),
-               let episode = UnifiedEpisodeController.shared.getEpisode(by: episodeUUID) else {
+    @MainActor func manuallyRestoreLastEpisode() {
+        guard let lastEpisodeId = getLastPlayingEpisodeId(),
+              let episodeUUID = UUID(uuidString: lastEpisodeId) else {
             print("🎵 No previous episode to restore")
             return
         }
         
-        if episode.playbackPosition > 0 {
-            print("🎵 Manually restoring episode: \(episode.title) at position \(Int(episode.playbackPosition))s")
-            loadEpisode(episode)
-        } else {
-            print("🎵 Episode \(episode.title) has no saved position, loading from beginning")
-            loadEpisode(episode)
+        // Get episode from cache service using async API
+        Task {
+            // We need to find the episode across all cached podcasts
+            let allPodcasts = await PodcastService.shared.loadPodcastsAsync()
+            var foundEpisode: Episode?
+            
+            for podcast in allPodcasts {
+                if let episodes = await EpisodeCacheService.shared.getEpisodes(for: podcast.id) {
+                    if let episode = episodes.first(where: { $0.id == episodeUUID }) {
+                        foundEpisode = episode
+                        break
+                    }
+                }
+            }
+            
+            guard let episode = foundEpisode else {
+                print("🎵 Episode not found in cache")
+                return
+            }
+        
+            if episode.playbackPosition > 0 {
+                print("🎵 Manually restoring episode: \(episode.title) at position \(Int(episode.playbackPosition))s")
+                await MainActor.run {
+                    self.loadEpisode(episode)
+                }
+            } else {
+                print("🎵 Episode \(episode.title) has no saved position, loading from beginning")
+                await MainActor.run {
+                    self.loadEpisode(episode)
+                }
+            }
         }
     }
     
@@ -797,20 +842,42 @@ class AudioPlayerService: NSObject, ObservableObject {
         }
         
         guard let lastEpisodeId = getLastPlayingEpisodeId(),
-              let episodeUUID = UUID(uuidString: lastEpisodeId),
-              let episode = UnifiedEpisodeController.shared.getEpisode(by: episodeUUID) else {
+              let episodeUUID = UUID(uuidString: lastEpisodeId) else {
             print("🎵 No previous episode to restore")
             return
         }
         
-        // Only restore if there was a saved playback position (meaning it was actually being played)
-        if episode.playbackPosition > 0 {
-            print("🎵 Restoring episode: \(episode.title) at position \(Int(episode.playbackPosition))s")
-            // Load the episode but don't start playing - user must manually resume
-            loadEpisode(episode)
-            print("🎵 Episode loaded but not playing - ready for manual resume")
-        } else {
-            print("🎵 Episode \(episode.title) has no saved position, not restoring")
+        // Get episode from cache service using async API
+        Task {
+            // We need to find the episode across all cached podcasts
+            let allPodcasts = await PodcastService.shared.loadPodcastsAsync()
+            var foundEpisode: Episode?
+            
+            for podcast in allPodcasts {
+                if let episodes = await EpisodeCacheService.shared.getEpisodes(for: podcast.id) {
+                    if let episode = episodes.first(where: { $0.id == episodeUUID }) {
+                        foundEpisode = episode
+                        break
+                    }
+                }
+            }
+            
+            guard let episode = foundEpisode else {
+                print("🎵 Episode not found in cache")
+                return
+            }
+        
+            // Only restore if there was a saved playback position (meaning it was actually being played)
+            if episode.playbackPosition > 0 {
+                print("🎵 Restoring episode: \(episode.title) at position \(Int(episode.playbackPosition))s")
+                // Load the episode but don't start playing - user must manually resume
+                await MainActor.run {
+                    self.loadEpisode(episode)
+                }
+                print("🎵 Episode loaded but not playing - ready for manual resume")
+            } else {
+                print("🎵 Episode \(episode.title) has no saved position, not restoring")
+            }
         }
     }
 } 

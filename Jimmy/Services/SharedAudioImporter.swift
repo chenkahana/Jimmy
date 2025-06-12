@@ -10,6 +10,9 @@ class SharedAudioImporter: ObservableObject {
     
     // Callback for when a file needs naming
     var onFileRequiresNaming: ((URL) -> Void)?
+    
+    // Callback for file import with clean architecture
+    private var importCallback: ((URL, String, String, UUID?) async -> Void)?
 
     private init() {
         let documents = fileManager.urls(for: .documentDirectory, in: .userDomainMask)[0]
@@ -17,6 +20,11 @@ class SharedAudioImporter: ObservableObject {
         if !fileManager.fileExists(atPath: baseDirectory.path) {
             try? fileManager.createDirectory(at: baseDirectory, withIntermediateDirectories: true)
         }
+    }
+
+    /// Set callback for clean architecture file import
+    func setImportCallback(_ callback: @escaping (URL, String, String, UUID?) async -> Void) {
+        importCallback = callback
     }
 
     /// Triggers the naming popup for a shared audio file

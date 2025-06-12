@@ -29,15 +29,15 @@ class EpisodeRepository: ObservableObject {
     
     func markEpisodeAsPlayed(_ episodeId: UUID) async throws {
         // Stub implementation
-        print("📝 Marked episode as played: \(episodeId)")
     }
     
     func batchUpdateEpisodes(_ updates: [EpisodeUpdate]) async throws {
         // Stub implementation
         for update in updates {
             switch update {
-            case .updatePlaybackPosition(let episodeId, let position):
-                print("📝 Updated playback position for \(episodeId): \(position)")
+            case .updatePlaybackPosition(_, _):
+                break
+                // Migrate critical log to Logger if needed
             }
         }
     }

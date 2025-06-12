@@ -8,6 +8,9 @@ struct CleanJimmyApp: App {
     // MARK: - Dependency Injection
     private let container = DIContainer.shared
     
+    // MARK: - ProMotion/120Hz Support
+    private let proMotionManager = ProMotionManager.shared
+    
     // MARK: - Background Coordinators
     private let backgroundTaskCoordinator = BackgroundTaskCoordinator.shared
     private let backgroundRefreshCoordinator = BackgroundRefreshCoordinator.shared
@@ -24,6 +27,7 @@ struct CleanJimmyApp: App {
                 if viewModelsReady {
                     ContentView()
                         .environmentObject(UIUpdateService.shared)
+                        .proMotionOptimized()
                         .onAppear {
                             setupApp()
                         }
@@ -35,13 +39,20 @@ struct CleanJimmyApp: App {
                 }
             }
             .onOpenURL { url in
-                handleURL(url)
+                Task {
+                    await CleanJimmyApp.handleFileImport(
+                        from: url,
+                        fileName: url.lastPathComponent,
+                        showName: url.deletingPathExtension().lastPathComponent,
+                        existingShowID: nil
+                    )
+                }
             }
             .sheet(isPresented: $showFileImportSheet) {
                 if let audioURL = pendingAudioURL {
                     FileImportNamingView(audioURL: audioURL) { fileName, showName, existingShowID in
                         Task {
-                            await handleFileImport(
+                            await CleanJimmyApp.handleFileImport(
                                 from: audioURL,
                                 fileName: fileName,
                                 showName: showName,
@@ -92,6 +103,11 @@ struct CleanJimmyApp: App {
         // MEMORY FIX: Initialize memory monitoring
         _ = MemoryMonitor.shared
         
+        // Initialize ProMotion/120Hz support
+        _ = proMotionManager
+        print("🚀 ProMotion Manager initialized")
+        print(proMotionManager.debugInfo)
+        
         // Setup file import handling
         setupFileImportCallback()
         
@@ -141,24 +157,100 @@ struct CleanJimmyApp: App {
     // MARK: - File Import
     
     private func setupFileImportCallback() {
-        // This would be handled by a file import service in the clean architecture
-        // For now, we'll keep it simple
+        // Set up file import handling for the clean architecture
+        SharedAudioImporter.shared.setImportCallback { url, fileName, showName, existingShowID in
+            Task {
+                await CleanJimmyApp.handleFileImport(
+                    from: url,
+                    fileName: fileName,
+                    showName: showName,
+                    existingShowID: existingShowID
+                )
+            }
+        }
+        
+        // Also handle URL scheme imports
+        NotificationCenter.default.addObserver(
+            forName: .fileImportRequested,
+            object: nil,
+            queue: .main
+        ) { notification in
+            if let userInfo = notification.userInfo,
+               let url = userInfo["url"] as? URL,
+               let fileName = userInfo["fileName"] as? String {
+                let showName = userInfo["showName"] as? String ?? fileName
+                let existingShowID = userInfo["existingShowID"] as? UUID
+                
+                Task {
+                    await CleanJimmyApp.handleFileImport(
+                        from: url,
+                        fileName: fileName,
+                        showName: showName,
+                        existingShowID: existingShowID
+                    )
+                }
+            }
+        }
     }
     
-    private func handleFileImport(
+    private static func handleFileImport(
         from url: URL,
         fileName: String,
         showName: String,
         existingShowID: UUID?
     ) async {
-        // This would use a file import use case in the clean architecture
-        // For now, we'll delegate to the existing service
-        SharedAudioImporter.shared.importFile(
-            from: url,
-            fileName: fileName,
-            showName: showName,
-            existingShowID: existingShowID
-        )
+        // Use clean architecture use cases for file import
+        do {
+            // Create repositories (simplified for static context)
+            let storageRepository = ConcreteStorageRepository()
+            let networkRepository = ConcreteNetworkRepository(networkMonitor: ConcreteNetworkMonitor())
+            let rssParser = ConcreteRSSParser()
+            let podcastRepository = ConcretePodcastRepository(
+                networkRepository: networkRepository,
+                storageRepository: storageRepository,
+                rssParser: rssParser
+            )
+            let episodeRepository = ConcreteEpisodeRepository(
+                networkRepository: networkRepository,
+                storageRepository: storageRepository,
+                podcastRepository: podcastRepository,
+                rssParser: rssParser
+            )
+            
+            // Create import use case
+            let importUseCase = ImportAudioFileUseCase(
+                episodeRepository: episodeRepository,
+                podcastRepository: podcastRepository,
+                storageRepository: storageRepository
+            )
+            
+            // Execute import
+            _ = try await importUseCase.execute(
+                fileURL: url,
+                fileName: fileName,
+                showName: showName,
+                existingShowID: existingShowID
+            )
+            
+            // Show success feedback
+            await MainActor.run {
+                print("✅ Successfully imported audio file: \(fileName)")
+            }
+            
+        } catch {
+            // Handle import error
+            await MainActor.run {
+                print("❌ Failed to import audio file: \(error.localizedDescription)")
+            }
+            
+            // Fallback to existing service for compatibility
+            SharedAudioImporter.shared.importFile(
+                from: url,
+                fileName: fileName,
+                showName: showName,
+                existingShowID: existingShowID
+            )
+        }
     }
     
     // MARK: - Scene Phase Handling
