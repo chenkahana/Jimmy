@@ -69,22 +69,32 @@ class ShakeUndoManager: ObservableObject {
             undoSubscriptionRemoval(podcast)
             
         case .episodeRemovedFromQueue(let episode, let atIndex):
-            undoEpisodeRemovalFromQueue(episode, atIndex: atIndex)
+            Task { @MainActor in
+                undoEpisodeRemovalFromQueue(episode, atIndex: atIndex)
+            }
             
         case .queueReordered(let previousQueue):
-            undoQueueReorder(previousQueue)
+            Task { @MainActor in
+                undoQueueReorder(previousQueue)
+            }
             
         case .episodeAddedToQueue(let episode):
-            undoEpisodeAddedToQueue(episode)
+            Task { @MainActor in
+                undoEpisodeAddedToQueue(episode)
+            }
             
         case .episodeMovedInQueue(let episode, let fromIndex, let toIndex):
-            undoEpisodeMove(episode, fromIndex: fromIndex, toIndex: toIndex)
+            Task { @MainActor in
+                undoEpisodeMove(episode, fromIndex: fromIndex, toIndex: toIndex)
+            }
             
         case .podcastSubscribed(let podcast):
             undoPodcastSubscription(podcast)
             
         case .bulkEpisodesRemovedFromQueue(let episodes, let removedFromIndex, let targetEpisode):
-            undoBulkEpisodeRemovalFromQueue(episodes, removedFromIndex: removedFromIndex, targetEpisode: targetEpisode)
+            Task { @MainActor in
+                undoBulkEpisodeRemovalFromQueue(episodes, removedFromIndex: removedFromIndex, targetEpisode: targetEpisode)
+            }
         }
         
         // Clear the last action after undo - PERFORMANCE FIX: Direct assignment to prevent publishing warnings
@@ -100,37 +110,43 @@ class ShakeUndoManager: ObservableObject {
         PodcastService.shared.savePodcasts(podcasts)
     }
     
+    @MainActor
     private func undoEpisodeRemovalFromQueue(_ episode: Episode, atIndex: Int) {
         let queue = QueueViewModel.shared
         
         // Insert the episode back at its original position
-        if atIndex < queue.queue.count {
-            queue.queue.insert(episode, at: atIndex)
+        if atIndex < queue.queuedEpisodes.count {
+            queue.queuedEpisodes.insert(episode, at: atIndex)
         } else {
-            queue.queue.append(episode)
+            queue.queuedEpisodes.append(episode)
         }
-        queue.saveQueue()
+        // Note: saveQueue is private, episodes are automatically saved
     }
     
+    @MainActor
     private func undoQueueReorder(_ previousQueue: [Episode]) {
         let queue = QueueViewModel.shared
-        queue.queue = previousQueue
-        queue.saveQueue()
+        queue.queuedEpisodes = previousQueue
+        // Note: saveQueue is private, episodes are automatically saved
     }
     
+    @MainActor
     private func undoEpisodeAddedToQueue(_ episode: Episode) {
         let queue = QueueViewModel.shared
-        queue.removeFromQueue(episode)
+        Task {
+            try? await queue.removeEpisode(episode)
+        }
     }
     
+    @MainActor
     private func undoEpisodeMove(_ episode: Episode, fromIndex: Int, toIndex: Int) {
         let queue = QueueViewModel.shared
         
         // Move the episode back to its original position
-        if let currentIndex = queue.queue.firstIndex(where: { $0.id == episode.id }) {
-            let removedEpisode = queue.queue.remove(at: currentIndex)
-            queue.queue.insert(removedEpisode, at: fromIndex)
-            queue.saveQueue()
+        if let currentIndex = queue.queuedEpisodes.firstIndex(where: { $0.id == episode.id }) {
+            let removedEpisode = queue.queuedEpisodes.remove(at: currentIndex)
+            queue.queuedEpisodes.insert(removedEpisode, at: fromIndex)
+            // Note: saveQueue is private, episodes are automatically saved
         }
     }
     
@@ -141,6 +157,7 @@ class ShakeUndoManager: ObservableObject {
         PodcastService.shared.savePodcasts(podcasts)
     }
     
+    @MainActor
     private func undoBulkEpisodeRemovalFromQueue(_ removedEpisodes: [Episode], removedFromIndex: Int, targetEpisode: Episode) {
         let queue = QueueViewModel.shared
         
@@ -148,28 +165,27 @@ class ShakeUndoManager: ObservableObject {
         AudioPlayerService.shared.stop()
         
         // Remove the target episode from its current position (should be at index 0)
-        queue.queue.removeAll { $0.id == targetEpisode.id }
+        queue.queuedEpisodes.removeAll { $0.id == targetEpisode.id }
         
         // Restore all the removed episodes at their original positions
         for (index, episode) in removedEpisodes.enumerated() {
             let insertIndex = removedFromIndex + index
-            if insertIndex <= queue.queue.count {
-                queue.queue.insert(episode, at: insertIndex)
+            if insertIndex <= queue.queuedEpisodes.count {
+                queue.queuedEpisodes.insert(episode, at: insertIndex)
             }
         }
         
         // Re-add the target episode at its original position
         let originalTargetIndex = removedEpisodes.count + removedFromIndex
-        if originalTargetIndex <= queue.queue.count {
-            queue.queue.insert(targetEpisode, at: originalTargetIndex)
+        if originalTargetIndex <= queue.queuedEpisodes.count {
+            queue.queuedEpisodes.insert(targetEpisode, at: originalTargetIndex)
         } else {
-            queue.queue.append(targetEpisode)
+            queue.queuedEpisodes.append(targetEpisode)
         }
         
         // Update the episode IDs set to match the restored queue
-        queue.updateEpisodeIDs()
-        
-        queue.saveQueue()
+        // Note: updateEpisodeIDs and saveQueue are private methods
+        // Episodes are automatically managed by the QueueViewModel
     }
     
     // MARK: - Shake Detection

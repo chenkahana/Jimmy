@@ -15,7 +15,7 @@ struct DiscoverGenreSectionView: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(spacing: 16) {
                     ForEach(results) { result in
-                        NavigationLink(destination: SearchResultDetailView(result: result)) {
+                        NavigationLink(destination: PodcastDetailView(podcast: result.toPodcast())) {
                             LargeRecommendedPodcastItem(
                                 result: result,
                                 isSubscribed: isSubscribed(result),

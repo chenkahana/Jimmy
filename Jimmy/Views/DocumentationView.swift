@@ -303,22 +303,100 @@ struct MarkdownView: View {
     }
     
     private func parseInlineMarkdown(_ text: String) -> AttributedString {
-        // For now, return a simple AttributedString without complex formatting
-        // This avoids the AttributedString.CharacterView issues
         var attributedString = AttributedString(text)
         
-        // Simple bold formatting using string replacement
-        let boldText = text.replacingOccurrences(of: "**", with: "")
-        if boldText != text {
-            attributedString = AttributedString(boldText)
-            attributedString.font = .body.bold()
+        // Parse bold text (**text**)
+        let boldPattern = #"\*\*(.*?)\*\*"#
+        if let boldRegex = try? NSRegularExpression(pattern: boldPattern, options: []) {
+            let range = NSRange(text.startIndex..<text.endIndex, in: text)
+            let matches = boldRegex.matches(in: text, options: [], range: range)
+            
+            for match in matches.reversed() {
+                if let matchRange = Range(match.range(at: 0), in: text),
+                   let contentRange = Range(match.range(at: 1), in: text) {
+                    let content = String(text[contentRange])
+                    let startIndex = attributedString.index(attributedString.startIndex, offsetByCharacters: match.range(at: 0).location)
+                    let endIndex = attributedString.index(startIndex, offsetByCharacters: match.range(at: 0).length)
+                    
+                    var replacement = AttributedString(content)
+                    replacement.font = .body.bold()
+                    
+                    attributedString.replaceSubrange(startIndex..<endIndex, with: replacement)
+                }
+            }
         }
         
-        // Simple code formatting using string replacement  
-        let codeText = text.replacingOccurrences(of: "`", with: "")
-        if codeText != text {
-            attributedString = AttributedString(codeText)
-            attributedString.font = .system(.body, design: .monospaced)
+        // Parse italic text (*text*)
+        let italicPattern = #"(?<!\*)\*(?!\*)([^*]+)\*(?!\*)"#
+        if let italicRegex = try? NSRegularExpression(pattern: italicPattern, options: []) {
+            let currentText = String(attributedString.characters)
+            let range = NSRange(currentText.startIndex..<currentText.endIndex, in: currentText)
+            let matches = italicRegex.matches(in: currentText, options: [], range: range)
+            
+            for match in matches.reversed() {
+                if let matchRange = Range(match.range(at: 0), in: currentText),
+                   let contentRange = Range(match.range(at: 1), in: currentText) {
+                    let content = String(currentText[contentRange])
+                    let startIndex = attributedString.index(attributedString.startIndex, offsetByCharacters: match.range(at: 0).location)
+                    let endIndex = attributedString.index(startIndex, offsetByCharacters: match.range(at: 0).length)
+                    
+                    var replacement = AttributedString(content)
+                    replacement.font = .body.italic()
+                    
+                    attributedString.replaceSubrange(startIndex..<endIndex, with: replacement)
+                }
+            }
+        }
+        
+        // Parse inline code (`code`)
+        let codePattern = #"`([^`]+)`"#
+        if let codeRegex = try? NSRegularExpression(pattern: codePattern, options: []) {
+            let currentText = String(attributedString.characters)
+            let range = NSRange(currentText.startIndex..<currentText.endIndex, in: currentText)
+            let matches = codeRegex.matches(in: currentText, options: [], range: range)
+            
+            for match in matches.reversed() {
+                if let matchRange = Range(match.range(at: 0), in: currentText),
+                   let contentRange = Range(match.range(at: 1), in: currentText) {
+                    let content = String(currentText[contentRange])
+                    let startIndex = attributedString.index(attributedString.startIndex, offsetByCharacters: match.range(at: 0).location)
+                    let endIndex = attributedString.index(startIndex, offsetByCharacters: match.range(at: 0).length)
+                    
+                    var replacement = AttributedString(content)
+                    replacement.font = .system(.body, design: .monospaced)
+                    replacement.backgroundColor = Color.secondary.opacity(0.2)
+                    
+                    attributedString.replaceSubrange(startIndex..<endIndex, with: replacement)
+                }
+            }
+        }
+        
+        // Parse links [text](url)
+        let linkPattern = #"\[([^\]]+)\]\(([^)]+)\)"#
+        if let linkRegex = try? NSRegularExpression(pattern: linkPattern, options: []) {
+            let currentText = String(attributedString.characters)
+            let range = NSRange(currentText.startIndex..<currentText.endIndex, in: currentText)
+            let matches = linkRegex.matches(in: currentText, options: [], range: range)
+            
+            for match in matches.reversed() {
+                if let matchRange = Range(match.range(at: 0), in: currentText),
+                   let textRange = Range(match.range(at: 1), in: currentText),
+                   let urlRange = Range(match.range(at: 2), in: currentText) {
+                    let linkText = String(currentText[textRange])
+                    let linkURL = String(currentText[urlRange])
+                    let startIndex = attributedString.index(attributedString.startIndex, offsetByCharacters: match.range(at: 0).location)
+                    let endIndex = attributedString.index(startIndex, offsetByCharacters: match.range(at: 0).length)
+                    
+                    var replacement = AttributedString(linkText)
+                    replacement.foregroundColor = .blue
+                    replacement.underlineStyle = .single
+                    if let url = URL(string: linkURL) {
+                        replacement.link = url
+                    }
+                    
+                    attributedString.replaceSubrange(startIndex..<endIndex, with: replacement)
+                }
+            }
         }
         
         return attributedString

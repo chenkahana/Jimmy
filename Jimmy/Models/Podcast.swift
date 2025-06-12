@@ -1,6 +1,6 @@
 import Foundation
 
-struct Podcast: Identifiable, Codable {
+struct Podcast: Identifiable, Codable, Equatable {
     var id: UUID = UUID()
     var title: String
     var author: String

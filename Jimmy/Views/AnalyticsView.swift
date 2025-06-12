@@ -75,9 +75,10 @@ struct Analytics {
 }
 
 class AnalyticsHelper {
+    @MainActor
     static func getAnalytics() -> Analytics {
         let podcasts = PodcastService.shared.loadPodcasts()
-        let queue = QueueViewModel.shared.queue
+        let queue = QueueViewModel.shared.queuedEpisodes
         
         let playedEpisodes = queue.filter { $0.played }
         let totalListeningTime = queue.reduce(into: 0.0) { $0 += $1.playbackPosition }

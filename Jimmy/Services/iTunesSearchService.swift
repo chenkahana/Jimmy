@@ -1,6 +1,11 @@
 import Foundation
 
-struct iTunesSearchService {
+// Protocol for dependency injection
+protocol ITunesSearchServiceProtocol {
+    func searchPodcasts(query: String) async -> [PodcastSearchResult]
+}
+
+struct iTunesSearchService: ITunesSearchServiceProtocol {
     static let shared = iTunesSearchService()
     
     private init() {}
@@ -8,6 +13,15 @@ struct iTunesSearchService {
     // Search for podcasts using iTunes Search API
     func searchPodcasts(query: String, completion: @escaping ([PodcastSearchResult]) -> Void) {
         searchPodcastsWithRetry(query: query, retryCount: 0, completion: completion)
+    }
+    
+    // Async version for protocol conformance
+    func searchPodcasts(query: String) async -> [PodcastSearchResult] {
+        return await withCheckedContinuation { continuation in
+            searchPodcasts(query: query) { results in
+                continuation.resume(returning: results)
+            }
+        }
     }
     
     private func searchPodcastsWithRetry(query: String, retryCount: Int, completion: @escaping ([PodcastSearchResult]) -> Void) {
@@ -61,7 +75,7 @@ struct iTunesSearchService {
                         title: result.collectionName,
                         author: result.artistName,
                         feedURL: feedUrl,
-                        artworkURL: URL(string: result.artworkUrl600 ?? result.artworkUrl100 ?? ""),
+                        artworkURL: self.createBestArtworkURL(from: result),
                         description: result.description,
                         genre: result.primaryGenreName,
                         trackCount: result.trackCount
@@ -110,7 +124,7 @@ struct iTunesSearchService {
                         title: result.collectionName,
                         author: result.artistName,
                         feedURL: feedUrl,
-                        artworkURL: URL(string: result.artworkUrl600 ?? result.artworkUrl100 ?? ""),
+                        artworkURL: self.createBestArtworkURL(from: result),
                         description: result.description,
                         genre: result.primaryGenreName,
                         trackCount: result.trackCount
@@ -174,7 +188,7 @@ struct iTunesPodcastResult: Codable {
     let genres: [String]?
 }
 
-struct PodcastSearchResult: Identifiable {
+struct PodcastSearchResult: Identifiable, Codable {
     let id: Int
     let title: String
     let author: String
@@ -249,5 +263,24 @@ extension iTunesSearchService {
                 DispatchQueue.main.async { completion(nil) }
             }
         }
+    }
+    
+    private func createBestArtworkURL(from result: iTunesPodcastResult) -> URL? {
+        // Try artwork URLs in order of preference (highest resolution first)
+        let artworkOptions = [
+            result.artworkUrl600,
+            result.artworkUrl100,
+            result.artworkUrl60,
+            result.artworkUrl30,
+            result.artworkUrl
+        ].compactMap { $0 }
+        
+        for artworkString in artworkOptions {
+            if !artworkString.isEmpty, let url = URL(string: artworkString) {
+                return url
+            }
+        }
+        
+        return nil
     }
 }

@@ -44,7 +44,7 @@ struct CachedAsyncImage<Content: View, Placeholder: View>: View {
                     }
             }
         }
-        .animation(.easeInOut(duration: 0.2), value: image)
+        .animation(.proMotionEaseInOut(duration: 0.2), value: image)
         .onChange(of: url) { _, newURL in
             // Only reset image if the new URL is different and not cached
             if let newURL = newURL, !imageCache.isImageCached(url: newURL) {
@@ -75,7 +75,7 @@ struct CachedAsyncImage<Content: View, Placeholder: View>: View {
             imageCache.loadImage(from: url) { [url] loadedImage in
                 // Only update if the URL hasn't changed while loading
                 if self.url == url {
-                    withAnimation(.easeInOut(duration: 0.2)) {
+                    withAnimation(.proMotionEaseInOut(duration: 0.2)) {
                         self.image = loadedImage
                     }
                     self.isLoading = false
@@ -197,7 +197,7 @@ struct CachedAsyncImagePhase<Content: View>: View {
             imageCache.loadImage(from: url) { [url] loadedImage in
                 // Only update if the URL hasn't changed while loading
                 if self.url == url {
-                    withAnimation(.easeInOut(duration: 0.2)) {
+                    withAnimation(.proMotionEaseInOut(duration: 0.2)) {
                         if let loadedImage = loadedImage {
                             self.phase = .success(Image(uiImage: loadedImage))
                         } else {
@@ -218,6 +218,11 @@ struct PodcastArtworkView: View {
     let size: CGFloat
     let cornerRadius: CGFloat
     
+    @State private var retryCount = 0
+    @State private var hasFailedToLoad = false
+    
+    private let maxRetries = 2
+    
     init(
         artworkURL: URL?,
         size: CGFloat = 60,
@@ -229,28 +234,46 @@ struct PodcastArtworkView: View {
     }
     
     var body: some View {
-        CachedAsyncImage(url: artworkURL) { image in
-            image
-                .resizable()
-                .aspectRatio(contentMode: .fill)
-        } placeholder: {
-            RoundedRectangle(cornerRadius: cornerRadius)
-                .fill(LinearGradient(
-                    colors: [
-                        Color.accentColor.opacity(0.3),
-                        Color.accentColor.opacity(0.1)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                ))
-                .overlay(
-                    Image(systemName: "waveform.circle.fill")
-                        .font(.system(size: size * 0.3))
-                        .foregroundColor(.white)
-                )
+        ZStack {
+            Rectangle()
+                .fill(Color(.systemBackground))
+                .frame(width: size, height: size)
+            
+            CachedAsyncImage(url: artworkURL) { image in
+                image
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: size, height: size)
+                    .clipped()
+            } placeholder: {
+                Rectangle()
+                    .fill(Color(.systemGray5))
+                    .overlay(
+                        Image(systemName: "photo")
+                            .font(.system(size: size / 4))
+                            .foregroundColor(.secondary)
+                    )
+            }
         }
         .frame(width: size, height: size)
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
+        .overlay(
+            RoundedRectangle(cornerRadius: cornerRadius)
+                .stroke(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(0.3),
+                            Color.clear,
+                            Color.black.opacity(0.1)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 0.5
+                )
+        )
+        .shadow(color: .black.opacity(0.2), radius: 8, x: 0, y: 4)
+        .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
     }
 }
 
@@ -277,47 +300,168 @@ struct PodcastGridArtwork: View {
                     .overlay(
                         Image(systemName: "exclamationmark.triangle")
                             .foregroundColor(.orange)
-                            .font(.title2)
                     )
             case .empty:
-                // Loading state
+                // Clean loading state
                 RoundedRectangle(cornerRadius: 12)
                     .fill(LinearGradient(
                         colors: [Color.gray.opacity(0.1), Color.gray.opacity(0.2)],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     ))
-                    .overlay(
-                        ProgressView()
-                            .scaleEffect(0.8)
-                    )
             }
         }
-        .frame(width: 100, height: 100)
         .clipShape(RoundedRectangle(cornerRadius: 12))
-        .scaleEffect(isEditMode ? 0.9 : 1.0)
+        .overlay {
+            if isEditMode {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(.black.opacity(0.4))
+                    
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.largeTitle)
+                        .foregroundColor(.white)
+                }
+            }
+        }
     }
 }
 
-// MARK: - Image Preloading Utilities
+// MARK: - Gallery View for Preloading
 
-struct ImagePreloader {
-    static func preloadPodcastArtwork(_ podcasts: [Podcast]) {
-        let urls = podcasts.compactMap { $0.artworkURL }
-        ImageCache.shared.preloadImages(urls: urls)
-    }
-    
-    static func preloadEpisodeArtwork(_ episodes: [Episode], fallbackPodcast: Podcast? = nil) {
-        var urls: [URL] = []
-        
-        for episode in episodes {
-            if let artworkURL = episode.artworkURL {
-                urls.append(artworkURL)
-            } else if let podcastArtwork = fallbackPodcast?.artworkURL {
-                urls.append(podcastArtwork)
+struct ImageGalleryView: View {
+    let imageURLs: [URL]
+    @State private var currentIndex: Int = 0
+
+    var body: some View {
+        TabView(selection: $currentIndex) {
+            ForEach(imageURLs.indices, id: \.self) { index in
+                CachedAsyncImagePhase(url: imageURLs[index]) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                    case .failure:
+                        VStack {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                            Text("Failed to load image")
+                        }
+                    case .empty:
+                        ProgressView()
+                    }
+                }
+                .tag(index)
             }
         }
-        
+        .tabViewStyle(PageTabViewStyle())
+        .onChange(of: currentIndex) { _, newIndex in
+            preloadSurroundingImages(currentIndex: newIndex)
+        }
+        .onAppear {
+            preloadAllImages()
+        }
+    }
+
+    // Preload all images in the collection
+    private func preloadAllImages() {
+        let urls = Set(imageURLs)
         ImageCache.shared.preloadImages(urls: urls)
     }
+
+    // Preload surrounding images for a smoother scrolling experience
+    private func preloadSurroundingImages(currentIndex: Int) {
+        let urls = imageURLs
+        guard currentIndex < urls.count else { return }
+        
+        let preloadRange = 2 // Preload 2 images before and after the current one
+        let startIndex = max(0, currentIndex - preloadRange)
+        let endIndex = min(urls.count - 1, currentIndex + preloadRange)
+        
+        let urlsToPreload = Set(Array(urls[startIndex...endIndex]))
+        ImageCache.shared.preloadImages(urls: urlsToPreload)
+    }
+}
+
+// MARK: - Unified Empty State Component
+
+/// Unified empty state view for consistent styling across Library, Queue, and Now Playing views
+struct UnifiedEmptyStateView: View {
+    let icon: String
+    let title: String
+    let subtitle: String
+    let iconSize: CGFloat
+    let spacing: CGFloat
+    
+    init(
+        icon: String,
+        title: String,
+        subtitle: String,
+        iconSize: CGFloat = 64,
+        spacing: CGFloat = 20
+    ) {
+        self.icon = icon
+        self.title = title
+        self.subtitle = subtitle
+        self.iconSize = iconSize
+        self.spacing = spacing
+    }
+    
+    var body: some View {
+        VStack(spacing: spacing) {
+            Spacer()
+            
+            VStack(spacing: 16) {
+                // Icon
+                Image(systemName: icon)
+                    .font(.system(size: iconSize, weight: .thin))
+                    .foregroundStyle(Color(.systemGray3))
+                
+                // Text content
+                VStack(spacing: 8) {
+                    Text(title)
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.primary)
+                    
+                    Text(subtitle)
+                        .font(.body)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                        .lineLimit(3)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .padding(.horizontal, 40)
+            
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+#Preview("Library Empty State") {
+    UnifiedEmptyStateView(
+        icon: "rectangle.grid.3x2",
+        title: "No Podcasts Yet",
+        subtitle: "Your subscribed podcasts will appear here. Go to Discover to find and subscribe to podcasts."
+    )
+}
+
+#Preview("Queue Empty State") {
+    UnifiedEmptyStateView(
+        icon: "list.bullet",
+        title: "Your queue is empty",
+        subtitle: "Add episodes from your podcasts to build your listening queue"
+    )
+}
+
+#Preview("Now Playing Empty State") {
+    UnifiedEmptyStateView(
+        icon: "music.note.house",
+        title: "No Episode Playing",
+        subtitle: "Choose an episode from your queue or library to start listening",
+        iconSize: 72,
+        spacing: 24
+    )
 } 

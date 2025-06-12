@@ -2,6 +2,31 @@ import Foundation
 import OSLog
 import Network
 
+// MARK: - Network Errors
+enum FetchError: Error, LocalizedError {
+    case invalidURL
+    case requestFailed(Error)
+    case invalidResponse(statusCode: Int)
+    case emptyData
+    case decodingFailed(Error)
+    case timeout
+    case allRetriesFailed
+    case nonRetryableError(statusCode: Int)
+
+    var errorDescription: String? {
+        switch self {
+        case .invalidURL: return "The provided URL is invalid."
+        case .requestFailed(let error): return "Network request failed: \(error.localizedDescription)"
+        case .invalidResponse(let statusCode): return "Received an invalid server response: \(statusCode)"
+        case .emptyData: return "The server returned no data."
+        case .decodingFailed(let error): return "Failed to decode the response: \(error.localizedDescription)"
+        case .timeout: return "The request timed out."
+        case .allRetriesFailed: return "All retry attempts for the network request have failed."
+        case .nonRetryableError(let statusCode): return "Request failed with a non-retryable status code: \(statusCode)."
+        }
+    }
+}
+
 /// High-performance network manager with aggressive caching and background processing
 final class OptimizedNetworkManager {
     static let shared = OptimizedNetworkManager()
@@ -11,10 +36,13 @@ final class OptimizedNetworkManager {
     // MARK: - Configuration
     fileprivate struct Config {
         static let maxConcurrentRequests = 6
-        static let requestTimeout: TimeInterval = 10.0
+        static let requestTimeout: TimeInterval = 45.0
+        static let resourceTimeout: TimeInterval = 90.0
         static let cacheExpiry: TimeInterval = 15 * 60 // 15 minutes
         static let backgroundQueueQoS: DispatchQoS = .utility
-        static let maxCacheSize = 50 // Maximum cached responses
+        static let maxCacheSize = 50
+        static let maxRetries = 3
+        static let baseRetryDelay: TimeInterval = 2.0
     }
     
     // MARK: - Properties
@@ -22,219 +50,87 @@ final class OptimizedNetworkManager {
     private let cacheQueue = DispatchQueue(label: "network-cache", qos: .utility)
     private let semaphore = DispatchSemaphore(value: Config.maxConcurrentRequests)
     
-    // Advanced caching system
     private var responseCache: [String: CachedResponse] = [:]
     private var requestQueue: [String: [(Result<Data, Error>) -> Void]] = [:]
     private var activeRequests: Set<String> = []
+    private var retryAttempts: [String: Int] = [:]
     
-    // URLSession with optimized configuration
-    private lazy var urlSession: URLSession = {
-        let config = URLSessionConfiguration.default
-        config.requestCachePolicy = .returnCacheDataElseLoad
-        config.urlCache = URLCache(memoryCapacity: 20 * 1024 * 1024, diskCapacity: 100 * 1024 * 1024) // 20MB memory, 100MB disk
+    private lazy var ephemeralSession: URLSession = {
+        let config = URLSessionConfiguration.ephemeral
         config.timeoutIntervalForRequest = Config.requestTimeout
-        config.timeoutIntervalForResource = Config.requestTimeout * 2
+        config.timeoutIntervalForResource = Config.resourceTimeout
         config.httpMaximumConnectionsPerHost = 4
         config.waitsForConnectivity = true
         return URLSession(configuration: config)
     }()
     
-    private init() {
-        setupCacheCleanup()
-    }
+    private init() {}
     
     // MARK: - Public Interface
     
-    /// Fetch RSS feed data with aggressive caching and background processing
-    func fetchRSSFeed(url: URL, completion: @escaping (Result<Data, Error>) -> Void) {
-        let cacheKey = url.absoluteString
-        
-        // Check cache first (immediate return if available)
-        cacheQueue.async { [weak self] in
-            guard let self = self else { return }
-            
-            if let cachedResponse = self.responseCache[cacheKey], !cachedResponse.isExpired {
-                Task { @MainActor in
-                    completion(.success(cachedResponse.data))
-                }
-                return
-            }
-            
-            // Check if request is already in progress
-            if self.activeRequests.contains(cacheKey) {
-                // Queue the completion handler
-                if self.requestQueue[cacheKey] != nil {
-                    self.requestQueue[cacheKey]?.append(completion)
-                } else {
-                    self.requestQueue[cacheKey] = [completion]
-                }
-                return
-            }
-            
-            // Mark request as active
-            self.activeRequests.insert(cacheKey)
-            
-            // Perform network request in background
-            self.performNetworkRequest(url: url, cacheKey: cacheKey, completion: completion)
+    func fetch<T: Decodable>(
+        url: URL,
+        as type: T.Type,
+        timeout: TimeInterval = Config.requestTimeout,
+        retries: Int = Config.maxRetries,
+        decoder: JSONDecoder = JSONDecoder()
+    ) async throws -> T {
+        let data = try await fetchData(url: url, timeout: timeout, retries: retries)
+        do {
+            return try decoder.decode(T.self, from: data)
+        } catch {
+            logger.error("Decoding failed for \(url.absoluteString): \(error.localizedDescription)")
+            throw FetchError.decodingFailed(error)
         }
     }
     
-    /// Prefetch RSS feeds in background for better performance
-    func prefetchRSSFeeds(urls: [URL]) {
-        backgroundQueue.async { [weak self] in
-            guard let self = self else { return }
-            
-            for url in urls {
-                let cacheKey = url.absoluteString
+    func fetchData(url: URL, timeout: TimeInterval = Config.requestTimeout, retries: Int = Config.maxRetries) async throws -> Data {
+        var lastError: Error?
+        let requestID = UUID().uuidString.prefix(8)
+
+        for attempt in 0...retries {
+            do {
+                var request = URLRequest(url: url, timeoutInterval: timeout)
+                request.setValue("Jimmy/2.0 (iOS Podcast Client)", forHTTPHeaderField: "User-Agent")
                 
-                // Skip if already cached or in progress
-                if self.responseCache[cacheKey]?.isExpired == false || self.activeRequests.contains(cacheKey) {
-                    continue
+                logger.info("[\(requestID)] Attempt \(attempt + 1)/\(retries + 1) fetching URL: \(url.absoluteString)")
+
+                let (data, response) = try await ephemeralSession.data(for: request)
+
+                guard let httpResponse = response as? HTTPURLResponse else {
+                    throw FetchError.invalidResponse(statusCode: -1)
                 }
-                
-                self.fetchRSSFeed(url: url) { _ in
-                    // Prefetch - we don't need to handle the result
-                }
-                
-                // Small delay to prevent overwhelming the server - use Task.sleep for non-blocking delay
-                Task {
-                    try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
-                }
-            }
-        }
-    }
-    
-    /// Clear expired cache entries
-    func clearExpiredCache() {
-        cacheQueue.async { [weak self] in
-            guard let self = self else { return }
-            
-            let expiredKeys = self.responseCache.compactMap { key, value in
-                value.isExpired ? key : nil
-            }
-            
-            for key in expiredKeys {
-                self.responseCache.removeValue(forKey: key)
-            }
-            
-            self.logger.info("Cleared \(expiredKeys.count) expired cache entries")
-        }
-    }
-    
-    /// Get cache statistics
-    func getCacheStats() -> (count: Int, memoryUsage: Int) {
-        var count = 0
-        var memoryUsage = 0
-        
-        cacheQueue.sync {
-            count = responseCache.count
-            memoryUsage = responseCache.values.reduce(0) { $0 + $1.data.count }
-        }
-        
-        return (count: count, memoryUsage: memoryUsage)
-    }
-    
-    // MARK: - Private Methods
-    
-    private func performNetworkRequest(url: URL, cacheKey: String, completion: @escaping (Result<Data, Error>) -> Void) {
-        backgroundQueue.async { [weak self] in
-            guard let self = self else { return }
-            
-            // Acquire semaphore to limit concurrent requests
-            self.semaphore.wait()
-            
-            var request = URLRequest(url: url)
-            request.cachePolicy = .reloadIgnoringLocalCacheData // We handle caching ourselves
-            request.setValue("Jimmy/1.0", forHTTPHeaderField: "User-Agent")
-            request.setValue("application/rss+xml, application/xml, text/xml", forHTTPHeaderField: "Accept")
-            
-            let task = self.urlSession.dataTask(with: request) { [weak self] data, response, error in
-                defer {
-                    self?.semaphore.signal()
-                    self?.cleanupRequest(cacheKey: cacheKey)
-                }
-                
-                guard let self = self else { return }
-                
-                if let error = error {
-                    self.logger.error("Network request failed for \(url.absoluteString): \(error.localizedDescription)")
-                    self.notifyAllWaiters(cacheKey: cacheKey, result: .failure(error))
-                    return
-                }
-                
-                guard let data = data, !data.isEmpty else {
-                    let error = NSError(domain: "OptimizedNetworkManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "Empty response"])
-                    self.notifyAllWaiters(cacheKey: cacheKey, result: .failure(error))
-                    return
-                }
-                
-                // Validate RSS/XML content
-                if let dataString = String(data: data, encoding: .utf8) {
-                    if !dataString.contains("<rss") && !dataString.contains("<feed") && !dataString.contains("<?xml") {
-                        let error = NSError(domain: "OptimizedNetworkManager", code: -2, userInfo: [NSLocalizedDescriptionKey: "Invalid RSS/XML format"])
-                        self.notifyAllWaiters(cacheKey: cacheKey, result: .failure(error))
-                        return
+
+                guard (200...299).contains(httpResponse.statusCode) else {
+                    if (400...499).contains(httpResponse.statusCode) {
+                        logger.error("[\(requestID)] Non-retryable HTTP status \(httpResponse.statusCode) for URL: \(url.absoluteString)")
+                        throw FetchError.nonRetryableError(statusCode: httpResponse.statusCode)
                     }
+                    throw FetchError.invalidResponse(statusCode: httpResponse.statusCode)
                 }
-                
-                // Cache the response
-                self.cacheQueue.async {
-                    let cachedResponse = CachedResponse(data: data, timestamp: Date())
-                    self.responseCache[cacheKey] = cachedResponse
-                    
-                    // Limit cache size
-                    if self.responseCache.count > Config.maxCacheSize {
-                        self.removeOldestCacheEntry()
-                    }
+
+                guard !data.isEmpty else { throw FetchError.emptyData }
+                return data
+            } catch {
+                lastError = error
+                if let fetchError = error as? FetchError, case .nonRetryableError = fetchError {
+                    throw error
                 }
-                
-                self.notifyAllWaiters(cacheKey: cacheKey, result: .success(data))
-            }
-            
-            task.resume()
-        }
-    }
-    
-    private func notifyAllWaiters(cacheKey: String, result: Result<Data, Error>) {
-        Task { @MainActor [weak self] in
-            guard let self = self else { return }
-            
-            // Notify all queued completion handlers
-            if let queuedCompletions = self.requestQueue[cacheKey] {
-                for completion in queuedCompletions {
-                    completion(result)
+                logger.warning("[\(requestID)] Attempt \(attempt + 1) failed for \(url.absoluteString): \(error.localizedDescription)")
+                if attempt < retries {
+                    try await Task.sleep(nanoseconds: UInt64((Config.baseRetryDelay * pow(2.0, Double(attempt))) * 1_000_000_000))
                 }
-                self.requestQueue.removeValue(forKey: cacheKey)
             }
         }
-    }
-    
-    private func cleanupRequest(cacheKey: String) {
-        cacheQueue.async { [weak self] in
-            self?.activeRequests.remove(cacheKey)
-        }
-    }
-    
-    private func removeOldestCacheEntry() {
-        guard let oldestKey = responseCache.min(by: { $0.value.timestamp < $1.value.timestamp })?.key else { return }
-        responseCache.removeValue(forKey: oldestKey)
-    }
-    
-    private func setupCacheCleanup() {
-        // Clean up expired cache entries every 10 minutes
-        Timer.scheduledTimer(withTimeInterval: 600, repeats: true) { [weak self] _ in
-            self?.clearExpiredCache()
-        }
+        logger.error("[\(requestID)] All retries failed for URL \(url.absoluteString). Last error: \(lastError?.localizedDescription ?? "Unknown error")")
+        throw lastError ?? FetchError.allRetriesFailed
     }
 }
-
-// MARK: - Supporting Types
 
 private struct CachedResponse {
     let data: Data
     let timestamp: Date
-    
     var isExpired: Bool {
         Date().timeIntervalSince(timestamp) > OptimizedNetworkManager.Config.cacheExpiry
     }
-} 
+}

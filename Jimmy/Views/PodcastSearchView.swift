@@ -1,43 +1,8 @@
 import SwiftUI
 import Foundation
-import Combine
 
 struct PodcastSearchView: View {
-    @State private var searchText = ""
-    @State private var searchScope: SearchScope = .all
-    @State private var searchResults: [PodcastSearchResult] = []
-    @State private var isSearching = false
-    @State private var localPodcasts: [Podcast] = []
-    @State private var showingSubscriptionAlert = false
-    @State private var subscriptionMessage = ""
-    
-    private let debounceTimer = Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()
-    @State private var lastSearchText = ""
-    
-    enum SearchScope: String, CaseIterable {
-        case all = "All"
-        case subscribed = "Subscribed"
-        case web = "Discover"
-        
-        var icon: String {
-            switch self {
-            case .all: return "magnifyingglass"
-            case .subscribed: return "heart.fill"
-            case .web: return "globe"
-            }
-        }
-    }
-    
-    var filteredLocalPodcasts: [Podcast] {
-        if searchText.isEmpty {
-            return localPodcasts
-        } else {
-            return localPodcasts.filter { 
-                $0.title.localizedCaseInsensitiveContains(searchText) || 
-                $0.author.localizedCaseInsensitiveContains(searchText) 
-            }
-        }
-    }
+    @StateObject private var viewModel = PodcastSearchViewModel()
     
     var body: some View {
         VStack(spacing: 0) {
@@ -48,19 +13,13 @@ struct PodcastSearchView: View {
                     Image(systemName: "magnifyingglass")
                         .foregroundColor(.gray)
                     
-                    TextField("Search podcasts...", text: $searchText)
+                    TextField("Search podcasts...", text: $viewModel.searchText)
                         .textFieldStyle(.plain)
-                        .onReceive(debounceTimer) { _ in
-                            if searchText != lastSearchText {
-                                lastSearchText = searchText
-                                performSearch()
-                            }
-                        }
                     
-                    if !searchText.isEmpty {
+                    if !viewModel.searchText.isEmpty {
                         Button(action: {
-                            searchText = ""
-                            searchResults = []
+                            viewModel.searchText = ""
+                            viewModel.searchResults = []
                         }) {
                             Image(systemName: "xmark.circle.fill")
                                 .foregroundColor(.gray)
@@ -73,8 +32,8 @@ struct PodcastSearchView: View {
                 .cornerRadius(10)
                 
                 // Search Scope Picker
-                Picker("Search Scope", selection: $searchScope) {
-                    ForEach(SearchScope.allCases, id: \.self) { scope in
+                Picker("Search Scope", selection: $viewModel.searchScope) {
+                    ForEach(PodcastSearchViewModel.SearchScope.allCases, id: \.self) { scope in
                         Label(scope.rawValue, systemImage: scope.icon)
                             .tag(scope)
                     }
@@ -85,7 +44,7 @@ struct PodcastSearchView: View {
             .background(Color(.systemBackground))
             
             // Search Results
-            if isSearching {
+            if viewModel.isSearching {
                 VStack {
                     ProgressView("Searching...")
                     Text("Finding podcasts on Apple Podcasts...")
@@ -95,10 +54,10 @@ struct PodcastSearchView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 List {
-                    if searchScope == .all || searchScope == .subscribed {
-                        if !filteredLocalPodcasts.isEmpty {
+                    if viewModel.searchScope == .all || viewModel.searchScope == .subscribed {
+                        if !viewModel.localPodcasts.isEmpty {
                             Section("Your Subscriptions") {
-                                ForEach(filteredLocalPodcasts) { podcast in
+                                ForEach(viewModel.localPodcasts) { podcast in
                                     NavigationLink(destination: PodcastDetailView(podcast: podcast)) {
                                         LocalPodcastRow(podcast: podcast) {
                                             // Navigation handled by NavigationLink
@@ -110,17 +69,17 @@ struct PodcastSearchView: View {
                         }
                     }
                     
-                    if (searchScope == .all || searchScope == .web) && !searchResults.isEmpty {
+                    if (viewModel.searchScope == .all || viewModel.searchScope == .web) && !viewModel.searchResults.isEmpty {
                         Section("Discover New Podcasts") {
-                            ForEach(searchResults) { result in
-                                NavigationLink(destination: SearchResultDetailView(result: result)) {
+                            ForEach(viewModel.searchResults) { result in
+                                NavigationLink(destination: PodcastDetailView(podcast: result.toPodcast())) {
                                     SearchResultRow(
                                         result: result,
-                                        isSubscribed: isSubscribed(result)
+                                        isSubscribed: viewModel.isSubscribed(result)
                                     ) {
                                         // Navigation handled by NavigationLink
                                     } onSubscribe: {
-                                        subscribe(to: result)
+                                        viewModel.subscribe(to: result)
                                     }
                                 }
                                 .buttonStyle(.plain)
@@ -128,7 +87,7 @@ struct PodcastSearchView: View {
                         }
                     }
                     
-                    if searchText.isEmpty && searchResults.isEmpty && localPodcasts.isEmpty {
+                    if viewModel.searchText.isEmpty && viewModel.searchResults.isEmpty && viewModel.localPodcasts.isEmpty {
                         VStack(spacing: 16) {
                             Image(systemName: "magnifyingglass.circle")
                                 .font(.system(size: 48))
@@ -153,71 +112,13 @@ struct PodcastSearchView: View {
         .navigationTitle("Search")
         .navigationBarTitleDisplayMode(.large)
         .onAppear {
-            loadLocalPodcasts()
+            viewModel.loadLocalPodcasts()
         }
         .keyboardDismissToolbar()
-        .alert("Subscription", isPresented: $showingSubscriptionAlert) {
+        .alert("Subscription", isPresented: $viewModel.showingSubscriptionAlert) {
             Button("OK") { }
         } message: {
-            Text(subscriptionMessage)
-        }
-    }
-    
-    private func performSearch() {
-        guard !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            searchResults = []
-            return
-        }
-        
-        if searchScope == .subscribed {
-            // Local search only
-            return
-        }
-        
-        isSearching = true
-        
-        iTunesSearchService.shared.searchPodcasts(query: searchText) { results in
-            // CRITICAL FIX: Use asyncAfter to prevent "Publishing changes from within view updates"
-            DispatchQueue.main.async {
-                self.searchResults = results
-                self.isSearching = false
-            }
-        }
-    }
-    
-    private func loadLocalPodcasts() {
-        localPodcasts = PodcastService.shared.loadPodcasts()
-    }
-    
-    private func isSubscribed(_ result: PodcastSearchResult) -> Bool {
-        return localPodcasts.contains { $0.feedURL == result.feedURL }
-    }
-    
-    private func subscribe(to result: PodcastSearchResult) {
-        let podcast = result.toPodcast()
-        
-        // Check if already subscribed
-        if isSubscribed(result) {
-            subscriptionMessage = "You're already subscribed to \(result.title)"
-            showingSubscriptionAlert = true
-            return
-        }
-        
-        // Add to subscriptions
-        var podcasts = localPodcasts
-        podcasts.append(podcast)
-        localPodcasts = podcasts
-        PodcastService.shared.savePodcasts(podcasts)
-        
-        subscriptionMessage = "Successfully subscribed to \(result.title)"
-        showingSubscriptionAlert = true
-    }
-    
-    @MainActor
-    private func refreshData() async {
-        loadLocalPodcasts()
-        if !searchText.isEmpty {
-            performSearch()
+            Text(viewModel.subscriptionMessage)
         }
     }
 }

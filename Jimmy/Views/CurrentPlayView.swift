@@ -2,52 +2,38 @@ import SwiftUI
 import AVKit
 
 struct CurrentPlayView: View {
-    @ObservedObject private var queueViewModel = QueueViewModel.shared
+    @StateObject private var viewModel = CurrentPlayViewModel.shared
     @ObservedObject private var audioPlayer = AudioPlayerService.shared
-    @State private var isDownloading = false
-    @State private var currentAudioRoute = ""
-    @State private var showingEpisodeDetails = false
-    
-    var currentPlayingEpisode: Episode? {
-        return audioPlayer.currentEpisode ?? queueViewModel.queue.first { $0.playbackPosition > 0 && !$0.played }
-    }
-    
-    var currentOutputDevice: AudioOutputDevice {
-        getCurrentAudioOutputDevice()
-    }
     
     var body: some View {
         NavigationView {
             VStack {
-                if let currentEpisode = currentPlayingEpisode {
+                if let currentEpisode = viewModel.currentPlayingEpisode {
                     ModernNowPlayingView(
                         episode: currentEpisode,
-                        podcast: getPodcast(for: currentEpisode),
+                        podcast: viewModel.getPodcast(for: currentEpisode),
                         isPlaying: audioPlayer.isPlaying,
                         currentTime: audioPlayer.playbackPosition,
                         duration: audioPlayer.duration,
-                        isDownloading: $isDownloading,
-                        showingEpisodeDetails: $showingEpisodeDetails,
-                        currentOutputDevice: currentOutputDevice,
+                        isDownloading: $viewModel.isDownloading,
+                        showingEpisodeDetails: $viewModel.showingEpisodeDetails,
+                        currentOutputDevice: viewModel.currentOutputDevice,
                         onPlayPause: {
-                            if audioPlayer.currentEpisode?.id == currentEpisode.id {
-                                audioPlayer.togglePlayPause()
-                            } else {
-                                audioPlayer.loadEpisode(currentEpisode)
-                                audioPlayer.play()
-                            }
+                            viewModel.playPauseCurrentEpisode()
                         },
                         onBackward: {
-                            audioPlayer.seekBackward()
+                            viewModel.seekBackward()
                         },
                         onForward: {
-                            audioPlayer.seekForward()
+                            viewModel.seekForward()
                         },
                         onDownload: {
-                            downloadEpisode(currentEpisode)
+                            Task {
+                                await viewModel.downloadEpisode(currentEpisode)
+                            }
                         },
                         onSeek: { time in
-                            audioPlayer.seek(to: time)
+                            viewModel.seek(to: time)
                         }
                     )
                 } else {
@@ -56,67 +42,24 @@ struct CurrentPlayView: View {
             }
             .navigationTitle("")
             .navigationBarHidden(true)
-            .fullScreenCover(isPresented: $showingEpisodeDetails) {
-                if let episode = currentPlayingEpisode,
-                   let podcast = getPodcast(for: episode) {
+            .fullScreenCover(isPresented: $viewModel.showingEpisodeDetails) {
+                if let episode = viewModel.currentPlayingEpisode,
+                   let podcast = viewModel.getPodcast(for: episode) {
                     EpisodeDetailsFullView(
                         episode: episode,
                         podcast: podcast,
-                        isPresented: $showingEpisodeDetails
+                        isPresented: $viewModel.showingEpisodeDetails
                     )
                 }
             }
         }
         .navigationViewStyle(StackNavigationViewStyle())
         .onAppear {
-            updateCurrentAudioRoute()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: AVAudioSession.routeChangeNotification)) { _ in
-            updateCurrentAudioRoute()
+            // ViewModel handles initialization
         }
     }
     
-    private func getPodcast(for episode: Episode) -> Podcast? {
-        return PodcastService.shared.loadPodcasts().first { $0.id == episode.podcastID }
-    }
-    
-    private func downloadEpisode(_ episode: Episode) {
-        isDownloading = true
-        PodcastService.shared.downloadEpisode(episode) { url in
-            DispatchQueue.main.async {
-                isDownloading = false
-            }
-        }
-    }
-    
-    private func updateCurrentAudioRoute() {
-        let session = AVAudioSession.sharedInstance()
-        currentAudioRoute = session.currentRoute.outputs.first?.portName ?? "Unknown"
-    }
-    
-    private func getCurrentAudioOutputDevice() -> AudioOutputDevice {
-        let session = AVAudioSession.sharedInstance()
-        guard let output = session.currentRoute.outputs.first else {
-            return .speaker
-        }
-        
-        switch output.portType {
-        case .builtInSpeaker:
-            return .speaker
-        case .headphones:
-            return .headphones
-        case .bluetoothA2DP, .bluetoothHFP, .bluetoothLE:
-            return .bluetooth(name: output.portName)
-        case .airPlay:
-            return .airplay(name: output.portName)
-        case .HDMI:
-            return .hdmi(name: output.portName)
-        case .lineOut:
-            return .wired(name: output.portName)
-        default:
-            return .speaker
-        }
-    }
+    // All business logic moved to CurrentPlayViewModel
 }
 
 struct ModernNowPlayingView: View {
@@ -412,48 +355,7 @@ struct EpisodeDetailsSection: View {
 
 // MARK: - Audio Output Selection
 
-enum AudioOutputDevice: Hashable {
-    case speaker
-    case headphones
-    case bluetooth(name: String)
-    case airplay(name: String)
-    case hdmi(name: String)
-    case wired(name: String)
-    
-    var displayName: String {
-        switch self {
-        case .speaker:
-            return "iPhone Speaker"
-        case .headphones:
-            return "Headphones"
-        case .bluetooth(let name):
-            return name
-        case .airplay(let name):
-            return name
-        case .hdmi(let name):
-            return name
-        case .wired(let name):
-            return name
-        }
-    }
-    
-    var icon: String {
-        switch self {
-        case .speaker:
-            return "speaker.wave.3"
-        case .headphones:
-            return "headphones"
-        case .bluetooth:
-            return "airpods"
-        case .airplay:
-            return "airplayvideo"
-        case .hdmi:
-            return "tv"
-        case .wired:
-            return "headphones"
-        }
-    }
-}
+// AudioOutputDevice enum moved to CurrentPlayViewModel
 
 struct AudioOutputSelectionView: View {
     let currentDevice: AudioOutputDevice
@@ -696,32 +598,13 @@ struct ScaleButtonStyle: ButtonStyle {
 
 struct EmptyPlayStateView: View {
     var body: some View {
-        VStack(spacing: 32) {
-            Spacer()
-            
-            VStack(spacing: 24) {
-                Image(systemName: "music.note.house")
-                    .font(.system(size: 72, weight: .thin))
-                    .foregroundStyle(Color(.systemGray3))
-                
-                VStack(spacing: 12) {
-                    Text("No Episode Playing")
-                        .font(.title2)
-                        .fontWeight(.semibold)
-                        .foregroundColor(.primary)
-                    
-                    Text("Choose an episode from your queue or library to start listening")
-                        .font(.body)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-                        .lineLimit(2)
-                }
-            }
-            .padding(.horizontal, 48)
-            
-            Spacer()
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        UnifiedEmptyStateView(
+            icon: "music.note.house",
+            title: "No Episode Playing",
+            subtitle: "Choose an episode from your queue or library to start listening",
+            iconSize: 72,
+            spacing: 24
+        )
     }
 }
 

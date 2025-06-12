@@ -12,122 +12,124 @@ struct QueueView: View {
     
     var body: some View {
         NavigationView {
-            Group {
-                if viewModel.queue.isEmpty {
-                    VStack(spacing: 20) {
-                        Image(systemName: "list.bullet")
-                            .font(.system(size: 60))
-                            .foregroundColor(.gray.opacity(0.5))
-                        
-                        Text("Your queue is empty")
-                            .font(.title2)
-                            .fontWeight(.semibold)
-                            .foregroundColor(.primary)
-                        
-                        Text("Add episodes from your podcasts to build your listening queue")
-                            .font(.body)
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, 40)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else {
-                    List {
-                        ForEach(viewModel.queue, id: \.id) { episode in
-                            let index = viewModel.queue.firstIndex(where: { $0.id == episode.id }) ?? 0
-                            
-                            QueueEpisodeCardView(
-                                episode: episode,
-                                podcast: getPodcast(for: episode),
-                                isCurrentlyPlaying: currentPlayingEpisode?.id == episode.id,
-                                isEditMode: editMode == .active,
-                                isLoading: viewModel.loadingEpisodeID == episode.id || audioPlayer.isLoading && currentPlayingEpisode?.id == episode.id,
-                                onTap: {
-                                    if editMode == .inactive {
-                                        viewModel.playEpisodeFromQueue(at: index)
-                                    }
-                                },
-                                onRemove: {
-                                    viewModel.removeFromQueue(at: IndexSet(integer: index))
-                                },
-                                onMoveToEnd: {
-                                    viewModel.moveToEndOfQueue(at: index)
-                                }
-                            )
-                            .overlay(
-                                // Show queue position indicator for non-playing episodes
-                                VStack {
-                                    if currentPlayingEpisode?.id != episode.id && editMode == .inactive {
-                                        HStack {
-                                            VStack {
-                                                Text("\(index + 1)")
-                                                    .font(.caption2)
-                                                    .fontWeight(.semibold)
-                                                    .foregroundColor(.white)
-                                                    .frame(width: 20, height: 20)
-                                                    .background(Color.gray.opacity(0.7))
-                                                    .clipShape(Circle())
-                                                Spacer()
-                                            }
-                                            Spacer()
-                                        }
-                                        .padding(.leading, 8)
-                                        .padding(.top, 8)
-                                    }
-                                }
-                            )
-                            .listRowSeparator(.hidden)
-                            .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
-                            .listRowBackground(Color.clear)
-                        }
-                        .onMove(perform: moveEpisodes)
-                        .onDelete(perform: editMode == .active ? deleteEpisodes : nil)
-                    }
-                    .listStyle(.plain)
-                    .environment(\.editMode, $editMode)
-                    .scrollContentBackground(.hidden)
-                    .background(Color(.systemGroupedBackground))
-                }
-            }
+            queueContent
             .navigationTitle("Queue")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    if !viewModel.queue.isEmpty {
+                    if !viewModel.queuedEpisodes.isEmpty {
                         EditButton()
                             .font(.system(size: 16, weight: .medium))
-                    }
-                }
-            }
-            .onAppear {
-                // WORLD-CLASS NAVIGATION: Instant display with immediate podcast loading for artwork
-                
-                // IMMEDIATE: Load podcasts immediately for artwork display
-                        PodcastService.shared.loadPodcastsAsync { podcasts in
-                            // CRITICAL FIX: Use asyncAfter to prevent \"Publishing changes from within view updates\"
-                            DispatchQueue.main.async {
-                                self.allPodcasts = podcasts
-                            }
-                        }
-                        
-                // DEFERRED: Heavy operations moved to background with delays
-                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                    DispatchQueue.global(qos: .background).async {
-                        // Sync and preload (low priority)
-                        // CRITICAL FIX: Use asyncAfter to prevent \"Publishing changes from within view updates\"
-                        DispatchQueue.main.async {
-                            viewModel.syncCurrentEpisodeWithQueue()
-                            
-                            if !viewModel.queue.isEmpty {
-                                AudioPlayerService.shared.preloadEpisodes(Array(viewModel.queue.prefix(3)))
-                            }
-                        }
                     }
                 }
             }
         }
         .navigationViewStyle(.stack)
     }
+    
+    // MARK: - View Components
+    
+    private var queueContent: some View {
+        Group {
+            if viewModel.queuedEpisodes.isEmpty {
+                emptyStateView
+            } else {
+                queueList
+            }
+        }
+    }
+    
+    private var emptyStateView: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "list.bullet")
+                .font(.system(size: 48))
+                .foregroundColor(.gray)
+            
+            Text("Your queue is empty")
+                .font(.title2)
+                .fontWeight(.semibold)
+            
+            Text("Add episodes from your podcasts to build your listening queue")
+                .font(.body)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(.systemGroupedBackground))
+    }
+    
+    private var queueList: some View {
+        List {
+            ForEach(Array(viewModel.queuedEpisodes.enumerated()), id: \.element.id) { index, episode in
+                queueEpisodeRow(episode: episode, index: index)
+            }
+            .onMove(perform: moveEpisodes)
+            .onDelete(perform: editMode == .active ? deleteEpisodes : nil)
+        }
+        .listStyle(.plain)
+        .environment(\.editMode, $editMode)
+        .scrollContentBackground(.hidden)
+        .background(Color(.systemGroupedBackground))
+    }
+    
+    private func queueEpisodeRow(episode: Episode, index: Int) -> some View {
+        QueueEpisodeCardView(
+            episode: episode,
+            podcast: getPodcast(for: episode),
+            isCurrentlyPlaying: currentPlayingEpisode?.id == episode.id,
+            isEditMode: editMode == .active,
+            isLoading: audioPlayer.isLoading && currentPlayingEpisode?.id == episode.id,
+            onTap: {
+                if editMode == .inactive {
+                    Task {
+                        await viewModel.playEpisode(at: index)
+                    }
+                }
+            },
+            onRemove: {
+                Task {
+                    try? await viewModel.removeEpisode(at: index)
+                }
+            },
+            onMoveToEnd: {
+                // Move to end by removing and adding to end
+                let episode = viewModel.queuedEpisodes[index]
+                Task {
+                    try? await viewModel.removeEpisode(at: index)
+                    try? await viewModel.addEpisode(episode)
+                }
+            }
+        )
+        .overlay(queuePositionIndicator(for: episode, at: index))
+        .listRowSeparator(.hidden)
+        .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
+        .listRowBackground(Color.clear)
+    }
+    
+    private func queuePositionIndicator(for episode: Episode, at index: Int) -> some View {
+        VStack {
+            if currentPlayingEpisode?.id != episode.id && editMode == .inactive {
+                HStack {
+                    VStack {
+                        Text("\(index + 1)")
+                            .font(.caption2)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.white)
+                            .frame(width: 20, height: 20)
+                            .background(Color.gray.opacity(0.7))
+                            .clipShape(Circle())
+                        Spacer()
+                    }
+                    Spacer()
+                }
+                .padding(.leading, 8)
+                .padding(.top, 8)
+            }
+        }
+    }
+    
+    // MARK: - Helper Methods
     
     private func getPodcast(for episode: Episode) -> Podcast? {
         // Use preloaded podcasts for fast lookup
@@ -136,13 +138,17 @@ struct QueueView: View {
     
     private func moveEpisodes(from source: IndexSet, to destination: Int) {
         withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-            viewModel.moveQueue(from: source, to: destination)
+            viewModel.moveEpisode(from: source, to: destination)
         }
     }
     
     private func deleteEpisodes(at offsets: IndexSet) {
         withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-            viewModel.removeFromQueue(at: offsets)
+            for index in offsets.sorted(by: >) {
+                Task {
+                    try? await viewModel.removeEpisode(at: index)
+                }
+            }
         }
     }
 }

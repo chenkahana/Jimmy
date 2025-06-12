@@ -49,9 +49,10 @@ class DebugHelper {
     }
     
     // Print current app state
+    @MainActor
     func printAppState() {
         let podcasts = PodcastService.shared.loadPodcasts()
-        let queue = QueueViewModel.shared.queue
+        let queue = QueueViewModel.shared.queuedEpisodes
         
         print("=== Jimmy App State ===")
         print("Podcasts: \(podcasts.count)")

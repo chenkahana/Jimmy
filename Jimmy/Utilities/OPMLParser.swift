@@ -19,6 +19,14 @@ class OPMLParser: NSObject, XMLParserDelegate {
         return podcasts
     }
     
+    func parse(_ data: Data) -> [Podcast] {
+        podcasts = []
+        let parser = XMLParser(data: data)
+        parser.delegate = self
+        parser.parse()
+        return podcasts
+    }
+    
     // MARK: - XMLParserDelegate
     func parser(_ parser: XMLParser, didStartElement elementName: String, namespaceURI: String?, qualifiedName qName: String?, attributes attributeDict: [String : String] = [:]) {
         if elementName == "outline", let feedURL = attributeDict["xmlUrl"], let title = attributeDict["text"] ?? attributeDict["title"] {

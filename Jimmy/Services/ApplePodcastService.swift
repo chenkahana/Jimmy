@@ -1,6 +1,7 @@
 import Foundation
 import MediaPlayer
 import StoreKit
+import os
 
 class ApplePodcastService {
     static let shared = ApplePodcastService()
@@ -25,9 +26,6 @@ class ApplePodcastService {
         importApplePodcastSubscriptions { podcasts, error in
             if !podcasts.isEmpty {
                 allPodcasts.append(contentsOf: podcasts)
-                #if DEBUG
-                print("📱 Method 1 (MPMediaLibrary): Found \(podcasts.count) podcasts")
-                #endif
             }
             group.leave()
         }
@@ -40,9 +38,6 @@ class ApplePodcastService {
                 let existingURLs = Set(allPodcasts.map { $0.feedURL.absoluteString })
                 let newPodcasts = podcasts.filter { !existingURLs.contains($0.feedURL.absoluteString) }
                 allPodcasts.append(contentsOf: newPodcasts)
-                #if DEBUG
-                print("📱 Method 2 (Recent Activity): Found \(newPodcasts.count) new podcasts")
-                #endif
             }
             group.leave()
         }
@@ -55,9 +50,6 @@ class ApplePodcastService {
                 let existingURLs = Set(allPodcasts.map { $0.feedURL.absoluteString })
                 let newPodcasts = podcasts.filter { !existingURLs.contains($0.feedURL.absoluteString) }
                 allPodcasts.append(contentsOf: newPodcasts)
-                #if DEBUG
-                print("📱 Method 3 (iCloud Data): Found \(newPodcasts.count) new podcasts")
-                #endif
             }
             group.leave()
         }
@@ -67,9 +59,6 @@ class ApplePodcastService {
                 // If no podcasts found, show guided import instructions
                 completion([], ApplePodcastError.noItemsFoundUseManualMethod)
             } else {
-                #if DEBUG
-                print("📱 Total unique podcasts found: \(allPodcasts.count)")
-                #endif
                 completion(allPodcasts, nil)
             }
         }
@@ -101,40 +90,62 @@ class ApplePodcastService {
     
     /// Try to access iCloud synced podcast data
     private func importFromiCloudData(completion: @escaping ([Podcast]?, Error?) -> Void) {
-        // For now, skip iCloud data access to avoid entitlement issues
-        // This method could be enhanced in the future with proper iCloud setup
-        
-        #if DEBUG
-        print("📱 Method 3 (iCloud Data): Skipping iCloud access (requires entitlements)")
-        #endif
-        
-        // Return empty result without error - this is expected for most users
-        completion([], nil)
-        
-        // NOTE: To properly implement iCloud access, you would need:
-        // 1. Add iCloud entitlements to the app
-        // 2. Configure CloudKit container
-        // 3. Add proper error handling for iCloud unavailability
-        
-        /* Future implementation might look like:
-        
         // Check if iCloud is available and configured
         guard FileManager.default.ubiquityIdentityToken != nil else {
-            #if DEBUG
-            print("📱 iCloud not available or not signed in")
-            #endif
+            // iCloud not available or not signed in - this is normal for many users
             completion([], nil)
             return
         }
         
-        // Only attempt iCloud access if properly configured
+        // Perform iCloud access on background queue to avoid blocking UI
         DispatchQueue.global(qos: .background).async {
-            // Safe iCloud access code here
-            DispatchQueue.main.async {
-                completion([], nil)
+            do {
+                // Try to access iCloud container
+                guard let iCloudURL = FileManager.default.url(forUbiquityContainerIdentifier: nil) else {
+                    // iCloud container not available
+                    DispatchQueue.main.async {
+                        completion([], nil)
+                    }
+                    return
+                }
+                
+                // Look for podcast-related files in iCloud
+                let podcastsURL = iCloudURL.appendingPathComponent("Documents/Podcasts")
+                
+                if FileManager.default.fileExists(atPath: podcastsURL.path) {
+                    let contents = try FileManager.default.contentsOfDirectory(at: podcastsURL, includingPropertiesForKeys: nil)
+                    
+                    // Process any podcast subscription files found
+                    var podcasts: [Podcast] = []
+                    
+                    for fileURL in contents {
+                        if fileURL.pathExtension.lowercased() == "opml" {
+                            // Parse OPML files
+                            if let data = try? Data(contentsOf: fileURL),
+                               let parsedPodcasts = try? OPMLParser().parse(data) {
+                                podcasts.append(contentsOf: parsedPodcasts)
+                            }
+                        }
+                    }
+                    
+                    DispatchQueue.main.async {
+                        completion(podcasts, nil)
+                    }
+                } else {
+                    // No podcast data found in iCloud
+                    DispatchQueue.main.async {
+                        completion([], nil)
+                    }
+                }
+                
+            } catch {
+                // Error accessing iCloud - return empty result without error
+                // This prevents the import from failing completely
+                DispatchQueue.main.async {
+                    completion([], nil)
+                }
             }
         }
-        */
     }
     
     /// Enhanced processing with better podcast detection
@@ -264,9 +275,6 @@ class ApplePodcastService {
         let podcastQuery = MPMediaQuery.podcasts()
         if let items = podcastQuery.items {
             allItems.append(contentsOf: items)
-            #if DEBUG
-            print("📱 Method 1 - Standard podcast query found: \(items.count) items")
-            #endif
         }
         
         // Method 2: Query all items and filter for podcasts
@@ -276,9 +284,6 @@ class ApplePodcastService {
                 item.mediaType == .podcast
             }
             allItems.append(contentsOf: podcastItems)
-            #if DEBUG
-            print("📱 Method 2 - All items filtered for podcasts found: \(podcastItems.count) items")
-            #endif
         }
         
         // Method 3: Try to get podcast items by media type
@@ -287,9 +292,6 @@ class ApplePodcastService {
         mediaTypeQuery.addFilterPredicate(mediaTypePredicate)
         if let items = mediaTypeQuery.items {
             allItems.append(contentsOf: items)
-            #if DEBUG
-            print("📱 Method 3 - Media type query found: \(items.count) items")
-            #endif
         }
         
         // Remove duplicates by persistent ID
@@ -302,10 +304,6 @@ class ApplePodcastService {
                 uniqueItems.append(item)
             }
         }
-        
-        #if DEBUG
-        print("📱 Total unique items after combining methods: \(uniqueItems.count)")
-        #endif
         
         processPodcastItems(uniqueItems, method: "MPMediaLibrary") { podcasts, error in
             completion(podcasts ?? [], error)
@@ -424,19 +422,6 @@ class ApplePodcastService {
             } else {
                 // Last resort: use first result if available
                 completion(results.first?.feedURL)
-                
-                // Debug logging for failed matches (in development)
-                #if DEBUG
-                if results.isEmpty {
-                    print("⚠️ No search results for podcast: '\(podcastTitle)' by '\(artist)'")
-                } else {
-                    print("⚠️ Failed to match podcast: '\(podcastTitle)' by '\(artist)'")
-                    print("Final search results:")
-                    for (index, result) in results.prefix(3).enumerated() {
-                        print("  \(index + 1). '\(result.title)' by '\(result.author)'")
-                    }
-                }
-                #endif
             }
         }
     }

@@ -58,7 +58,7 @@ class PodcastURLResolver {
                     return
                 }
                 
-                URLSession.shared.dataTask(with: searchAPIURL) { data, response, error in
+                URLSession.shared.dataTask(with: searchAPIURL) { [weak self] data, response, error in
                     guard let data = data,
                           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                           let results = json["results"] as? [[String: Any]],
@@ -91,7 +91,7 @@ class PodcastURLResolver {
                 .removingPercentEncoding ?? ""
             
             // Search for this podcast using iTunes Search API
-            iTunesSearchService.shared.searchPodcasts(query: podcastName) { results in
+            iTunesSearchService.shared.searchPodcasts(query: podcastName) { [weak self] results in
                 completion(results.first?.feedURL)
             }
         } else {
@@ -104,7 +104,7 @@ class PodcastURLResolver {
         var request = URLRequest(url: url)
         request.timeoutInterval = 10.0
 
-        URLSession.shared.dataTask(with: request) { data, response, error in
+        URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
             guard let data = data,
                   let html = String(data: data, encoding: .utf8) else {
                 completion(nil)
@@ -112,8 +112,8 @@ class PodcastURLResolver {
             }
 
             // Extract show title and author from meta tags
-            let title = self.extractMetaContent(html: html, property: "og:title")
-            let author = self.extractMetaContent(html: html, property: "music:creator")
+            let title = self?.extractMetaContent(html: html, property: "og:title")
+            let author = self?.extractMetaContent(html: html, property: "music:creator")
 
             let searchQuery: String
             if let title = title, let author = author {
@@ -126,7 +126,7 @@ class PodcastURLResolver {
             }
 
             // Search iTunes directory for a matching podcast
-            iTunesSearchService.shared.searchPodcasts(query: searchQuery) { results in
+            iTunesSearchService.shared.searchPodcasts(query: searchQuery) { [weak self] results in
                 let feedURL = results.first?.feedURL
                 completion(feedURL)
             }
@@ -150,7 +150,7 @@ class PodcastURLResolver {
     }
     
     private func findRSSFeedInWebpage(url: URL, completion: @escaping (URL?) -> Void) {
-        URLSession.shared.dataTask(with: url) { data, response, error in
+        URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
             guard let data = data,
                   let html = String(data: data, encoding: .utf8) else {
                 completion(nil)
@@ -187,10 +187,9 @@ class PodcastURLResolver {
         var request = URLRequest(url: url)
         request.timeoutInterval = 15.0
         
-        URLSession.shared.dataTask(with: request) { data, response, error in
+        URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
             guard let data = data,
                   let string = String(data: data, encoding: .utf8) else {
-                print("❌ Failed to fetch RSS data for \(url.absoluteString)")
                 completion(nil)
                 return
             }
@@ -199,7 +198,6 @@ class PodcastURLResolver {
             if string.contains("<rss") || string.contains("<feed") || string.contains("<channel") {
                 completion(url)
             } else {
-                print("❌ Not a valid RSS feed, got: \(string.prefix(200))")
                 completion(nil)
             }
         }.resume()
