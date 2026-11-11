@@ -53,9 +53,16 @@ private class InternalRSSParser: NSObject, XMLParserDelegate {
             
             if !parser.parse() {
                 let error = parser.parserError ?? NSError(domain: "RSSParser", code: 2, userInfo: [NSLocalizedDescriptionKey: "Unknown parsing error"])
-                continuation.resume(throwing: error)
+                finish(.failure(error))
             }
         }
+    }
+
+    /// Resumes the continuation at most once: on bad XML, `parseErrorOccurred` fires and then
+    /// `parse()` returns false, and resuming twice crashes.
+    private func finish(_ result: Result<([Episode], ShowMetadata), Error>) {
+        continuation?.resume(with: result)
+        continuation = nil
     }
 
     func parser(_ parser: XMLParser, didStartElement elementName: String, namespaceURI: String?, qualifiedName qName: String?, attributes attributeDict: [String : String] = [:]) {
@@ -183,10 +190,10 @@ private class InternalRSSParser: NSObject, XMLParserDelegate {
             language: podcastLanguage.isEmpty ? nil : podcastLanguage,
             categories: podcastCategories
         )
-        continuation?.resume(returning: (episodes, metadata))
+        finish(.success((episodes, metadata)))
     }
     func parser(_ parser: XMLParser, parseErrorOccurred parseError: Error) {
-        continuation?.resume(throwing: parseError)
+        finish(.failure(parseError))
     }
     
     // MARK: - CDATA Handling
