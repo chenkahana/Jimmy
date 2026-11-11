@@ -8,6 +8,7 @@ struct SettingsView: View {
     @State private var showingBackupShare = false
     @State private var showingBackupImport = false
     @State private var backupFileURL: URL?
+    @State private var showingAssistant = false
 
     var body: some View {
         ZStack {
@@ -222,6 +223,21 @@ struct SettingsView: View {
                 }
                 .staggeredAppear(index: 3)
 
+                // Assistant Section
+                SettingsCard(
+                    title: "Assistant",
+                    icon: "sparkles",
+                    iconColor: .purple
+                ) {
+                    SettingsButton(
+                        title: "Assistant",
+                        subtitle: "Ask Jimmy to play, queue, search, subscribe, or set a sleep timer",
+                        icon: "sparkles",
+                        action: { showingAssistant = true }
+                    )
+                }
+                .staggeredAppear(index: 4)
+
                 // Management Section
                 SettingsCard(
                     title: "Management",
@@ -236,7 +252,7 @@ struct SettingsView: View {
                             isDestructive: true,
                             action: { viewModel.showClearSubscriptionsConfirmation = true }
                         )
-                        
+
                         SettingsButton(
                             title: "Submit Feedback",
                             subtitle: "Report bugs or request features",
@@ -245,7 +261,7 @@ struct SettingsView: View {
                         )
                     }
                 }
-                .staggeredAppear(index: 4)
+                .staggeredAppear(index: 5)
 
                 #if DEBUG
                 // Debug Section (Developer Mode)
@@ -283,7 +299,7 @@ struct SettingsView: View {
                         )
                     }
                 }
-                .staggeredAppear(index: 5)
+                .staggeredAppear(index: 6)
                 #endif
 
                 // Footer spacing for tab bar
@@ -356,6 +372,11 @@ struct SettingsView: View {
         .sheet(isPresented: $viewModel.showingAnalytics) {
             NavigationStack {
                 ListeningStatsView()
+            }
+        }
+        .sheet(isPresented: $showingAssistant) {
+            NavigationStack {
+                AssistantView()
             }
         }
         .sheet(isPresented: $viewModel.showingFeedbackForm) {
