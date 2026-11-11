@@ -41,8 +41,6 @@ final class DIContainer {
         dbManager: databaseManager
     )
     
-    lazy var searchRepository: SearchRepositoryProtocol = ConcreteiTunesSearchRepository()
-    
     lazy var showRepository: ShowRepositoryProtocol = GRDBShowRepository(
         dbManager: databaseManager,
         cacheStore: memoryCacheStore

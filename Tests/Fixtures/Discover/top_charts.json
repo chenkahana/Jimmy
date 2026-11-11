@@ -1,0 +1,10 @@
+{
+  "feed": {
+    "results": [
+      { "id": "1200000010", "name": "Chart Show One", "artistName": "Artist One", "artworkUrl100": "https://example.com/chart1/100x100.jpg" },
+      { "id": "1200000011", "name": "Chart Show Two", "artistName": "Artist Two", "artworkUrl100": "https://example.com/chart2/100x100.jpg" },
+      { "id": "1200000012", "name": "Chart Show Three", "artistName": "Artist Three", "artworkUrl100": null },
+      { "id": "not-a-number", "name": "Malformed Entry", "artistName": "Nobody", "artworkUrl100": null }
+    ]
+  }
+}

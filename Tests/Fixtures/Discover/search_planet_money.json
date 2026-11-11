@@ -1,0 +1,39 @@
+{
+  "resultCount": 2,
+  "results": [
+    {
+      "wrapperType": "track",
+      "kind": "podcast",
+      "collectionId": 290783428,
+      "trackId": 290783428,
+      "artistName": "NPR",
+      "collectionName": "Planet Money",
+      "trackName": "Planet Money",
+      "feedUrl": "https://feeds.example.com/planet-money.rss",
+      "artworkUrl30": "https://example.com/art30.jpg",
+      "artworkUrl60": "https://example.com/art60.jpg",
+      "artworkUrl100": "https://example.com/art100.jpg",
+      "artworkUrl600": "https://example.com/art600.jpg",
+      "trackCount": 123,
+      "primaryGenreName": "Business",
+      "description": "The economy, explained, with stories and surprises."
+    },
+    {
+      "wrapperType": "track",
+      "kind": "podcast",
+      "collectionId": 1200000001,
+      "trackId": 1200000001,
+      "artistName": "Example Media",
+      "collectionName": "Planet Money Summer School",
+      "trackName": "Planet Money Summer School",
+      "feedUrl": "https://feeds.example.com/planet-money-summer-school.rss",
+      "artworkUrl30": null,
+      "artworkUrl60": null,
+      "artworkUrl100": null,
+      "artworkUrl600": null,
+      "trackCount": 10,
+      "primaryGenreName": "Education",
+      "description": null
+    }
+  ]
+}

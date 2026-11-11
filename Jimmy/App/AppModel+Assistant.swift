@@ -48,7 +48,8 @@ extension AppModel: AssistantActions {
     }
 
     func searchApplePodcasts(query: String) async -> [AssistantPodcastResult] {
-        await iTunesSearchService.shared.searchPodcasts(query: query).map {
+        let results = (try? await PodcastDirectory().search(query: query)) ?? []
+        return results.map {
             AssistantPodcastResult(title: $0.title, author: $0.author, feedURL: $0.feedURL)
         }
     }
