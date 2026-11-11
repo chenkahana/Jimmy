@@ -13,9 +13,6 @@ struct BulletproofImportView: View {
     @State private var showingError: Bool = false
     @State private var lastError: BulletproofImportError?
     
-    // Safe access to PodcastService
-    private let podcastService: PodcastService? = PodcastService.shared
-    
     let audioURL: URL
     let onSuccess: (Episode) -> Void
     let onCancel: () -> Void
@@ -312,11 +309,8 @@ struct BulletproofImportView: View {
     // MARK: - Methods
     
     private func loadLocalShows() {
-        guard let podcastService = podcastService else {
-            localShows = []
-            return
-        }
-        localShows = podcastService.loadPodcasts().filter { $0.feedURL.scheme == "local" }
+        localShows = (AppModel.current?.podcasts.map { $0.asLegacyPodcast() } ?? [])
+            .filter { $0.feedURL.scheme == "local" }
     }
     
     private func startImport() {

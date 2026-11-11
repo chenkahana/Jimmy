@@ -82,7 +82,7 @@ final class CarPlayManager: NSObject {
 
     @MainActor
     private func buildLibraryTemplate() async -> CPListTemplate {
-        let podcasts = PodcastService.shared.loadPodcasts()
+        let podcasts = (AppModel.current?.podcasts.map { $0.asLegacyPodcast() } ?? [])
 
         let items: [CPListItem] = podcasts.map { podcast in
             let item = CPListItem(text: podcast.cleanTitle, detailText: podcast.author)
@@ -150,7 +150,7 @@ final class CarPlayManager: NSObject {
     @MainActor
     private func buildQueueTemplate() async -> CPListTemplate {
         let queueData = await AppModel.current?.resolveQueueEpisodes() ?? []
-        let podcasts = PodcastService.shared.loadPodcasts()
+        let podcasts = (AppModel.current?.podcasts.map { $0.asLegacyPodcast() } ?? [])
 
         let items = queueData.compactMap { episode -> CPListItem? in
             guard !episode.title.isEmpty else { return nil }
@@ -188,6 +188,6 @@ final class CarPlayManager: NSObject {
 
     @MainActor
     private func getPodcast(for episode: Episode) -> Podcast? {
-        return PodcastService.shared.loadPodcasts().first { $0.id == episode.podcastID }
+        return (AppModel.current?.podcasts.map { $0.asLegacyPodcast() } ?? []).first { $0.id == episode.podcastID }
     }
 }

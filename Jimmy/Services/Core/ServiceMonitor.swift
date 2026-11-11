@@ -253,17 +253,11 @@ extension ServiceMonitor {
             return DatabaseManager.shared.isReady
         }
         
-        // Register podcast service
-        registerService("PodcastService") {
-            // Simple health check - try to load podcasts count
-            do {
-                let _ = PodcastService.shared?.loadPodcasts() ?? []
-                return true // If we can access the service, it's healthy
-            } catch {
-                return false
-            }
+        // Register library store
+        registerService("AppModel.podcasts") {
+            return await AppModel.current != nil
         }
-        
+
         // Register network service
         registerService("NetworkService") {
             // Simple connectivity check

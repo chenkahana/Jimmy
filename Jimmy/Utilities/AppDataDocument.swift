@@ -16,15 +16,13 @@ struct AppDataDocument: FileDocument {
     var appData: AppData
     
     init() {
-        let podcasts = PodcastService.shared.loadPodcasts()
-        let settings: [String: String] = [:]
-        
-        // Since we can't await in init, we'll create empty data and populate later
+        // `AppModel.current?.podcasts` is `@MainActor`-isolated and this initializer isn't async,
+        // so it can't be read here — create empty data and populate later via `exportAppData()`.
         self.appData = AppData(
-            podcasts: podcasts,
+            podcasts: [],
             episodes: [],
             queue: [],
-            settings: settings,
+            settings: [:],
             exportDate: Date()
         )
     }
@@ -86,22 +84,25 @@ struct AppDataDocument: FileDocument {
         // For now, we'll skip episode import and focus on podcast import
         
         // Import podcasts
-        var existingPodcasts = PodcastService.shared.loadPodcasts()
-        for podcast in validAppData.podcasts {
-            if !existingPodcasts.contains(where: { $0.feedURL == podcast.feedURL }) {
-                existingPodcasts.append(podcast)
-            }
+        let existingFeedURLs = await Set((AppModel.current?.podcasts ?? []).map { $0.feedURL })
+        for podcast in validAppData.podcasts where !existingFeedURLs.contains(podcast.feedURL) {
+            _ = try? await AppModel.current?.subscribe(feedURL: podcast.feedURL)
         }
-        PodcastService.shared.savePodcasts(existingPodcasts)
-        
+
         // Import queue
         await AppModel.current?.replaceQueue(withEpisodeIDs: validAppData.queue.map(\.id))
     }
 
     @MainActor
     func exportAppData() async -> AppData {
-        let episodes = LibraryViewModel.shared.allEpisodes
-        let podcasts = PodcastService.shared.loadPodcasts()
+        let podcasts = (AppModel.current?.podcasts ?? []).map { $0.asLegacyPodcast() }
+        let episodeRepository = DIContainer.shared.episodeRepository
+        var episodes: [Jimmy.Episode] = []
+        for podcast in podcasts {
+            if let episodesWithState = try? await episodeRepository.fetchEpisodes(for: podcast.id, ignoreCache: false) {
+                episodes.append(contentsOf: episodesWithState.map { $0.episode })
+            }
+        }
         let queue = await AppModel.current?.resolveQueueEpisodes() ?? []
         let settings: [String: String] = [:]
 
@@ -120,13 +121,10 @@ struct AppDataDocument: FileDocument {
         // For now, we'll skip episode import and focus on podcast import
 
         // Import podcasts
-        var existingPodcasts = PodcastService.shared.loadPodcasts()
-        for podcast in appData.podcasts {
-            if !existingPodcasts.contains(where: { $0.feedURL == podcast.feedURL }) {
-                existingPodcasts.append(podcast)
-            }
+        let existingFeedURLs = await Set((AppModel.current?.podcasts ?? []).map { $0.feedURL })
+        for podcast in appData.podcasts where !existingFeedURLs.contains(podcast.feedURL) {
+            _ = try? await AppModel.current?.subscribe(feedURL: podcast.feedURL)
         }
-        PodcastService.shared.savePodcasts(existingPodcasts)
 
         // Import queue
         await AppModel.current?.replaceQueue(withEpisodeIDs: appData.queue.map(\.id))
@@ -194,8 +192,8 @@ extension AppDataDocument {
         guard iCloudKeyValueStoreAvailable() else { return }
 
         Task.detached(priority: .utility) {
-            let podcasts = PodcastService.shared.loadPodcasts()
-            let feedURLs = podcasts.compactMap { $0.feedURL.absoluteString }
+            let podcasts = await AppModel.current?.podcasts ?? []
+            let feedURLs = podcasts.map { $0.feedURL.absoluteString }
 
             let queueEpisodes = await AppModel.current?.resolveQueueEpisodes() ?? []
             let queueIDs = queueEpisodes.map { $0.id.uuidString }
@@ -240,15 +238,13 @@ extension AppDataDocument {
         guard let remote = try? decoder.decode(SyncPayload.self, from: data) else { return }
 
         // Union merge subscriptions — add any feed URLs we don't already have
-        let localPodcasts = PodcastService.shared.loadPodcasts()
+        let localPodcasts = await AppModel.current?.podcasts ?? []
         let localFeedURLs = Set(localPodcasts.map { $0.feedURL.absoluteString })
         let newFeedURLs = remote.feedURLs.filter { !localFeedURLs.contains($0) }
 
         for urlString in newFeedURLs {
             guard let url = URL(string: urlString) else { continue }
-            Task {
-                _ = try? await PodcastService.shared.addPodcast(from: url)
-            }
+            _ = try? await AppModel.current?.subscribe(feedURL: url)
         }
 
         // Playback position: higher wins

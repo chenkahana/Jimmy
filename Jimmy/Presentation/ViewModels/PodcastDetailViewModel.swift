@@ -19,20 +19,18 @@ public class PodcastDetailViewModel: ObservableObject {
     @Published var showingUnsubscribeAlert: Bool = false
     
     // MARK: - Private Properties
-    private let podcastService: PodcastServiceProtocol
     private let episodeRepository: EpisodeRepositoryProtocol
     private var cancellables = Set<AnyCancellable>()
-    
+
     // MARK: - Initialization
     init(
         podcast: Podcast,
-        podcastService: PodcastServiceProtocol = DIContainer.shared.podcastService,
         episodeRepository: EpisodeRepositoryProtocol = DIContainer.shared.episodeRepository
     ) {
         self.podcast = podcast
-        self.podcastService = podcastService
         self.episodeRepository = episodeRepository
-        
+        self.isSubscribed = AppModel.current?.podcasts.contains { $0.id == podcast.id } ?? false
+
         setupBindings()
         loadInitialData()
     }
@@ -43,11 +41,6 @@ public class PodcastDetailViewModel: ObservableObject {
     
     // MARK: - Private Methods
     private func setupBindings() {
-        podcastService.podcasts
-            .map { podcasts in podcasts.contains { $0.id == self.podcast.id } }
-            .assign(to: \.isSubscribed, on: self)
-            .store(in: &cancellables)
-        
         // Setup search binding
         Publishers.CombineLatest3($episodes, $searchText, $filterOption)
             .debounce(for: .milliseconds(300), scheduler: RunLoop.main)
@@ -151,24 +144,18 @@ public class PodcastDetailViewModel: ObservableObject {
     func toggleSubscription() async {
         if isSubscribed {
             showingUnsubscribeAlert = true
-        } else {
-            await podcastService.addPodcast(podcast)
+        } else if let _ = try? await AppModel.current?.subscribe(feedURL: podcast.feedURL) {
+            isSubscribed = true
         }
     }
-    
+
     func confirmUnsubscribe() async {
         showingUnsubscribeAlert = false
-        do {
-            try await podcastService.deletePodcast(podcast)
-            // Successful deletion - signal that view should be dismissed
-            await MainActor.run {
-                // Set a flag that the view can observe to dismiss itself
-                isSubscribed = false
-            }
-        } catch {
-            await MainActor.run {
-                errorMessage = "Failed to unsubscribe: \(error.localizedDescription)"
-            }
+        await AppModel.current?.unsubscribe(podcast.id)
+        // Successful deletion - signal that view should be dismissed
+        await MainActor.run {
+            // Set a flag that the view can observe to dismiss itself
+            isSubscribed = false
         }
     }
     

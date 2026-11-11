@@ -127,7 +127,7 @@ class CurrentPlayViewModel: ObservableObject {
     
     // MARK: - Public Methods
     func getPodcast(for episode: Episode) -> Podcast? {
-        PodcastService.shared.loadPodcasts().first { $0.id == episode.podcastID }
+        AppModel.current?.podcasts.first { $0.id == episode.podcastID }?.asLegacyPodcast()
     }
     
     func downloadEpisode(_ episode: Episode) async {

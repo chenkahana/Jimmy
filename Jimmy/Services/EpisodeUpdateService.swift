@@ -5,24 +5,20 @@ import os.log
 final class EpisodeUpdateService {
     static let shared = EpisodeUpdateService()
     
-    private let podcastService: PodcastServiceProtocol
     private let podcastRepository: PodcastRepositoryProtocol
     private let episodeRepository: EpisodeRepositoryProtocol
-    
+
     private var reloadTasks: [UUID: Task<Void, Never>] = [:]
-    
+
     private init() {
         // Remove circular dependency by getting services from DIContainer
         self.podcastRepository = DIContainer.shared.podcastRepository
         self.episodeRepository = DIContainer.shared.episodeRepository
-        
-        // Get podcastService after DIContainer has initialized it
-        self.podcastService = DIContainer.shared.podcastService
     }
-    
+
     func reloadAll() async {
-        let podcasts = await podcastService.getSubscribedPodcasts()
-        
+        let podcasts = AppModel.current?.podcasts ?? []
+
         for podcast in podcasts {
             await reload(podcastID: podcast.id)
         }

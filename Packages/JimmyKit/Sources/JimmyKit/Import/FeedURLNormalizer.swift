@@ -5,9 +5,9 @@ import Foundation
 /// Two URLs are considered the same feed when they agree after: lowercasing the scheme
 /// and host, dropping a trailing slash from the path, and treating `feed://`, `itpc://`,
 /// and `pcast://` as `https://`.
-nonisolated enum FeedURLNormalizer {
+public nonisolated enum FeedURLNormalizer {
     /// `url` with a `feed://`, `itpc://` or `pcast://` scheme replaced by `https://`, so it can be fetched.
-    static func fetchableURL(for url: URL) -> URL {
+    public static func fetchableURL(for url: URL) -> URL {
         guard let scheme = url.scheme?.lowercased(), ["feed", "itpc", "pcast"].contains(scheme),
               var components = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return url }
         components.scheme = "https"

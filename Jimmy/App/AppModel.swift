@@ -44,6 +44,18 @@ final class AppModel {
     private(set) var queue: [JimmyKit.Episode] = []
     private var queueObservationTask: Task<Void, Never>?
 
+    /// The subscribed podcasts, kept current by `store.observePodcasts()` — see
+    /// `AppModel+Library.swift`. Empty (rather than stale) whenever `launchState` isn't `.ready`.
+    private(set) var podcasts: [JimmyKit.Podcast] = []
+    private var podcastsObservationTask: Task<Void, Never>?
+
+    /// The most recent `refreshAll()`/`refresh(_:)` failures, keyed by podcast id, for the
+    /// Library screen to show. A podcast absent from this dictionary either refreshed
+    /// successfully last time or hasn't been refreshed yet this launch. Written from
+    /// `AppModel+Library.swift`, so this can't be `private(set)` (that's file-scoped, not
+    /// type-scoped) — every other `AppModel+*.swift` extension can set it too, by convention only.
+    var lastRefreshErrors: [UUID: String] = [:]
+
     private let databasePath: String
     private let legacyInput: () -> LegacyInput?
 
@@ -67,11 +79,22 @@ final class AppModel {
     /// `JimmyApp.init()`.
     static weak var current: AppModel?
 
-    init(databasePath: String, legacyInput: @escaping () -> LegacyInput? = { nil }) {
+    /// Fetches feeds for `subscribe(feedURL:)`/`refreshAll()`/`refresh(_:)` — see
+    /// `AppModel+Library.swift`. Injectable so tests can pass one built on a stubbed
+    /// `URLSession` instead of hitting the network.
+    let feedFetcher: FeedFetcher
+
+    init(
+        databasePath: String,
+        legacyInput: @escaping () -> LegacyInput? = { nil },
+        feedFetcher: FeedFetcher = FeedFetcher()
+    ) {
         self.databasePath = databasePath
         self.legacyInput = legacyInput
+        self.feedFetcher = feedFetcher
         self.launchState = Self.open(databasePath: databasePath, legacyInput: legacyInput())
         startObservingQueueIfReady()
+        startObservingPodcastsIfReady()
         startObservingPlaybackIfReady()
     }
 
@@ -79,6 +102,7 @@ final class AppModel {
     func retry() {
         launchState = Self.open(databasePath: databasePath, legacyInput: legacyInput())
         startObservingQueueIfReady()
+        startObservingPodcastsIfReady()
         startObservingPlaybackIfReady()
     }
 
@@ -98,6 +122,25 @@ final class AppModel {
                 }
             } catch {
                 // The observation stopped (e.g. the store closed); the queue just stops updating.
+            }
+        }
+    }
+
+    private func startObservingPodcastsIfReady() {
+        podcastsObservationTask?.cancel()
+        podcastsObservationTask = nil
+        podcasts = []
+
+        guard case .ready(let ready) = launchState else { return }
+        let store = ready.store
+        podcastsObservationTask = Task { [weak self] in
+            do {
+                for try await podcasts in store.observePodcasts() {
+                    guard let self, !Task.isCancelled else { return }
+                    self.podcasts = podcasts
+                }
+            } catch {
+                // The observation stopped (e.g. the store closed); podcasts just stop updating.
             }
         }
     }
@@ -211,7 +254,9 @@ extension AppModel {
 // MARK: - Queue
 
 extension AppModel {
-    private var readyStore: Store? {
+    /// The one `Store`, or `nil` while `launchState` isn't `.ready`. Shared by every
+    /// `AppModel+*.swift` extension in this module (queue, library, ...).
+    var readyStore: Store? {
         guard case .ready(let ready) = launchState else { return nil }
         return ready.store
     }

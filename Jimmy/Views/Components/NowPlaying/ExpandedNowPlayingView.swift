@@ -327,6 +327,11 @@ struct ExpandedNowPlayingView: View {
         .frame(maxWidth: .infinity)
     }
 
+    private var isCurrentEpisodeDownloaded: Bool {
+        guard let localURL = viewModel.currentPlayingEpisode?.localFileURL else { return false }
+        return FileManager.default.fileExists(atPath: localURL.path)
+    }
+
     private var secondaryControlsCard: some View {
         JimmyCard {
             HStack(spacing: JimmyDesign.Spacing.xl) {
@@ -338,16 +343,16 @@ struct ExpandedNowPlayingView: View {
                     }
                 }) {
                     Image(systemName: viewModel.isDownloading ? "arrow.down.circle.fill" :
-                        (viewModel.currentPlayingEpisode.flatMap { PodcastService.shared.isEpisodeDownloaded($0) } ?? false) ? "checkmark.circle.fill" : "arrow.down.circle")
+                        isCurrentEpisodeDownloaded ? "checkmark.circle.fill" : "arrow.down.circle")
                         .font(.title3)
-                        .foregroundColor((viewModel.currentPlayingEpisode.flatMap { PodcastService.shared.isEpisodeDownloaded($0) } ?? false) ? .green : .primary)
+                        .foregroundColor(isCurrentEpisodeDownloaded ? .green : .primary)
                         .contentTransition(.symbolEffect(.replace.downUp))
                 }
                 .buttonStyle(.plain)
-                .disabled(viewModel.isDownloading || (viewModel.currentPlayingEpisode.flatMap { PodcastService.shared.isEpisodeDownloaded($0) } ?? false))
+                .disabled(viewModel.isDownloading || isCurrentEpisodeDownloaded)
                 .accessibilityLabel({
                     if viewModel.isDownloading { return "Downloading" }
-                    if viewModel.currentPlayingEpisode.flatMap({ PodcastService.shared.isEpisodeDownloaded($0) }) ?? false { return "Downloaded" }
+                    if isCurrentEpisodeDownloaded { return "Downloaded" }
                     return "Download episode"
                 }())
 
