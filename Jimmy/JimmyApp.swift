@@ -29,15 +29,25 @@ struct JimmyApp: App {
         // AppModel opens JimmyKit's Store before anything below touches DatabaseManager/
         // DIContainer, so its additive migrations (v18...v22) finish before the old app's own
         // DatabasePool opens the same `jimmy.db` file.
-        let databasePath = isRunningUnitTests ? AppModel.temporaryDatabasePath() : AppModel.defaultDatabasePath()
+        let isDemoLibrary = DemoLibrary.isRequested()
+        let databasePath = AppModel.launchDatabasePath(isRunningUnitTests: isRunningUnitTests)
         let model = AppModel(
             databasePath: databasePath,
-            legacyInput: isRunningUnitTests ? { nil } : { AppModel.legacyInputFromDisk() }
+            // Demo-library screenshots start from an empty store seeded over the network (see
+            // below), never from whatever legacy data happens to be on disk.
+            legacyInput: (isRunningUnitTests || isDemoLibrary) ? { nil } : { AppModel.legacyInputFromDisk() }
         )
         _appModel = State(initialValue: model)
         AppModel.current = model
 
         startOldServicesIfReady(model)
+
+        if isDemoLibrary {
+            Task {
+                await DemoLibrary.seed(into: model)
+                await DemoLibrary.navigateToScreenshotRouteIfRequested()
+            }
+        }
     }
 
     /// Everything `init()` used to do unconditionally — skipped while the store failed to open,
@@ -63,7 +73,9 @@ struct JimmyApp: App {
 
         // Restore whatever was last playing (paused) — after `applyInitialDarkModeSetting()`,
         // which is what first writes `SettingsViewModel`'s `autoRestoreLastEpisode` default.
-        if !isRunningUnitTests {
+        // Skipped for `-demoLibrary`: `DemoLibrary.seed(into:)` drives `model.playback` itself,
+        // and refreshing podcasts that were just subscribed to would only race it.
+        if !isRunningUnitTests && !DemoLibrary.isRequested() {
             Task { await model.restoreLastEpisodeIfEnabled() }
             Task { await model.refreshAll() }
         }
