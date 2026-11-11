@@ -130,6 +130,7 @@ struct ResolvedEpisodeDetailView: View {
     let cachedEpisode: EpisodeWithPlaybackState?
     let sourceID: String
     let namespace: Namespace.ID
+    @Environment(AppModel.self) private var appModel
 
     @State private var resolvedEpisode: EpisodeWithPlaybackState?
     @State private var isLoading = true
@@ -175,24 +176,26 @@ struct ResolvedEpisodeDetailView: View {
                 return
             }
 
-            do {
-                if let episode = try await DIContainer.shared.episodeRepository.fetchEpisode(by: episodeID) {
-                    await MainActor.run {
-                        resolvedEpisode = episode
-                        isLoading = false
-                    }
-                    return
-                }
-
+            guard let episode = await appModel.episode(id: episodeID) else {
                 await MainActor.run {
                     errorMessage = "This episode is no longer available in your library."
                     isLoading = false
                 }
-            } catch {
-                await MainActor.run {
-                    errorMessage = "Jimmy couldn’t load this episode right now."
-                    isLoading = false
-                }
+                return
+            }
+
+            let progress = await appModel.progress(for: episodeID)
+            let episodeWithState = EpisodeWithPlaybackState(
+                episode: episode.asLegacyEpisode(),
+                playbackState: PlaybackState(
+                    episodeID: episodeID,
+                    position: progress?.position ?? 0,
+                    finished: progress?.isFinished ?? false
+                )
+            )
+            await MainActor.run {
+                resolvedEpisode = episodeWithState
+                isLoading = false
             }
         }
     }

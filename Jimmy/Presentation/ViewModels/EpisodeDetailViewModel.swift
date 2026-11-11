@@ -20,16 +20,11 @@ class EpisodeDetailViewModel: ObservableObject {
     @Published var isInQueue: Bool = false
     
     // MARK: - Private Properties
-    private let cacheService: EpisodeCacheService
     private var cancellables = Set<AnyCancellable>()
 
     // MARK: - Initialization
-    init(
-        episode: Episode,
-        cacheService: EpisodeCacheService = .shared
-    ) {
+    init(episode: Episode) {
         self.episode = episode
-        self.cacheService = cacheService
 
         setupBindings()
         loadInitialData()
@@ -168,22 +163,16 @@ class EpisodeDetailViewModel: ObservableObject {
     }
     
     func markAsPlayed() async {
-        var updatedEpisode = episode
-        updatedEpisode.played = true
-        updatedEpisode.playbackPosition = updatedEpisode.duration ?? 0
-        
-        // Note: updateEpisode method doesn't exist
-        // Episodes are automatically updated when modified
+        await AppModel.current?.markPlayed(episode.id)
+        episode.played = true
+        episode.status.insert(.played)
         errorMessage = nil
     }
-    
+
     func markAsUnplayed() async {
-        var updatedEpisode = episode
-        updatedEpisode.played = false
-        updatedEpisode.playbackPosition = 0
-        
-        // Note: updateEpisode method doesn't exist  
-        // Episodes are automatically updated when modified
+        await AppModel.current?.markUnplayed(episode.id)
+        episode.played = false
+        episode.status.remove(.played)
         errorMessage = nil
     }
     

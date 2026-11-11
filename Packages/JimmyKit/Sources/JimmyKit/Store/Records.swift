@@ -184,6 +184,30 @@ extension Download: FetchableRecord, PersistableRecord {
     }
 }
 
+// MARK: - Bookmark (table: bookmarks)
+
+extension Bookmark: FetchableRecord, PersistableRecord {
+    public nonisolated static let databaseTableName = "bookmarks"
+
+    public nonisolated init(row: Row) throws {
+        self.init(
+            id: try StoredUUID.decode(row["id"], column: "id"),
+            episodeID: try StoredUUID.decode(row["episodeID"], column: "episodeID"),
+            timestamp: row["timestamp"],
+            note: row["note"] ?? "",
+            createdAt: row["createdAt"] ?? Date()
+        )
+    }
+
+    public nonisolated func encode(to container: inout PersistenceContainer) throws {
+        container["id"] = id.uuidString
+        container["episodeID"] = episodeID.uuidString
+        container["timestamp"] = timestamp
+        container["note"] = note
+        container["createdAt"] = createdAt
+    }
+}
+
 // MARK: - Playlist (table: playlists)
 
 extension PlaylistRule: DatabaseValueConvertible {}

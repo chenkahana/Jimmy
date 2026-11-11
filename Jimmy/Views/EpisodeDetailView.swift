@@ -3,6 +3,9 @@ import SwiftUI
 struct EpisodeDetailView: View {
     let episodeWithState: EpisodeWithPlaybackState
     @StateObject private var viewModel: EpisodeDetailViewModel
+    @StateObject private var chapterViewModel: ChapterViewModel
+    @StateObject private var transcriptViewModel: TranscriptViewModel
+    @StateObject private var bookmarkViewModel: BookmarkViewModel
     @Environment(AppModel.self) private var appModel
     @State private var showingShareSheet = false
     @State private var scrollOffset: CGFloat = 0
@@ -10,14 +13,17 @@ struct EpisodeDetailView: View {
     @State private var showingCopiedMessage = false
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    
+
     private let headerHeight: CGFloat = 400
-    
+
     init(episodeWithState: EpisodeWithPlaybackState) {
         self.episodeWithState = episodeWithState
         _viewModel = StateObject(wrappedValue: EpisodeDetailViewModel(
             episode: episodeWithState.episode
         ))
+        _chapterViewModel = StateObject(wrappedValue: ChapterViewModel(episodeID: episodeWithState.episode.id))
+        _transcriptViewModel = StateObject(wrappedValue: TranscriptViewModel(episodeID: episodeWithState.episode.id))
+        _bookmarkViewModel = StateObject(wrappedValue: BookmarkViewModel(episodeID: episodeWithState.episode.id))
     }
     
     var body: some View {
@@ -92,6 +98,10 @@ struct EpisodeDetailView: View {
                                         .animation(.easeInOut(duration: 0.4), value: gradientOpacity)
                                 }
                             )
+
+                        // Chapters, transcript, and bookmarks
+                        episodeDetailsSection
+                            .padding(.top, 16)
                     }
                     .tabBarSpacing() // Add proper bottom spacing for tab bar
                 }
@@ -364,6 +374,64 @@ struct EpisodeDetailView: View {
         .background(Color(.systemBackground))
     }
     
+    // MARK: - Chapters, Transcript, Bookmarks
+
+    private var episodeDetailsSection: some View {
+        VStack(alignment: .leading, spacing: 24) {
+            detailSubsection(title: "Chapters") {
+                ChapterListView(viewModel: chapterViewModel, onSeek: seek)
+            }
+            detailSubsection(title: "Transcript") {
+                TranscriptView(viewModel: transcriptViewModel, onSeek: seek)
+            }
+            detailSubsection(title: "Bookmarks", trailing: addBookmarkButton) {
+                BookmarkListView(viewModel: bookmarkViewModel, onSeek: seek)
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.bottom, 16)
+    }
+
+    private func detailSubsection<Content: View>(
+        title: String, trailing: (some View)? = EmptyView(), @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text(title)
+                    .font(.title3)
+                    .fontWeight(.bold)
+                    .foregroundColor(.primary)
+                Spacer()
+                trailing
+            }
+            content()
+        }
+    }
+
+    private var addBookmarkButton: some View {
+        Button {
+            Task {
+                guard appModel.playback?.currentEpisode?.id == episodeWithState.episode.id else { return }
+                await bookmarkViewModel.addBookmark(timestamp: appModel.playback?.position ?? 0)
+            }
+        } label: {
+            Image(systemName: "bookmark.fill")
+                .font(.system(size: 16, weight: .medium))
+                .foregroundColor(.accentColor)
+        }
+        .disabled(appModel.playback?.currentEpisode?.id != episodeWithState.episode.id)
+    }
+
+    /// Seeks to `timestamp`, loading this episode first if it isn't already the one playing.
+    private func seek(to timestamp: TimeInterval) {
+        Task {
+            if appModel.playback?.currentEpisode?.id != episodeWithState.episode.id {
+                await appModel.play(episodeWithState.episode.asPlaybackEpisode())
+            }
+            await appModel.playback?.seek(to: timestamp)
+        }
+    }
+
     private func floatingNavigationBar(geometry: GeometryProxy) -> some View {
         VStack {
             HStack {

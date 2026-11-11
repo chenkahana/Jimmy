@@ -4,7 +4,10 @@ import Combine
 import Observation
 import os
 
-/// ViewModel that tracks chapters and determines the current chapter based on playback position
+/// ViewModel that tracks chapters and determines the current chapter based on playback position.
+/// Read and written through `AppModel`/`Store` directly; fetching the Podcasting 2.0 JSON
+/// Chapters file from its URL is this view model's own job — the store only persists the
+/// already-parsed result.
 @MainActor
 class ChapterViewModel: ObservableObject {
     private static let logger = Logger(subsystem: "com.chenkahana.Jimmy", category: "ChapterViewModel")
@@ -12,7 +15,6 @@ class ChapterViewModel: ObservableObject {
     @Published var currentChapter: Chapter?
     @Published var isLoading = false
 
-    private let chapterService = ChapterService.shared
     private let episodeID: UUID
 
     init(episodeID: UUID) {
@@ -23,18 +25,19 @@ class ChapterViewModel: ObservableObject {
 
     func loadChapters() async {
         isLoading = true
-        chapters = await chapterService.loadChapters(for: episodeID)
+        chapters = await AppModel.current?.chapters(for: episodeID) ?? []
         updateCurrentChapter(for: AppModel.current?.playback?.position ?? 0)
         isLoading = false
     }
 
-    /// Fetch chapters from a remote URL and save to DB
+    /// Fetch chapters from a remote Podcasting 2.0 JSON Chapters URL and save to the store.
     func fetchAndSaveChapters(from url: URL) async {
         isLoading = true
         do {
-            let fetched = try await chapterService.fetchChapters(from: url)
-            try await chapterService.saveChapters(fetched, for: episodeID)
-            chapters = fetched
+            let (data, _) = try await URLSession.shared.data(from: url)
+            let response = try JSONDecoder().decode(ChaptersResponse.self, from: data)
+            await AppModel.current?.saveChapters(response.chapters, for: episodeID)
+            chapters = response.chapters
             updateCurrentChapter(for: AppModel.current?.playback?.position ?? 0)
         } catch {
             Self.logger.error("Failed to fetch chapters: \(error)")
@@ -55,12 +58,17 @@ class ChapterViewModel: ObservableObject {
     }
 
     private func updateCurrentChapter(for position: TimeInterval) {
-        // Find the chapter that contains the current position
         let chapter = chapters.last { chapter in
-            position >= chapter.startTime
+            position >= chapter.start
         }
-        if chapter?.startTime != currentChapter?.startTime {
+        if chapter?.start != currentChapter?.start {
             currentChapter = chapter
         }
     }
+}
+
+/// Container for the Podcasting 2.0 JSON Chapters format.
+private struct ChaptersResponse: Codable {
+    let version: String?
+    let chapters: [Chapter]
 }

@@ -1,14 +1,12 @@
 import SwiftUI
+import JimmyKit
 
-/// Tappable list of bookmarks for a single episode. Tap seeks to timestamp.
+/// Tappable list of bookmarks for a single episode. Tap seeks to timestamp. `viewModel` is owned
+/// by the caller (e.g. `EpisodeDetailView`), which also needs it to add a bookmark at the current
+/// playback position.
 struct BookmarkListView: View {
-    @StateObject private var viewModel: BookmarkViewModel
+    @ObservedObject var viewModel: BookmarkViewModel
     let onSeek: (TimeInterval) -> Void
-
-    init(episodeID: UUID, onSeek: @escaping (TimeInterval) -> Void) {
-        self._viewModel = StateObject(wrappedValue: BookmarkViewModel(episodeID: episodeID))
-        self.onSeek = onSeek
-    }
 
     var body: some View {
         Group {

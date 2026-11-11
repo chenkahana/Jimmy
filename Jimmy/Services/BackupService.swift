@@ -1,5 +1,6 @@
 import Foundation
 import GRDB
+import JimmyKit
 
 /// Actor that exports/imports all data as versioned JSON for backup and restore
 actor BackupService {

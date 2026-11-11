@@ -591,14 +591,6 @@ struct PreviewEpisodeListView: View {
     }
 }
 
-// Scroll offset key to monitor the vertical position of the large header.
-private struct PodcastHeaderOffsetKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
-    }
-}
-
 struct PodcastDetailView: View {
     private let logger = Logger(subsystem: "com.chenkahana.Jimmy", category: "PodcastDetailView")
     let podcast: Podcast
@@ -622,51 +614,7 @@ struct PodcastDetailView: View {
     @State private var sortOrder: PodcastDetailViewModel.EpisodeSortOrder = .newestFirst
     
     private let headerHeight: CGFloat = 400
-    
-    /// Convert EpisodeWithPlaybackState to EpisodeWithStatus for EpisodeCard
-    private func convertToEpisodeWithStatus(_ episodeWithState: EpisodeWithPlaybackState) -> EpisodeWithStatus {
-        let progressCache = DIContainer.shared.progressCacheStore
-        
-        // Calculate play progress - use real-time cache first, then fallback
-        let playProgress: Double
-        
-        // CRITICAL FIX: Update progress cache with episode duration FIRST
-        if episodeWithState.episode.duration != nil && episodeWithState.episode.duration! > 0 {
-            progressCache.updateProgressPercentage(for: episodeWithState.episode.id, duration: episodeWithState.episode.duration!)
-        }
-        
-        // CRITICAL FIX: Check if episode exists in cache (including 0% progress)
-        // Don't use > 0 check because 0% is valid progress
-        if progressCache.hasProgress(for: episodeWithState.episode.id) {
-            // Episode is in cache - use cached value (could be 0% or any value)
-            playProgress = progressCache.getProgressPercentage(for: episodeWithState.episode.id)
-        } else {
-            // Episode not in cache - fallback to episode's stored position
-            playProgress = episodeWithState.episode.duration != nil && episodeWithState.episode.duration! > 0 
-                ? episodeWithState.episode.playbackPosition / episodeWithState.episode.duration! 
-                : 0.0
-        }
-        
-        // Determine status using the derivation rules
-        let isCurrentlyPlaying = appModel.playback?.currentEpisode?.id == episodeWithState.episode.id
-        let isQueued = AppModel.current?.isQueued(episodeWithState.episode.id) ?? false
-        
-        let status = EpisodeWithStatus.deriveStatus(
-            episode: episodeWithState.episode,
-            playProgress: playProgress,
-            isQueued: isQueued,
-            isCurrentlyPlaying: isCurrentlyPlaying
-        )
-        
-        return EpisodeWithStatus(
-            episode: episodeWithState.episode,
-            podcastTitle: podcast.title,
-            playProgress: playProgress,
-            status: status,
-            podcastArtworkURL: podcast.artworkURL
-        )
-    }
-    
+
     var body: some View {
         GeometryReader { geometry in
             ZStack(alignment: .top) {
@@ -889,10 +837,6 @@ struct PodcastDetailView: View {
         .onAppear {
             // Subscription state is read directly from `appModel.podcasts` above.
         }
-        .onReceive(DIContainer.shared.progressCacheStore.$progressPercentageMap) { _ in
-            // Trigger UI refresh when progress updates
-            // SwiftUI will automatically re-render episode cards with new progress
-        }
     }
     
     // MARK: - Episodes Content
@@ -939,8 +883,8 @@ struct PodcastDetailView: View {
             .padding(.horizontal, 20)
             .padding(.bottom, 12)
             
-            // Episodes list - Always use SimpleStreaming for reliability
-            DatabaseEpisodeListView(
+            // Episodes list, read straight from `AppModel`'s `Store`.
+            PodcastEpisodeListView(
                 podcastID: podcast.id,
                 podcastTitle: podcast.title,
                 podcastArtworkURL: podcast.artworkURL,
@@ -951,80 +895,11 @@ struct PodcastDetailView: View {
                     selectedEpisode = episodeWithState
                 }
             )
-            .onAppear {
-                // Episodes loading handled by DatabaseEpisodeListView
-            }
             .clipped() // Prevent overflow
         }
         .background(Color(.systemBackground))
     }
-    
-    // MARK: - Floating Navigation Bar
-    private var floatingNavigationBar: some View {
-        GeometryReader { geometry in
-            VStack {
-                HStack {
-                    Button(action: {
-                        dismiss()
-                    }) {
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: 18, weight: .medium))
-                            .foregroundColor(.primary)
-                            .frame(width: 40, height: 40)
-                            .background(
-                                Circle()
-                                    .fill(.ultraThinMaterial)
-                                    .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
-                            )
-                    }
-                    .offset(y: 75) // Adjusted for artwork offset
-                    
-                    Spacer()
-                    
-                    Menu {
-                        // Filter options
-                        Menu("Filter Episodes") {
-                            Button(action: { filterOption = .all }) {
-                                Label("All Episodes", systemImage: filterOption == .all ? "checkmark" : "")
-                            }
-                            Button(action: { filterOption = .unplayed }) {
-                                Label("Unplayed", systemImage: filterOption == .unplayed ? "checkmark" : "")
-                            }
-                            Button(action: { filterOption = .played }) {
-                                Label("Played", systemImage: filterOption == .played ? "checkmark" : "")
-                            }
-                        }
-                        
-                        // Sort options
-                        Menu("Sort Episodes") {
-                            Button(action: { sortOrder = .newestFirst }) {
-                                Label("Newest First", systemImage: sortOrder == .newestFirst ? "checkmark" : "")
-                            }
-                            Button(action: { sortOrder = .oldestFirst }) {
-                                Label("Oldest First", systemImage: sortOrder == .oldestFirst ? "checkmark" : "")
-                            }
-                        }
-                    } label: {
-                        Image(systemName: "ellipsis")
-                            .font(.system(size: 18, weight: .medium))
-                            .foregroundColor(.primary)
-                            .frame(width: 40, height: 40)
-                            .background(
-                                Circle()
-                                    .fill(.ultraThinMaterial)
-                                    .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
-                            )
-                    }
-                    .offset(y: 75) // Adjusted for artwork offset
-                }
-                .padding(.horizontal, 20)
-                .padding(.top, geometry.safeAreaInsets.top + 30) // Position lower below status bar
-                
-                Spacer()
-            }
-        }
-    }
-    
+
     // MARK: - Helper Functions
     
     // MARK: - Subscription Management
@@ -1053,45 +928,6 @@ struct PodcastDetailView: View {
         }
     }
     
-    /// Clean up legacy data sources to prevent podcast from being re-imported
-    private func cleanupLegacyDataSources(for podcast: Podcast) async {
-        // 1. Clean up UserDefaults legacy data
-        let userDefaults = UserDefaults.standard
-        if let data = userDefaults.data(forKey: "saved_podcasts") {
-            do {
-                var podcasts = try JSONDecoder().decode([Podcast].self, from: data)
-                // Remove the unsubscribed podcast
-                podcasts.removeAll { $0.feedURL == podcast.feedURL || $0.id == podcast.id }
-                
-                // Save the updated list back to UserDefaults
-                let updatedData = try JSONEncoder().encode(podcasts)
-                userDefaults.set(updatedData, forKey: "saved_podcasts")
-                logger.info("Cleaned up UserDefaults legacy data for \(podcast.title)")
-            } catch {
-                logger.warning("Failed to clean up UserDefaults legacy data: \(error)")
-            }
-        }
-        
-        // 2. Clean up FileStorage UserData
-        let userDataService = UserDataService.shared
-        if var userData = userDataService.load(for: "default") {
-            // Remove the unsubscribed podcast from subscriptions
-            userData.subscriptions.removeAll { $0.feedURL == podcast.feedURL }
-            userDataService.save(userData, for: "default")
-            logger.info("Cleaned up FileStorage UserData for \(podcast.title)")
-        }
-        
-        // 3. Clean up podcasts.json file
-        let fileStorage = FileStorage.shared
-        if fileStorage.exists("podcasts.json") {
-            if var podcasts = fileStorage.load([Podcast].self, from: "podcasts.json") {
-                // Remove the unsubscribed podcast
-                podcasts.removeAll { $0.feedURL == podcast.feedURL || $0.id == podcast.id }
-                _ = fileStorage.save(podcasts, to: "podcasts.json")
-                logger.info("Cleaned up podcasts.json for \(podcast.title)")
-            }
-        }
-    }
 }
 
 // MARK: - Scroll Offset Preference Key

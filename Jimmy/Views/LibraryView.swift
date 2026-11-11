@@ -15,8 +15,9 @@ struct LibraryView: View {
     @State private var isEditMode: Bool = false
     @State private var isAddingSamplePodcasts = false
 
-    @State private var allEpisodes: [Jimmy.Episode] = []
+    @State private var allEpisodeItems: [JimmyKit.EpisodeListItem] = []
     @State private var isLoadingEpisodes = false
+    @State private var episodesObservationTask: Task<Void, Never>?
 
     @State private var selectedDestination: LibraryNavigationDestination?
     @Namespace private var libraryNamespace
@@ -24,7 +25,6 @@ struct LibraryView: View {
     // Unsubscribe confirmation
     @State private var podcastToUnsubscribe: Podcast?
     @State private var showUnsubscribeAlert = false
-    @State private var viewRefreshTrigger = false // Force SwiftUI to refresh computed properties
 
     // Grid layout state
     @State private var gridColumns: [GridItem] = [
@@ -102,9 +102,9 @@ struct LibraryView: View {
             }
         }
         .onAppear {
+            startObservingEpisodesIfNeeded()
             Task {
                 await handlePendingContentRouteIfNeeded()
-                await loadAllEpisodesIfNeeded()
                 await validateAndPreloadArtwork()
             }
         }
@@ -114,9 +114,6 @@ struct LibraryView: View {
         .onChange(of: shell.tabSelectionEventID) { _, _ in
             guard shell.selectedTab == .library, shell.pendingContentRoute == nil else { return }
             selectedDestination = nil
-        }
-        .onReceive(DIContainer.shared.progressCacheStore.$progressPercentageMap) { _ in
-            viewRefreshTrigger.toggle()
         }
         .refreshable {
             await refreshLibrary()
@@ -171,6 +168,13 @@ struct LibraryView: View {
     /// "Add sample podcasts" empty-library bug: there's no separate cache to refresh.
     private var jimmyKitPodcasts: [JimmyKit.Podcast] { appModel.podcasts }
 
+    /// `allEpisodeItems` converted to the legacy `Jimmy.Episode` model (with progress/played/queue
+    /// state baked in), for the view code below that still renders the old `EpisodeCard`/
+    /// `EpisodeWithStatus`.
+    private var allEpisodes: [Jimmy.Episode] {
+        allEpisodeItems.map { $0.asLegacyEpisode() }
+    }
+
     private var filteredPodcasts: [Podcast] {
         let podcasts = jimmyKitPodcasts.map { $0.asLegacyPodcast() }
         guard !searchText.isEmpty else { return podcasts }
@@ -183,7 +187,7 @@ struct LibraryView: View {
     private func unsubscribe(_ podcast: Podcast) async {
         await appModel.unsubscribe(podcast.id)
         await MainActor.run {
-            allEpisodes.removeAll { $0.podcastID == podcast.id }
+            allEpisodeItems.removeAll { $0.episode.podcastID == podcast.id }
             subscriptionViewModel.toastMessage = "Unsubscribed"
             subscriptionViewModel.showToast = true
             DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
@@ -196,38 +200,34 @@ struct LibraryView: View {
         for podcast in jimmyKitPodcasts {
             await appModel.unsubscribe(podcast.id)
         }
-        await MainActor.run { allEpisodes = [] }
+        await MainActor.run { allEpisodeItems = [] }
     }
 
     private func refreshLibrary() async {
+        // `apply`'s writes land in the store, which `episodesObservationTask` is already
+        // subscribed to — no separate reload needed once this returns.
         await appModel.refreshAll()
-        await loadAllEpisodes()
     }
 
-    private func loadAllEpisodesIfNeeded() async {
-        if allEpisodes.isEmpty {
-            await loadAllEpisodes()
-        }
-    }
+    /// Subscribes once to every episode across the whole library (joined with progress, queue
+    /// membership, and download state), for the "Episodes" view mode — re-emitted live as any of
+    /// that changes, straight from `AppModel`'s `Store`.
+    private func startObservingEpisodesIfNeeded() {
+        guard episodesObservationTask == nil else { return }
+        guard let stream = appModel.observeEpisodes(podcastID: nil) else { return }
 
-    /// Loads every episode across the whole library, for the "Episodes" view mode. Episode rows
-    /// (progress, played state, title, artwork) still come from the legacy episode repository —
-    /// PR 18 moves podcast detail and episode rows onto `JimmyKit` directly.
-    private func loadAllEpisodes() async {
         isLoadingEpisodes = true
-        defer { isLoadingEpisodes = false }
-
-        let episodeRepository = DIContainer.shared.episodeRepository
-        var loaded: [Jimmy.Episode] = []
-        for podcast in jimmyKitPodcasts {
+        episodesObservationTask = Task {
             do {
-                let episodesWithState = try await episodeRepository.fetchEpisodes(for: podcast.id, ignoreCache: false)
-                loaded.append(contentsOf: episodesWithState.map { $0.episode })
+                for try await items in stream {
+                    allEpisodeItems = items
+                    isLoadingEpisodes = false
+                }
             } catch {
-                logger.error("LibraryView: Failed to load episodes for podcast \(podcast.title): \(error)")
+                logger.error("LibraryView: observeEpisodes stopped: \(error)")
+                isLoadingEpisodes = false
             }
         }
-        allEpisodes = loaded.sorted { ($0.publishedDate ?? .distantPast) > ($1.publishedDate ?? .distantPast) }
     }
 
     // MARK: - Toast View
@@ -591,46 +591,42 @@ struct LibraryView: View {
     }
 
     private var recentEpisodesWithState: [EpisodeWithPlaybackState] {
-        Array(allEpisodes.prefix(100)).map { episode in
+        Array(allEpisodeItems.prefix(100)).map { item in
             EpisodeWithPlaybackState(
-                episode: episode,
-                playbackState: PlaybackState(episodeID: episode.id, position: 0, finished: false, updatedAt: Date())
+                episode: item.asLegacyEpisode(),
+                playbackState: PlaybackState(
+                    episodeID: item.episode.id,
+                    position: item.progress?.position ?? 0,
+                    finished: item.progress?.isFinished ?? false,
+                    updatedAt: Date()
+                )
             )
         }
     }
 
     private var recentEpisodesWithStatus: [EpisodeWithStatus] {
-        _ = viewRefreshTrigger
-
-        let recentEpisodes = Array(allEpisodes.prefix(100))
+        let recentItems = Array(allEpisodeItems.prefix(100))
         let playback = appModel.playback
-        let progressCache = DIContainer.shared.progressCacheStore
 
-        return recentEpisodes.map { episode in
+        return recentItems.map { item in
+            let episode = item.asLegacyEpisode()
             let podcast = jimmyKitPodcasts.first { $0.id == episode.podcastID }
             let podcastTitle = podcast?.title ?? "Unknown Podcast"
 
-            if let duration = episode.duration, duration > 0 {
-                progressCache.updateProgressPercentage(for: episode.id, duration: duration)
-            }
-            let cachedProgressPercentage = progressCache.getProgressPercentage(for: episode.id)
-
+            let duration = item.progress?.duration ?? episode.duration
             let playProgress: Double
-            if progressCache.hasProgress(for: episode.id) {
-                playProgress = cachedProgressPercentage
-            } else if let duration = episode.duration, duration > 0 {
-                playProgress = episode.playbackPosition / duration
+            if let duration, duration > 0 {
+                playProgress = (item.progress?.position ?? 0) / duration
             } else {
                 playProgress = 0.0
             }
 
             let isCurrentlyPlaying = (playback?.isPlaying ?? false) && playback?.currentEpisode?.id == episode.id
-            let isQueued = appModel.isQueued(episode.id)
 
             let status = EpisodeWithStatus.deriveStatus(
                 episode: episode,
                 playProgress: playProgress,
-                isQueued: isQueued,
+                isQueued: item.isQueued,
                 isCurrentlyPlaying: isCurrentlyPlaying
             )
 
@@ -741,15 +737,10 @@ struct LibraryView: View {
 
     private func toggleFinished(_ episode: Jimmy.Episode) {
         Task {
-            let episodeWithStatus = try? await EpisodeService.shared.getEpisodeWithStatus(episode)
-            let actualEpisode = episodeWithStatus ?? episode
-            let isCurrentlyPlayed = actualEpisode.status.contains(.played)
-            if isCurrentlyPlayed {
-                var newStatus = actualEpisode.status
-                newStatus.remove(.played)
-                EpisodeService.shared.updateEpisodeStatus(actualEpisode, status: newStatus)
+            if episode.status.contains(.played) {
+                await appModel.markUnplayed(episode.id)
             } else {
-                EpisodeService.shared.setEpisodePlayed(actualEpisode)
+                await appModel.markPlayed(episode.id)
             }
         }
     }
@@ -810,8 +801,8 @@ struct LibraryView: View {
                 group.addTask { _ = try? await appModel.subscribe(feedURL: feedURL) }
             }
         }
-
-        await loadAllEpisodes()
+        // `episodesObservationTask` (started in `.onAppear`) picks up the newly-subscribed
+        // podcasts' episodes on its own — no separate reload needed.
     }
 }
 

@@ -310,13 +310,10 @@ struct QueueView: View {
                 Task {
                     // Toggle finished state using the episode from queue
                     let isCurrentlyPlayed = episode.status.contains(.played)
-
                     if isCurrentlyPlayed {
-                        var newStatus = episode.status
-                        newStatus.remove(.played)
-                        EpisodeService.shared.updateEpisodeStatus(episode, status: newStatus)
+                        await appModel.markUnplayed(episode.id)
                     } else {
-                        EpisodeService.shared.setEpisodePlayed(episode)
+                        await appModel.markPlayed(episode.id)
                     }
                 }
             }

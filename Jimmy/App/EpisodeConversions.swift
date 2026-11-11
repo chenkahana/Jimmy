@@ -26,6 +26,23 @@ extension JimmyKit.Episode {
     }
 }
 
+extension JimmyKit.EpisodeListItem {
+    /// Converts to the old `Jimmy.Episode` model, with progress, played state, and queue
+    /// membership baked in from `progress`/`isQueued` — unlike `JimmyKit.Episode.asLegacyEpisode()`,
+    /// which leaves those fields at their defaults since a bare `JimmyKit.Episode` doesn't carry
+    /// them. Used to feed `EpisodeWithStatus`/`EpisodeCard`, which still render the old model.
+    func asLegacyEpisode() -> Jimmy.Episode {
+        var legacy = episode.asLegacyEpisode()
+        legacy.playbackPosition = progress?.position ?? 0
+        legacy.played = progress?.isFinished ?? false
+        var status: EpisodeStatus = []
+        if progress?.isFinished == true { status.insert(.played) }
+        if isQueued { status.insert(.queued) }
+        legacy.status = status
+        return legacy
+    }
+}
+
 extension Jimmy.Episode {
     /// Converts to the `JimmyKit.Episode` that `Playback.load` needs to play this episode.
     func asPlaybackEpisode() -> JimmyKit.Episode {
