@@ -160,8 +160,6 @@ final class NetworkDiagnosticService {
     func analyzeError(_ error: Error) -> ErrorDiagnostic {
         if let urlError = error as? URLError {
             return analyzeURLError(urlError)
-        } else if let streamingError = error as? StreamingRSSError {
-            return analyzeStreamingError(streamingError)
         } else {
             return ErrorDiagnostic(
                 category: .unknown,
@@ -216,33 +214,6 @@ final class NetworkDiagnosticService {
         }
     }
     
-    private func analyzeStreamingError(_ error: StreamingRSSError) -> ErrorDiagnostic {
-        switch error {
-        case .networkConnectivityIssue(let urlError):
-            return analyzeURLError(urlError)
-        case .timeout:
-            return ErrorDiagnostic(
-                category: .timeout,
-                description: "Streaming request timed out",
-                isRetryable: true,
-                suggestedAction: "Try again with a stable network connection"
-            )
-        case .httpError(let code):
-            return ErrorDiagnostic(
-                category: .httpError,
-                description: "HTTP error: \(code)",
-                isRetryable: code >= 500,
-                suggestedAction: code >= 500 ? "Server error, try again later" : "Check the RSS feed URL"
-            )
-        default:
-            return ErrorDiagnostic(
-                category: .parsingError,
-                description: error.localizedDescription,
-                isRetryable: false,
-                suggestedAction: "Check if the RSS feed is valid"
-            )
-        }
-    }
 }
 
 // MARK: - Supporting Types

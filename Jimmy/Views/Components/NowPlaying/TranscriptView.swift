@@ -1,4 +1,5 @@
 import SwiftUI
+import JimmyKit
 
 /// Auto-scrolling transcript view with search and tap-to-seek
 struct TranscriptView: View {
@@ -38,7 +39,7 @@ struct TranscriptView: View {
                 ScrollViewReader { proxy in
                     ScrollView {
                         LazyVStack(alignment: .leading, spacing: 4) {
-                            ForEach(viewModel.filteredSegments) { segment in
+                            ForEach(viewModel.filteredSegments, id: \.startTime) { segment in
                                 TranscriptSegmentRow(
                                     segment: segment,
                                     isCurrent: viewModel.currentSegment?.startTime == segment.startTime,

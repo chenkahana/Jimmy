@@ -1,4 +1,5 @@
 import SwiftUI
+import JimmyKit
 
 /// Scrollable chapter list with current chapter highlighted. Tap to seek.
 struct ChapterListView: View {
@@ -24,13 +25,13 @@ struct ChapterListView: View {
                     ForEach(viewModel.chapters) { chapter in
                         ChapterRow(
                             chapter: chapter,
-                            isCurrent: viewModel.currentChapter?.startTime == chapter.startTime,
-                            onTap: { onSeek(chapter.startTime) }
+                            isCurrent: viewModel.currentChapter?.start == chapter.start,
+                            onTap: { onSeek(chapter.start) }
                         )
-                        .id(chapter.startTime)
+                        .id(chapter.start)
                     }
                 }
-                .onChange(of: viewModel.currentChapter?.startTime) { newStart in
+                .onChange(of: viewModel.currentChapter?.start) { newStart in
                     if let start = newStart {
                         withAnimation {
                             proxy.scrollTo(start, anchor: .center)
@@ -61,7 +62,7 @@ struct ChapterRow: View {
                         .foregroundColor(isCurrent ? .accentColor : .primary)
                         .lineLimit(2)
 
-                    Text(formatTimestamp(chapter.startTime))
+                    Text(formatTimestamp(chapter.start))
                         .font(.system(.caption, design: .monospaced))
                         .foregroundColor(.secondary)
                 }

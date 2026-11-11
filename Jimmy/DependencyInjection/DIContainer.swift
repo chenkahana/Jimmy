@@ -45,9 +45,6 @@ final class DIContainer {
         dbManager: databaseManager,
         cacheStore: memoryCacheStore
     )
-    
-    // MARK: - Download Manager
-    lazy var downloadManager = DownloadManager.shared
 
     private init() {}
 } 
