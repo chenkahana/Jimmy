@@ -103,7 +103,7 @@ struct SubscribeTool: FoundationModels.Tool {
             return "I couldn't find \"\(arguments.show)\" on Apple Podcasts."
         }
         do {
-            try await actions.subscribe(feedURL: match.feedURL)
+            _ = try await actions.subscribe(feedURL: match.feedURL)
             return "Subscribed to \(match.title)."
         } catch {
             return "I couldn't subscribe to \(match.title): \(error.localizedDescription)"

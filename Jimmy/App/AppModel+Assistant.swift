@@ -5,9 +5,7 @@ import JimmyKit
 /// (`Jimmy/Assistant/AssistantTools.swift`). Kept in its own extension so tests can fake
 /// `AssistantActions` instead of spinning up a real `AppModel`/`Store`/network call.
 ///
-/// `subscribe`/`unsubscribe` go through the legacy `PodcastService` — PR 17 adds JimmyKit's
-/// library API (`podcasts`, `subscribe(feedURL:)`, `unsubscribe(_:)`, `refreshAll()`) to `AppModel`
-/// in `AppModel+Library.swift`; once that lands, these two bodies become one-line forwards to it.
+/// `subscribe(feedURL:)` and `unsubscribe(_:)` are `AppModel`'s own library API (`AppModel+Library.swift`).
 extension AppModel: AssistantActions {
     private var assistantStore: Store? {
         guard case .ready(let ready) = launchState else { return nil }
@@ -53,16 +51,6 @@ extension AppModel: AssistantActions {
         await iTunesSearchService.shared.searchPodcasts(query: query).map {
             AssistantPodcastResult(title: $0.title, author: $0.author, feedURL: $0.feedURL)
         }
-    }
-
-    // PR 17 replaces this with a forward to JimmyKit's `AppModel.subscribe(feedURL:)`.
-    func subscribe(feedURL: URL) async throws {
-        _ = try await PodcastService.shared.addPodcast(from: feedURL)
-    }
-
-    // PR 17 replaces this with a forward to JimmyKit's `AppModel.unsubscribe(_:)`.
-    func unsubscribe(_ podcastID: UUID) async throws {
-        try await PodcastService.shared.removePodcast(id: podcastID)
     }
 
     func setSleepTimer(minutes: Int?) {

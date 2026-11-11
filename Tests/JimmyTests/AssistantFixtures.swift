@@ -12,7 +12,6 @@ final class FakeAssistantActions: AssistantActions {
     var queueToReturn: [JimmyKit.Episode] = []
     var nowPlayingToReturn: JimmyKit.Episode?
     var subscribeError: Error?
-    var unsubscribeError: Error?
 
     private(set) var playedEpisodes: [JimmyKit.Episode] = []
     private(set) var queuedEpisodes: [(episode: JimmyKit.Episode, playNext: Bool)] = []
@@ -40,13 +39,13 @@ final class FakeAssistantActions: AssistantActions {
     func nowPlayingEpisode() -> JimmyKit.Episode? { nowPlayingToReturn }
     func searchApplePodcasts(query: String) async -> [AssistantPodcastResult] { searchResultsToReturn }
 
-    func subscribe(feedURL: URL) async throws {
+    func subscribe(feedURL: URL) async throws -> JimmyKit.Podcast {
         if let subscribeError { throw subscribeError }
         subscribedFeedURLs.append(feedURL)
+        return JimmyKit.Podcast(title: "Subscribed", cleanTitle: "Subscribed", author: "", feedURL: feedURL)
     }
 
-    func unsubscribe(_ podcastID: UUID) async throws {
-        if let unsubscribeError { throw unsubscribeError }
+    func unsubscribe(_ podcastID: UUID) async {
         unsubscribedPodcastIDs.append(podcastID)
     }
 

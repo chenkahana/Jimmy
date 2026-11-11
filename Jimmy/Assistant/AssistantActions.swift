@@ -29,9 +29,9 @@ protocol AssistantActions: AnyObject, Sendable {
     /// Apple Podcasts search (title/author/feed), for the `search` and `subscribe` tools.
     func searchApplePodcasts(query: String) async -> [AssistantPodcastResult]
     /// Subscribes to `feedURL`.
-    func subscribe(feedURL: URL) async throws
+    func subscribe(feedURL: URL) async throws -> JimmyKit.Podcast
     /// Unsubscribes from `podcastID`. Only ever called after the user has confirmed.
-    func unsubscribe(_ podcastID: UUID) async throws
+    func unsubscribe(_ podcastID: UUID) async
 
     /// Starts the sleep timer for `minutes` minutes, or — when `minutes` is `nil` — at the end of
     /// the current episode.

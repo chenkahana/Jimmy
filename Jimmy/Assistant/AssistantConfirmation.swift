@@ -45,7 +45,7 @@ final class AssistantConfirmationBroker: Sendable {
         case .clearQueue:
             await actions.clearQueue()
         case .unsubscribe(let podcastID, _):
-            try? await actions.unsubscribe(podcastID)
+            await actions.unsubscribe(podcastID)
         }
         pending = nil
     }
