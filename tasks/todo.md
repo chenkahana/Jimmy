@@ -33,7 +33,7 @@ Lanes in the same wave run in parallel, each in its own worktree under `~/.workt
 - [ ] 20. Settings and Import (S)
 - [ ] 21. CarPlay (S)
 - [ ] 23. Apple Watch app (S, parallel lane after 16)
-- [ ] 24. AI chat that acts (S, parallel lane after 14)
+- [x] 24. AI chat that acts (S, parallel lane after 14)
 - [ ] 25. AI suggestions (S, after 24)
 
 ## Wave D: finish and go public
