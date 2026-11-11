@@ -63,6 +63,29 @@ struct DownloadsTests {
         #expect(downloads.fileURL(for: episode.id) == fileURL)
     }
 
+    // MARK: - Files from builds before download records
+
+    @Test func adoptsADownloadFileThatHasNoRecord() async throws {
+        let store = FakeDownloadRecords([])
+        let baseDirectory = makeTempDirectory()
+        let episodeID = UUID()
+        let folder = baseDirectory.appendingPathComponent("Downloads", isDirectory: true)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let file = folder.appendingPathComponent("\(episodeID.uuidString).mp3")
+        try Data(repeating: 0x1, count: 512).write(to: file)
+        try Data("x".utf8).write(to: folder.appendingPathComponent("notes.txt"))
+
+        let downloads = Downloads(store: store, baseDirectory: baseDirectory, sessionConfiguration: stubbedConfiguration())
+        await downloads.pendingWritesFinished()
+
+        #expect(downloads.states[episodeID] == .done)
+        #expect(downloads.fileURL(for: episodeID) == file)
+        let record = await store.record(for: episodeID)
+        #expect(record?.state == .done)
+        #expect(record?.byteCount == 512)
+        #expect(await store.all().count == 1)
+    }
+
     // MARK: - Failure
 
     @Test func failedDownloadRecordsFailedState() async {

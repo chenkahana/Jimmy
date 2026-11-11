@@ -21,7 +21,7 @@ struct CachedAsyncImage<Content: View, Placeholder: View>: View {
     @State private var isLoading: Bool = false
     @State private var retryCount: Int = 0
     @State private var hasFailedToLoad: Bool = false
-    @ObservedObject private var imageCache = ImageCache.shared
+    @ObservedObject private var imageCache = BulletproofImageCache.shared
     
     private let maxRetries = 3
     private let retryDelay: TimeInterval = 1.0
@@ -185,7 +185,7 @@ struct CachedAsyncImagePhase<Content: View>: View {
     
     @State private var phase: AsyncImagePhase = .empty
     @State private var retryCount: Int = 0
-    @ObservedObject private var imageCache = ImageCache.shared
+    @ObservedObject private var imageCache = BulletproofImageCache.shared
     
     private let maxRetries = 3
     private let retryDelay: TimeInterval = 1.0
@@ -437,7 +437,7 @@ struct ImageGalleryView: View {
     // Preload all images in the collection
     private func preloadAllImages() {
         let urls = Set(imageURLs)
-        ImageCache.shared.preloadImages(urls: urls)
+        BulletproofImageCache.shared.preloadImages(urls: urls)
     }
 
     // Preload surrounding images for a smoother scrolling experience
@@ -450,7 +450,7 @@ struct ImageGalleryView: View {
         let endIndex = min(urls.count - 1, currentIndex + preloadRange)
         
         let urlsToPreload = Set(Array(urls[startIndex...endIndex]))
-        ImageCache.shared.preloadImages(urls: urlsToPreload)
+        BulletproofImageCache.shared.preloadImages(urls: urlsToPreload)
     }
 }
 

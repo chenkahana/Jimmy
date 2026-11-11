@@ -26,9 +26,6 @@ struct JimmyApp: App {
     private static let logger = Logger(subsystem: "com.chenkahana.Jimmy", category: "JimmyApp")
 
     init() {
-        // AppModel opens JimmyKit's Store before anything below touches DatabaseManager/
-        // DIContainer, so its additive migrations (v18...v22) finish before the old app's own
-        // DatabasePool opens the same `jimmy.db` file.
         let isDemoLibrary = DemoLibrary.isRequested()
         let databasePath = AppModel.launchDatabasePath(isRunningUnitTests: isRunningUnitTests)
         let model = AppModel(
@@ -39,6 +36,12 @@ struct JimmyApp: App {
         )
         _appModel = State(initialValue: model)
         AppModel.current = model
+
+        // BGTaskScheduler only accepts registrations before launch finishes, so this can't wait
+        // for a launch-failure retry; the handlers' `refreshAll()` does nothing until the store opens.
+        if !isRunningUnitTests {
+            BackgroundTaskManager.shared.registerBackgroundTasks()
+        }
 
         startOldServicesIfReady(model)
 
@@ -56,13 +59,8 @@ struct JimmyApp: App {
     private func startOldServicesIfReady(_ model: AppModel) {
         guard case .ready = model.launchState else { return }
 
-        _ = DIContainer.shared
-
         if !isRunningUnitTests {
             configureTips()
-
-            // Register background tasks
-            BackgroundTaskManager.shared.registerBackgroundTasks()
 
             // Collect crash/hang diagnostics via MetricKit
             MetricsSubscriber.shared.start()
@@ -169,14 +167,9 @@ struct JimmyApp: App {
     private func initializeServices() {
         let startTime = CFAbsoluteTimeGetCurrent()
 
-        // DIContainer already initialized in init(); avoid redundant second access
-        let dbStart = CFAbsoluteTimeGetCurrent()
-        _ = DatabaseManager.shared
-        let dbElapsed = CFAbsoluteTimeGetCurrent() - dbStart
-
         let criticalElapsed = CFAbsoluteTimeGetCurrent() - startTime
-        Self.logger.info("Critical services initialized in \(String(format: "%.3f", criticalElapsed))s | DatabaseManager: \(String(format: "%.3f", dbElapsed))s")
-        
+        Self.logger.info("Critical services initialized in \(String(format: "%.3f", criticalElapsed))s")
+
         // Background initialization for non-critical services
         // These will initialize lazily when first accessed
         Task.detached(priority: .background) {
@@ -184,12 +177,6 @@ struct JimmyApp: App {
             
             // Network (needed for data fetching, but not blocking UI)
             _ = UnifiedNetworkService.shared
-            
-            // Utilities & Engines (Lazy load in background)
-            await self.initializeUtilityServices()
-            
-            // Post-launch tasks
-            SimplePerformanceMonitor.shared.startMonitoring()
 
             // Start iCloud KVS sync observer
             await MainActor.run {
@@ -199,21 +186,6 @@ struct JimmyApp: App {
             let bgElapsed = CFAbsoluteTimeGetCurrent() - bgStart
             Self.logger.info("Background services initialized in \(String(format: "%.3f", bgElapsed))s")
         }
-    }
-    
-    private func initializeUtilityServices() async {
-        // These are truly non-critical services - initialize in background
-        // with low priority to avoid main thread contention
-        
-        // Only initialize ResourceMonitor - other services will be lazy loaded on demand
-        ResourceMonitor.shared.startMonitoring()
-        
-        // NOTE: The following services are now lazy-loaded when first accessed:
-        // - LocalAudioImporter.shared
-        // - CrashPreventionManager.shared
-        // - LoadingStateManager.shared
-        // - PodcastEngine.shared
-        // - SubscriptionViewModel.shared
     }
     
     // MARK: - Scene Phase Handling
@@ -266,15 +238,6 @@ struct JimmyApp: App {
         // SettingsViewModel.loadSettings() will apply the correct UIUserInterfaceStyle.
         _ = SettingsViewModel.shared
     }
-}
-
-// MARK: - Service Container
-
-/// Container for managing service lifecycle and dependencies
-@MainActor
-class ServiceContainer: ObservableObject {
-    lazy var uiUpdateService = UIUpdateService.shared
-    lazy var uiPerformanceManager = UIPerformanceManager.shared
 }
 
 // MARK: - UIKit Bridge

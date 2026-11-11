@@ -3,17 +3,11 @@ import MediaPlayer
 import Observation
 import JimmyKit
 
-/// Owns the one JimmyKit `Store` every screen will eventually read and write through, and the
-/// `Playback` object built on top of it — the one player now, driving the audio session, remote
-/// commands and Now Playing through `Ready`'s controllers. Opened synchronously, before any old
-/// service (`DatabaseManager`, `DIContainer`, ...) touches the same file — see `JimmyApp.init()`.
-///
-/// Screens still run on the old services until they move onto `JimmyKit` one at a time in later
-/// PRs, so nothing reads from `store` yet except through the compatibility helpers below.
-///
-/// `Downloads` joins `AppModel` in the PR that deletes `DownloadManager`: JimmyKit's `Downloads`
-/// uses the same background `URLSession` identifier as `DownloadManager`
-/// (`com.chenkahana.Jimmy.downloads`), and a process can't run two sessions on one identifier.
+/// Owns the one JimmyKit `Store` every screen reads and writes through, the `Playback` object
+/// built on top of it — the one player now, driving the audio session, remote commands and Now
+/// Playing through `Ready`'s controllers — and `Downloads` (see `AppModel+Downloads.swift`),
+/// using the same background `URLSession` identifier `DownloadManager` used to
+/// (`com.chenkahana.Jimmy.downloads`), now that `DownloadManager` itself is gone.
 @Observable
 @MainActor
 final class AppModel {
@@ -30,6 +24,7 @@ final class AppModel {
         let audioSession: AudioSessionController
         let remoteCommands: RemoteCommandController
         let nowPlaying: NowPlayingController
+        let downloads: Downloads
     }
 
     struct Failure {
@@ -169,11 +164,10 @@ final class AppModel {
     private static func open(databasePath: String, legacyInput: LegacyInput?) -> LaunchState {
         do {
             let store = try Store(path: databasePath, legacy: legacyInput)
+            let downloads = makeDownloads(store: store, databasePath: databasePath)
             let playback = Playback(
                 engine: AVPlayerEngine(),
-                // Mirrors every save into the legacy columns Library/PodcastDetail/episode rows
-                // still read, until PR 18 moves them onto `progress` directly.
-                progressStore: LegacyProgressMirror(store: store),
+                progressStore: StorePlaybackSource(store: store),
                 // Posts `.episodeRemovedFromQueue` on auto-advance too, not just a user-initiated
                 // `AppModel.dequeue` — see `NotifyingQueueSource`.
                 queueSource: NotifyingQueueSource(store: store)
@@ -187,7 +181,7 @@ final class AppModel {
                     let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
                     return documentsDirectory?.appendingPathComponent(audioURL.path)
                 }
-                return DownloadManager.shared.effectiveURL(forEpisodeID: episode.id, remoteURL: episode.audioURL)
+                return downloads.fileURL(for: episode.id) ?? episode.audioURL
             }
             let audioSession = AudioSessionController(playback: playback)
             // Activated once, here, rather than reactively the first time `playback.isPlaying`
@@ -200,7 +194,8 @@ final class AppModel {
                 playback: playback,
                 audioSession: audioSession,
                 remoteCommands: RemoteCommandController(playback: playback),
-                nowPlaying: NowPlayingController()
+                nowPlaying: NowPlayingController(),
+                downloads: downloads
             ))
         } catch {
             return .failed(Failure(message: String(describing: error)))
@@ -222,7 +217,7 @@ extension AppModel {
 // MARK: - Database path and legacy input
 
 extension AppModel {
-    /// `Documents/jimmy.db`, the same file `DatabaseManager` opens today.
+    /// `Documents/jimmy.db`, the same file every earlier build used.
     static func defaultDatabasePath() -> String {
         let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
             ?? FileManager.default.temporaryDirectory
@@ -391,15 +386,16 @@ extension AppModel {
     }
 
     /// Resolves the queue's episode ids into the old app's richer `Episode` model (progress,
-    /// played state, title, artwork — fields `JimmyKit.Episode` doesn't carry yet), for the old
-    /// singletons that still render or export them. Goes away once those callers move onto
-    /// `JimmyKit` directly in later PRs.
+    /// played state, title, artwork — fields `JimmyKit.Episode` doesn't carry yet), for old
+    /// singletons (e.g. `SharedDataStore`'s widget payload) that still render or export them.
     func resolveQueueEpisodes() async -> [Jimmy.Episode] {
+        guard let readyStore else { return [] }
         var episodes: [Jimmy.Episode] = []
         for episodeID in queueEpisodeIDs {
-            if let episodeWithState = try? await DIContainer.shared.episodeRepository.fetchEpisode(by: episodeID) {
-                episodes.append(episodeWithState.episode)
-            }
+            guard let episode = try? await readyStore.episode(id: episodeID) else { continue }
+            let progress = try? await readyStore.progress(for: episodeID)
+            let item = JimmyKit.EpisodeListItem(episode: episode, progress: progress, isQueued: true)
+            episodes.append(item.asLegacyEpisode())
         }
         return episodes
     }

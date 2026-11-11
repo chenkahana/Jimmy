@@ -121,6 +121,13 @@ final class BulletproofImageCache: ObservableObject {
         return diskCache.cachedResponse(for: request) != nil
     }
     
+    /// Clear all caches (memory and disk)
+    func clearAllCaches() {
+        memoryCache.removeAllObjects()
+        diskCache.removeAllCachedResponses()
+        Self.logger.info("BulletproofImageCache: Cleared all caches")
+    }
+
     /// Preload images in background
     func preloadImages(urls: Set<URL>) {
         guard !urls.isEmpty else { return }

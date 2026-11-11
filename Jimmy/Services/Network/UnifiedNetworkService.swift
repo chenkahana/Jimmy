@@ -6,7 +6,7 @@ import os
 /// Unified Network Service
 /// Consolidates network operations into a single, robust service.
 /// Implements "Never Fail" philosophy with global retry logic and smart caching.
-final class UnifiedNetworkService: ObservableObject, NetworkRepositoryProtocol {
+final class UnifiedNetworkService: ObservableObject {
     private static let logger = Logger(subsystem: "com.chenkahana.Jimmy", category: "UnifiedNetworkService")
     static let shared = UnifiedNetworkService()
     

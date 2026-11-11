@@ -18,8 +18,7 @@ final class WatchCommandTests: XCTestCase {
     /// Opens an `AppModel` at a fresh path, then inserts a podcast and `count` episodes directly
     /// into that same database (FK requires the episode's podcast to exist — same approach as
     /// `QueueOrderTests`), and returns `JimmyKit.Episode` values for them, matching those rows,
-    /// that `AppModel.play(_:)` can load without going through the (unrelated) legacy
-    /// `DIContainer` database.
+    /// that `AppModel.play(_:)` can load.
     private func makeModelWithEpisodes(_ count: Int) async throws -> (model: AppModel, episodes: [JimmyKit.Episode]) {
         let path = makeTempDatabasePath()
         let model = AppModel(databasePath: path)

@@ -26,20 +26,15 @@ extension AppModel {
     /// the user taps play on before ever subscribing — the way `AudioPlayerService.loadEpisode`
     /// did. Without this, the `progress`/`queue` tables' foreign keys against `episodes` silently
     /// fail (every write here goes through `try?`), so nothing — position, queue membership,
-    /// restore-on-launch — persists for it.
+    /// restore-on-launch — persists for it. A no-op if `podcastID` isn't subscribed either (a true
+    /// not-yet-subscribed preview episode): the same silent no-op this always was.
     ///
-    /// Not `private`: `DemoLibrary.seed(into:)` calls this too, for every episode it queues (not
-    /// just the one it plays) — the Queue screen still resolves queued episodes through this same
-    /// legacy repository (see `QueueView`'s doc comment), so a demo episode never saved here would
-    /// never show up there.
+    /// Not `private`: `DemoLibrary.seed(into:)` calls this too, for every episode it queues.
     func ensureEpisodeIsSaved(_ episode: JimmyKit.Episode) async {
-        guard let podcastID = episode.podcastID else { return }
-        guard (try? await DIContainer.shared.episodeRepository.fetchEpisode(by: episode.id)) == nil else { return }
-        let placeholder = EpisodeWithPlaybackState(
-            episode: episode.asLegacyEpisode(),
-            playbackState: PlaybackState(episodeID: episode.id, position: 0, finished: false)
-        )
-        try? await DIContainer.shared.episodeRepository.saveEpisodes([placeholder], for: podcastID)
+        guard let readyStore, let podcastID = episode.podcastID else { return }
+        guard (try? await readyStore.episode(id: episode.id)) == nil else { return }
+        guard let podcast = podcasts.first(where: { $0.id == podcastID }) else { return }
+        try? await readyStore.addLocalEpisode(episode, to: podcast)
     }
 
     /// Restores whatever was last playing, paused, the way `AudioPlayerService` did at launch.
@@ -48,8 +43,9 @@ extension AppModel {
         guard UserDefaults.standard.bool(forKey: "autoRestoreLastEpisode") else { return }
         guard let episodeIDString = UserDefaults.standard.string(forKey: "lastPlayingEpisodeID"),
               let episodeID = UUID(uuidString: episodeIDString) else { return }
-        guard let episodeWithState = try? await DIContainer.shared.episodeRepository.fetchEpisode(by: episodeID) else { return }
-        await play(episodeWithState.episode.asPlaybackEpisode(), startPlaying: false)
+        guard let readyStore else { return }
+        guard let episode = try? await readyStore.episode(id: episodeID) else { return }
+        await play(episode, startPlaying: false)
     }
 
     /// Updates both the in-memory skip intervals `Playback.skipForward()`/`skipBackward()` use and

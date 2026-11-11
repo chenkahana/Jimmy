@@ -193,7 +193,14 @@ public final class Downloads {
     // MARK: - Relaunch reconciliation
 
     private func reconcileAtLaunch() async {
-        guard let existing = try? await store.loadDownloads() else { return }
+        guard var existing = try? await store.loadDownloads() else { return }
+        // Builds before JimmyKit kept no download records, only `Downloads/<episodeID>.mp3` files.
+        // Adopt each one whose episode still exists; the store refuses a record for any other.
+        let known = Set(existing.map(\.episodeID))
+        for record in legacyFileRecords() where !known.contains(record.episodeID) {
+            guard (try? await store.saveDownload(record)) != nil else { continue }
+            existing.append(record)
+        }
         for record in existing {
             recordsByEpisode[record.episodeID] = record
             states[record.episodeID] = record.state
@@ -229,6 +236,27 @@ public final class Downloads {
             recordsByEpisode.removeValue(forKey: deletedID)
             states.removeValue(forKey: deletedID)
             try? await store.deleteDownload(deletedID)
+        }
+    }
+
+    /// A `.done` record for every `<episodeID>.mp3` file in the downloads directory.
+    private func legacyFileRecords() -> [Download] {
+        let files = (try? FileManager.default.contentsOfDirectory(
+            at: downloadsDirectory,
+            includingPropertiesForKeys: [.fileSizeKey]
+        )) ?? []
+        return files.compactMap { file in
+            guard file.pathExtension == "mp3",
+                  let episodeID = UUID(uuidString: file.deletingPathExtension().lastPathComponent)
+            else { return nil }
+            let size = (try? file.resourceValues(forKeys: [.fileSizeKey]))?.fileSize
+            return Download(
+                episodeID: episodeID,
+                relativePath: Self.relativePath(for: episodeID),
+                byteCount: size.map(Int64.init),
+                state: .done,
+                updatedAt: Date()
+            )
         }
     }
 

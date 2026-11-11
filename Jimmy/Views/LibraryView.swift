@@ -5,8 +5,9 @@ import JimmyKit
 struct LibraryView: View {
     private let logger = Logger(subsystem: "com.chenkahana.Jimmy", category: "LibraryView")
     @Environment(AppModel.self) private var appModel
-    @ObservedObject private var subscriptionViewModel = SubscriptionViewModel.shared // For toast messages only
     @Environment(ShellStore.self) private var shell
+    @State private var toastMessage: String = ""
+    @State private var showToast: Bool = false
     @AppStorage("libraryViewMode") private var viewMode: LibraryViewMode = .shows
     @AppStorage("libraryShowsOverviewDismissed") private var isShowsOverviewDismissed = false
     @AppStorage("libraryEpisodesOverviewDismissed") private var isEpisodesOverviewDismissed = false
@@ -68,7 +69,6 @@ struct LibraryView: View {
         .navigationTitle("Library")
         .navigationBarTitleDisplayMode(.large)
         .animation(.motionGentle, value: shouldShowLibraryOverviewHeader)
-        .performanceAdaptive(baseSkeletonCount: 9)
         .onAppear {
             if !gridInitialized {
                 initializeGridLayout()
@@ -152,10 +152,10 @@ struct LibraryView: View {
         .overlay(
             VStack {
                 Spacer()
-                if subscriptionViewModel.showToast {
+                if showToast {
                     toastView
                         .transition(.move(edge: .bottom).combined(with: .opacity))
-                        .animation(.motionTransition, value: subscriptionViewModel.showToast)
+                        .animation(.motionTransition, value: showToast)
                 }
             }
         )
@@ -188,10 +188,10 @@ struct LibraryView: View {
         await appModel.unsubscribe(podcast.id)
         await MainActor.run {
             allEpisodeItems.removeAll { $0.episode.podcastID == podcast.id }
-            subscriptionViewModel.toastMessage = "Unsubscribed"
-            subscriptionViewModel.showToast = true
+            toastMessage = "Unsubscribed"
+            showToast = true
             DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                subscriptionViewModel.showToast = false
+                showToast = false
             }
         }
     }
@@ -234,21 +234,12 @@ struct LibraryView: View {
 
     private var toastView: some View {
         HStack {
-            Text(subscriptionViewModel.toastMessage)
+            Text(toastMessage)
                 .font(.system(.body, design: .rounded))
                 .fontWeight(.medium)
                 .foregroundColor(.white)
 
             Spacer()
-
-            if subscriptionViewModel.pendingDeleteShowID != nil {
-                Button("Undo") {
-                    Task { await subscriptionViewModel.undoUnsubscribe() }
-                }
-                .font(.system(.body, design: .rounded))
-                .fontWeight(.semibold)
-                .foregroundColor(.white)
-            }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)

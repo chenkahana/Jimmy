@@ -1,24 +1,24 @@
 import SwiftUI
 import UniformTypeIdentifiers
 import TipKit
+import JimmyKit
 
-/// Renders `AppModel`'s queue (backed by JimmyKit's `Store`, the only queue now). The store only
-/// tracks membership and order; the rich per-row data (progress, played status, podcast artwork)
-/// still comes from the old episode pipeline, resolved by id as the queue's order changes.
+/// Renders `AppModel`'s queue (backed by JimmyKit's `Store`, the only queue now), resolved into
+/// the rich per-row data (progress, played status, podcast artwork) straight from the `Store` —
+/// the same `EpisodeListItem` pattern (via `observeQueueItems`) `PodcastEpisodeListView`/`LibraryView` use.
 struct QueueView: View {
     @Environment(AppModel.self) private var appModel
     @State private var editMode: EditMode = .inactive
     @State private var allPodcasts: [Podcast] = []
+    @State private var allEpisodeItems: [JimmyKit.EpisodeListItem] = []
     @State private var episodes: [Episode] = []
     @State private var draggedEpisode: Episode?
-    @State private var episodeCache: [UUID: Episode] = [:]
     @Namespace private var queueNamespace
     @State private var selectedEpisodeDestination: QueueNavigationDestination?
-    @State private var progressRefreshTick = false
     @State private var showingSuggestions = false
 
-    var currentPlayingEpisode: Episode? {
-        return appModel.playback?.currentEpisode?.asLegacyEpisode()
+    private var currentPlayingEpisodeID: UUID? {
+        appModel.playback?.currentEpisode?.id
     }
 
     var body: some View {
@@ -53,20 +53,20 @@ struct QueueView: View {
             }
             .onAppear {
                 loadPodcasts()
-                syncEpisodesWithQueue()
+            }
+            .task {
+                guard let stream = appModel.observeQueueItems() else { return }
+                do {
+                    for try await items in stream {
+                        allEpisodeItems = items
+                        syncEpisodesWithQueue()
+                    }
+                } catch {
+                    // The observation stopped (e.g. the store closed); the queue just stops updating.
+                }
             }
             .onChange(of: appModel.queueEpisodeIDs) { _, _ in
                 syncEpisodesWithQueue()
-            }
-            .onReceive(DIContainer.shared.progressCacheStore.$progressPercentageMap) { _ in
-                progressRefreshTick.toggle()
-            }
-            .onReceive(NotificationCenter.default.publisher(for: .episodeStatusUpdated)) { notification in
-                guard let updatedEpisode = notification.object as? Episode else { return }
-                episodeCache[updatedEpisode.id] = updatedEpisode
-                if let index = episodes.firstIndex(where: { $0.id == updatedEpisode.id }) {
-                    episodes[index] = updatedEpisode
-                }
             }
             .navigationDestination(item: $selectedEpisodeDestination) { destination in
                 EpisodeDetailView(episodeWithState: destination.episode)
@@ -267,7 +267,7 @@ struct QueueView: View {
 
     private func queueEpisodeRow(episode: Episode, index: Int, isProminent: Bool = false) -> some View {
         let episodeWithStatus = convertToEpisodeWithStatus(episode, index: index)
-        let isCurrentlyPlaying = currentPlayingEpisode?.id == episode.id
+        let isCurrentlyPlaying = currentPlayingEpisodeID == episode.id
         let sourceID = "queue-episode-\(episode.id.uuidString)"
 
         return QueueEpisodeCard(
@@ -325,32 +325,11 @@ struct QueueView: View {
 
     /// Convert Episode to EpisodeWithStatus for EpisodeCard
     private func convertToEpisodeWithStatus(_ episode: Episode, index: Int) -> EpisodeWithStatus {
-        _ = progressRefreshTick
-
         let podcast = getPodcast(for: episode)
-        let progressCache = DIContainer.shared.progressCacheStore
 
-        // Calculate play progress - use real-time cache first, then fallback
-        let playProgress: Double
-
-        // CRITICAL FIX: Update progress cache with episode duration FIRST
-        if episode.duration != nil && episode.duration! > 0 {
-            progressCache.updateProgressPercentage(for: episode.id, duration: episode.duration!)
-        }
-
-        // CRITICAL FIX: Check if episode exists in cache (including 0% progress)
-        // Don't use > 0 check because 0% is valid progress
-        if progressCache.hasProgress(for: episode.id) {
-            // Episode is in cache - use cached value (could be 0% or any value)
-            playProgress = progressCache.getProgressPercentage(for: episode.id)
-        } else {
-            // Episode not in cache - fallback to episode's stored position
-            playProgress = episode.duration != nil && episode.duration! > 0
-                ? episode.playbackPosition / episode.duration!
-                : 0.0
-        }
-
-
+        // `episode.playbackPosition`/`.duration` already carry the Store's `progress` row (see
+        // `syncEpisodesWithQueue`), so no separate cache lookup is needed.
+        let playProgress: Double = episode.duration.map { $0 > 0 ? episode.playbackPosition / $0 : 0.0 } ?? 0.0
 
         // Determine status using the derivation rules
         let isCurrentlyPlaying = (appModel.playback?.isPlaying ?? false) && appModel.playback?.currentEpisode?.id == episode.id
@@ -383,25 +362,11 @@ struct QueueView: View {
     }
 
     /// Resolves `appModel`'s queue (ids and order) into the rich old `Episode` model this view
-    /// renders, fetching anything not already cached and dropping anything no longer queued.
+    /// renders, looking each one up in `allEpisodeItems` (kept current by `observeQueueItems`) and
+    /// dropping anything no longer queued or not yet loaded.
     private func syncEpisodesWithQueue() {
-        let orderedIDs = appModel.queueEpisodeIDs
-        Task {
-            var resolved: [Episode] = []
-            for episodeID in orderedIDs {
-                if let cached = episodeCache[episodeID] {
-                    resolved.append(cached)
-                    continue
-                }
-                if let episodeWithState = try? await DIContainer.shared.episodeRepository.fetchEpisode(by: episodeID) {
-                    episodeCache[episodeID] = episodeWithState.episode
-                    resolved.append(episodeWithState.episode)
-                }
-            }
-            await MainActor.run {
-                self.episodes = resolved
-            }
-        }
+        let itemsByID = Dictionary(uniqueKeysWithValues: allEpisodeItems.map { ($0.episode.id, $0) })
+        episodes = appModel.queueEpisodeIDs.compactMap { itemsByID[$0]?.asLegacyEpisode() }
     }
 
     private func clearPlayedEpisodes() async {

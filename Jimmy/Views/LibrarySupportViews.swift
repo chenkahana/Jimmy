@@ -94,32 +94,9 @@ struct ResolvedPodcastDetailView: View {
                 return
             }
 
-            do {
-                if let podcast = try await DIContainer.shared.podcastRepository.fetchPodcast(id: podcastID, ignoreCache: false) {
-                    await MainActor.run {
-                        resolvedPodcast = podcast
-                        isLoading = false
-                    }
-                    return
-                }
-
-                if let podcast = try await DIContainer.shared.podcastRepository.fetchPodcast(id: podcastID, ignoreCache: true) {
-                    await MainActor.run {
-                        resolvedPodcast = podcast
-                        isLoading = false
-                    }
-                    return
-                }
-
-                await MainActor.run {
-                    errorMessage = "This show is no longer available in your library."
-                    isLoading = false
-                }
-            } catch {
-                await MainActor.run {
-                    errorMessage = "Jimmy couldn’t load this show right now."
-                    isLoading = false
-                }
+            await MainActor.run {
+                errorMessage = "This show is no longer available in your library."
+                isLoading = false
             }
         }
     }

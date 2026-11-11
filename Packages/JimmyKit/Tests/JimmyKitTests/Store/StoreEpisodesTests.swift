@@ -46,6 +46,21 @@ struct StoreEpisodesTests {
 
     // MARK: - observeEpisodes
 
+    @Test func observeQueueItemsReturnsOnlyQueuedEpisodesInQueueOrderWithProgress() async throws {
+        let (store, _) = try makeStore()
+        let (_, episodeIDs) = try await subscribeFixture(store)
+        try await store.enqueue(episodeIDs[1], at: 1)
+        try await store.enqueue(episodeIDs[0], at: 2)
+        try await store.saveProgress(Progress(episodeID: episodeIDs[0], position: 30, duration: 300, isFinished: false))
+
+        var iterator = store.observeQueueItems().makeAsyncIterator()
+        let items = try #require(try await iterator.next())
+
+        #expect(items.map(\.episode.id) == [episodeIDs[1], episodeIDs[0]])
+        #expect(items.allSatisfy { $0.isQueued })
+        #expect(items[1].progress?.position == 30)
+    }
+
     @Test func observeEpisodesJoinsProgressQueueAndDownloadState() async throws {
         let (store, _) = try makeStore()
         let (podcastID, episodeIDs) = try await subscribeFixture(store)

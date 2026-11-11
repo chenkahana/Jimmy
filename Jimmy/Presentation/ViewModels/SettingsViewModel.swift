@@ -84,21 +84,15 @@ class SettingsViewModel: ObservableObject {
     var isLoadingDebugInfo: Bool = false
     
     // MARK: - Private Properties
-    private let cacheService: EpisodeCacheService
     private let feedbackService: FeedbackService
-    private let crashPreventionManager: CrashPreventionManager
     private var cancellables = Set<AnyCancellable>()
     private var isInitializing = true
 
     // MARK: - Initialization
     private init(
-        cacheService: EpisodeCacheService = .shared,
-        feedbackService: FeedbackService = .shared,
-        crashPreventionManager: CrashPreventionManager = .shared
+        feedbackService: FeedbackService = .shared
     ) {
-        self.cacheService = cacheService
         self.feedbackService = feedbackService
-        self.crashPreventionManager = crashPreventionManager
 
         loadInitialData()
         setupSettingsBindings()
@@ -318,13 +312,7 @@ class SettingsViewModel: ObservableObject {
         URLCache.shared.removeAllCachedResponses()
 
         // Clear image caches
-        ImageCache.shared.clearAllCaches()
-
-        // Clear episode cache for all podcasts
-        let podcasts = await AppModel.current?.podcasts ?? []
-        for podcast in podcasts {
-            await cacheService.clearCache(for: podcast.id)
-        }
+        BulletproofImageCache.shared.clearAllCaches()
 
         // Recalculate cache size
         await calculateCacheSize()
@@ -436,12 +424,7 @@ class SettingsViewModel: ObservableObject {
         }
         errorMessage = nil
         
-        // Get all podcasts to clear their caches
         let podcasts = await AppModel.current?.podcasts ?? []
-
-        for podcast in podcasts {
-            await cacheService.clearCache(for: podcast.id)
-        }
 
         // Unsubscribe every podcast
         for podcast in podcasts {
@@ -598,10 +581,7 @@ class SettingsViewModel: ObservableObject {
             isLoading = true
         }
         errorMessage = nil
-        
-        // Clear all cached episodes first for a thorough cleanup.
-        await cacheService.clearAllCache()
-        
+
         // Clear all podcasts from storage
         for podcast in await AppModel.current?.podcasts ?? [] {
             await AppModel.current?.unsubscribe(podcast.id)

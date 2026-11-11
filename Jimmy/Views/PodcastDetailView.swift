@@ -54,22 +54,23 @@ struct AsyncPodcastDetailView: View {
     private func loadPodcast() {
         isLoading = true
         errorMessage = nil
-        
+
         Task {
             do {
                 // PREVIEW ONLY: Load podcast data WITHOUT saving to database
-                // Use the GRDB repository for proper RSS parsing
-                let grdbRepo = DIContainer.shared.podcastRepository
-                let (podcastData, episodesData) = try await grdbRepo.previewPodcastWithEpisodes(from: searchResult.feedURL)
-                
+                guard let appModel = AppModel.current else { throw AppModelError.storeNotReady }
+                let (podcastData, episodesData) = try await appModel.previewPodcast(feedURL: searchResult.feedURL)
+                let legacyPodcast = podcastData.asLegacyPodcast()
+                let legacyEpisodes = episodesData.map { $0.asLegacyEpisode() }
+
                 await MainActor.run {
-                    self.podcast = podcastData
-                    self.episodes = episodesData // Store the episodes
+                    self.podcast = legacyPodcast
+                    self.episodes = legacyEpisodes // Store the episodes
                     self.isLoading = false
                 }
-                
-                logger.info("Podcast preview loaded: \(podcastData.title) with \(episodesData.count) episodes (not saved)")
-                
+
+                logger.info("Podcast preview loaded: \(legacyPodcast.title) with \(legacyEpisodes.count) episodes (not saved)")
+
             } catch {
                 logger.error("Failed to load podcast: \(error)")
                 
@@ -548,28 +549,10 @@ struct PreviewEpisodeListView: View {
     }
     
     private func convertToEpisodeWithStatus(_ episode: Episode) -> EpisodeWithStatus {
-        let progressCache = DIContainer.shared.progressCacheStore
-        
-        // Calculate play progress - use real-time cache first, then fallback
-        let playProgress: Double
-        
-        // CRITICAL FIX: Update progress cache with episode duration FIRST
-        if episode.duration != nil && episode.duration! > 0 {
-            progressCache.updateProgressPercentage(for: episode.id, duration: episode.duration!)
-        }
-        
-        // CRITICAL FIX: Check if episode exists in cache (including 0% progress)
-        // Don't use > 0 check because 0% is valid progress
-        if progressCache.hasProgress(for: episode.id) {
-            // Episode is in cache - use cached value (could be 0% or any value)
-            playProgress = progressCache.getProgressPercentage(for: episode.id)
-        } else {
-            // Episode not in cache - fallback to episode's stored position
-            playProgress = episode.duration != nil && episode.duration! > 0 
-                ? episode.playbackPosition / episode.duration! 
-                : 0.0
-        }
-        
+        // Preview episodes aren't persisted yet, so there's no stored progress to read beyond
+        // whatever's already on the (freshly-parsed, always-zero) episode itself.
+        let playProgress: Double = episode.duration.map { $0 > 0 ? episode.playbackPosition / $0 : 0.0 } ?? 0.0
+
         // Determine status using the derivation rules
         let isCurrentlyPlaying = (appModel.playback?.isPlaying ?? false) && appModel.playback?.currentEpisode?.id == episode.id
         let isQueued = AppModel.current?.isQueued(episode.id) ?? false
