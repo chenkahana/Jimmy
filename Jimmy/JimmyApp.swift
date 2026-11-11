@@ -7,7 +7,7 @@ import TipKit
 /// Timeout error for service initialization
 struct ServiceTimeoutError: Error {
     let message: String
-    
+
     init(_ message: String = "Operation timed out") {
         self.message = message
     }
@@ -19,13 +19,33 @@ struct JimmyApp: App {
     // MARK: - App State
     // MARK: - App State
     @Environment(\.scenePhase) private var scenePhase
+    @State private var appModel: AppModel
     private let showsPerformanceHUD = ProcessInfo.processInfo.environment["JIMMY_SHOW_PERF_HUD"] == "1"
     private let isRunningUnitTests = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
-    
+
     // MARK: - Logging
     private static let logger = Logger(subsystem: "com.chenkahana.Jimmy", category: "JimmyApp")
 
     init() {
+        // AppModel opens JimmyKit's Store before anything below touches DatabaseManager/
+        // DIContainer, so its additive migrations (v18...v22) finish before the old app's own
+        // DatabasePool opens the same `jimmy.db` file.
+        let databasePath = isRunningUnitTests ? AppModel.temporaryDatabasePath() : AppModel.defaultDatabasePath()
+        let model = AppModel(
+            databasePath: databasePath,
+            legacyInput: isRunningUnitTests ? { nil } : { AppModel.legacyInputFromDisk() }
+        )
+        _appModel = State(initialValue: model)
+
+        startOldServicesIfReady(model)
+    }
+
+    /// Everything `init()` used to do unconditionally — skipped while the store failed to open,
+    /// so the old services never touch a database `AppModel` couldn't make sense of. Called again
+    /// after a launch-failure retry succeeds (`init()` itself only ever runs once).
+    private func startOldServicesIfReady(_ model: AppModel) {
+        guard case .ready = model.launchState else { return }
+
         _ = DIContainer.shared
         _ = DIContainer.shared.podcastService
 
@@ -38,61 +58,85 @@ struct JimmyApp: App {
             // Collect crash/hang diagnostics via MetricKit
             MetricsSubscriber.shared.start()
         }
-        
+
         // Apply dark mode setting
         applyInitialDarkModeSetting()
-        
+
         // Configure audio session
         if !isRunningUnitTests {
             configureAudioSession()
         }
     }
-    
+
     var body: some Scene {
         WindowGroup {
-            ZStack {
-                HostTabBarControllerRepresentable()
-                    .ignoresSafeArea()
-
-                #if DEBUG
-                if showsPerformanceHUD {
-                    PerformanceDebugOverlay()
+            Group {
+                switch appModel.launchState {
+                case .ready:
+                    readyContent
+                case .failed(let failure):
+                    LaunchFailureView(
+                        message: failure.message,
+                        onRetry: {
+                            appModel.retry()
+                            startOldServicesIfReady(appModel)
+                        },
+                        onResetLibrary: {
+                            appModel.resetLibrary()
+                            startOldServicesIfReady(appModel)
+                        }
+                    )
                 }
-                #endif
+            }
+            .environment(appModel)
+        }
+        .onChange(of: scenePhase) { oldPhase, newPhase in
+            handleScenePhaseChange(from: oldPhase, to: newPhase)
+        }
+    }
+
+    @ViewBuilder
+    private var readyContent: some View {
+        ZStack {
+            HostTabBarControllerRepresentable()
+                .ignoresSafeArea()
+
+            #if DEBUG
+            if showsPerformanceHUD {
+                PerformanceDebugOverlay()
+            }
+            #endif
+        }
+        .environment(ShellStore.shared)
+        .environment(ShellStore.shared.chrome)
+        .environment(InteractionLatencyTracker.shared)
+        .fullScreenCover(
+            isPresented: Binding(
+                get: { ShellStore.shared.presentation == .nowPlaying },
+                set: { isPresented in
+                    if !isPresented {
+                        ShellStore.shared.chrome.isPresentingModal = false
+                        ShellStore.shared.clearPresentation()
+                    }
+                }
+            )
+        ) {
+            ExpandedNowPlayingView {
+                ShellStore.shared.chrome.isPresentingModal = false
+                ShellStore.shared.clearPresentation()
             }
             .environment(ShellStore.shared)
             .environment(ShellStore.shared.chrome)
             .environment(InteractionLatencyTracker.shared)
-            .fullScreenCover(
-                isPresented: Binding(
-                    get: { ShellStore.shared.presentation == .nowPlaying },
-                    set: { isPresented in
-                        if !isPresented {
-                            ShellStore.shared.chrome.isPresentingModal = false
-                            ShellStore.shared.clearPresentation()
-                        }
-                    }
-                )
-            ) {
-                ExpandedNowPlayingView {
-                    ShellStore.shared.chrome.isPresentingModal = false
-                    ShellStore.shared.clearPresentation()
-                }
-                .environment(ShellStore.shared)
-                .environment(ShellStore.shared.chrome)
-                .environment(InteractionLatencyTracker.shared)
-            }
-            .onAppear {
-                if !isRunningUnitTests {
-                    initializeServices()
-                }
-            }
-            .onOpenURL { url in
-                handleURL(url)
+            .environment(appModel)
+        }
+        .onAppear {
+            if !isRunningUnitTests {
+                initializeServices()
             }
         }
-        .onChange(of: scenePhase) { oldPhase, newPhase in
-            handleScenePhaseChange(from: oldPhase, to: newPhase)
+        .onOpenURL { url in
+            handleURL(url)
         }
     }
     

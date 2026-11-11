@@ -23,9 +23,10 @@ Lanes in the same wave run in parallel, each in its own worktree under `~/.workt
 - [x] 11. Downloads, background session, relative paths (S, after 9b)
 
 ## Wave C: screens onto the core (each deletes what it replaces)
-- [ ] 14. `AppModel`, startup error screen with reset (S)
-- [ ] 15. Queue (S)
-- [ ] 16. Player and mini player (S). Before deleting `AudioPlayerService`, bring over what `Playback` (PR 13) left out: trim silence and volume boost (`AudioEnhancementService`), sleep-timer fade-out, listening-stats tracking, Now Playing artwork loading, widget data
+- [x] 14. `AppModel`, startup error screen with reset (S)
+- [ ] 15. Queue (S). `v19_progress` copied progress and queue once when PR 14 first opened the store; the old app kept writing `episodes`/`playback_state` since. Before reading `progress`/`queue` from the store, add a migration that re-runs the backfill from the legacy tables.
+- [ ] 16. Player and mini player (S). Before deleting `AudioPlayerService`, bring over what `Playback` (PR 13) left out: trim silence and volume boost (`AudioEnhancementService`), sleep-timer fade-out, listening-stats tracking, Now Playing artwork loading, widget data. `v19_progress` copied progress and queue once when PR 14 first opened the store; the old app kept writing `episodes`/`playback_state` since. Before reading `progress`/`queue` from the store, add a migration that re-runs the backfill from the legacy tables.
+  - Note: whichever PR deletes the old `DownloadManager` (not yet assigned a number above — candidates are 16 or 17/18, since downloads surface in both the player and the episode/library rows) is where `Downloads` joins `AppModel`: JimmyKit's `Downloads` uses the same background `URLSession` identifier (`com.chenkahana.Jimmy.downloads`) as `DownloadManager`, and a process can't run two sessions on one identifier.
 - [ ] 17. Library (S)
 - [ ] 18. Podcast detail and Episode (S)
 - [ ] 19. Discover and Search (S)
