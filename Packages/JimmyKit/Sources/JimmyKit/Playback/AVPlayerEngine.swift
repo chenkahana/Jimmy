@@ -15,6 +15,10 @@ public final class AVPlayerEngine: PlayerEngine {
         }
     }
 
+    public var volume: Float = 1.0 {
+        didSet { player?.volume = volume }
+    }
+
     public var currentTime: TimeInterval {
         player?.currentTime().seconds ?? 0
     }
@@ -46,6 +50,7 @@ public final class AVPlayerEngine: PlayerEngine {
 
         let item = AVPlayerItem(url: url)
         let newPlayer = AVPlayer(playerItem: item)
+        newPlayer.volume = volume
         player = newPlayer
 
         durationLoadTask = Task { @MainActor [weak self] in

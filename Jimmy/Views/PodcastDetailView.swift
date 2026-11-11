@@ -447,6 +447,7 @@ struct PreviewPodcastDetailView: View {
 
 struct PreviewEpisodeListView: View {
     private static let logger = Logger(subsystem: "com.chenkahana.Jimmy", category: "PreviewEpisodeListView")
+    @Environment(AppModel.self) private var appModel
     let episodes: [Episode]
     let podcastTitle: String
     let podcastArtworkURL: URL?
@@ -500,7 +501,7 @@ struct PreviewEpisodeListView: View {
                         onEpisodeTap(episodeWithState)
                     },
                     onPlay: {
-                        AudioPlayerService.shared.loadEpisode(episode, startPlaying: true)
+                        Task { await appModel.play(episode.asPlaybackEpisode()) }
                     },
                     onAddToQueue: {
                         Task {
@@ -550,7 +551,6 @@ struct PreviewEpisodeListView: View {
     }
     
     private func convertToEpisodeWithStatus(_ episode: Episode) -> EpisodeWithStatus {
-        let audioPlayer = AudioPlayerService.shared
         let progressCache = DIContainer.shared.progressCacheStore
         
         // Calculate play progress - use real-time cache first, then fallback
@@ -574,16 +574,16 @@ struct PreviewEpisodeListView: View {
         }
         
         // Determine status using the derivation rules
-        let isCurrentlyPlaying = audioPlayer.isPlaying && audioPlayer.currentEpisode?.id == episode.id
+        let isCurrentlyPlaying = (appModel.playback?.isPlaying ?? false) && appModel.playback?.currentEpisode?.id == episode.id
         let isQueued = AppModel.current?.isQueued(episode.id) ?? false
-        
+
         let status = EpisodeWithStatus.deriveStatus(
             episode: episode,
             playProgress: playProgress,
             isQueued: isQueued,
             isCurrentlyPlaying: isCurrentlyPlaying
         )
-        
+
         return EpisodeWithStatus(
             episode: episode,
             podcastTitle: podcastTitle,
@@ -605,7 +605,7 @@ private struct PodcastHeaderOffsetKey: PreferenceKey {
 struct PodcastDetailView: View {
     private let logger = Logger(subsystem: "com.chenkahana.Jimmy", category: "PodcastDetailView")
     let podcast: Podcast
-    @ObservedObject private var audioPlayer = AudioPlayerService.shared
+    @Environment(AppModel.self) private var appModel
     @ObservedObject private var subscriptionStateManager = SubscriptionStateManager.shared
     @Environment(\.dismiss) private var dismiss
     @Environment(\.presentationMode) private var presentationMode
@@ -628,7 +628,6 @@ struct PodcastDetailView: View {
     
     /// Convert EpisodeWithPlaybackState to EpisodeWithStatus for EpisodeCard
     private func convertToEpisodeWithStatus(_ episodeWithState: EpisodeWithPlaybackState) -> EpisodeWithStatus {
-        let audioPlayer = AudioPlayerService.shared
         let progressCache = DIContainer.shared.progressCacheStore
         
         // Calculate play progress - use real-time cache first, then fallback
@@ -652,7 +651,7 @@ struct PodcastDetailView: View {
         }
         
         // Determine status using the derivation rules
-        let isCurrentlyPlaying = audioPlayer.currentEpisode?.id == episodeWithState.episode.id
+        let isCurrentlyPlaying = appModel.playback?.currentEpisode?.id == episodeWithState.episode.id
         let isQueued = AppModel.current?.isQueued(episodeWithState.episode.id) ?? false
         
         let status = EpisodeWithStatus.deriveStatus(

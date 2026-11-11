@@ -1,4 +1,5 @@
 import Foundation
+import JimmyKit
 import Combine
 import SwiftUI
 import UIKit
@@ -21,7 +22,6 @@ class SubscriptionViewModel: ObservableObject {
     // MARK: - Private Properties
     private let subscriptionRepository: SubscriptionRepositoryProtocol
     private let episodeRepository: EpisodeRepositoryProtocol
-    private let audioPlayerService: AudioPlayerService
     // Shared integration layer for coordinated fetches and persistence.
     private let worldClassIntegration = WorldClassIntegration.shared
     private var cachedEpisodeHeap: EpisodeMergeHeap?
@@ -36,12 +36,10 @@ class SubscriptionViewModel: ObservableObject {
     // MARK: - Initialization
     private init(
         subscriptionRepository: SubscriptionRepositoryProtocol = DIContainer.shared.subscriptionRepository,
-        episodeRepository: EpisodeRepositoryProtocol = DIContainer.shared.episodeRepository,
-        audioPlayerService: AudioPlayerService = AudioPlayerService.shared
+        episodeRepository: EpisodeRepositoryProtocol = DIContainer.shared.episodeRepository
     ) {
         self.subscriptionRepository = subscriptionRepository
         self.episodeRepository = episodeRepository
-        self.audioPlayerService = audioPlayerService
 
         setupBindings()
         loadInitialData()
@@ -182,10 +180,9 @@ class SubscriptionViewModel: ObservableObject {
         await AppModel.current?.removeEpisodesFromPodcast(showID)
         
         // Handle edge case: if show is currently playing
-        if let currentEpisode = audioPlayerService.currentEpisode,
+        if let currentEpisode = AppModel.current?.playback?.currentEpisode,
            currentEpisode.podcastID == showID {
-            audioPlayerService.stop()
-            // Clear Now Playing UI will happen automatically via AudioPlayerService
+            await AppModel.current?.playback?.stop()
         }
         
         // Cancel any active feed fetch tasks for this show

@@ -3,7 +3,7 @@ import SwiftUI
 struct EpisodeDetailView: View {
     let episodeWithState: EpisodeWithPlaybackState
     @StateObject private var viewModel: EpisodeDetailViewModel
-    @ObservedObject private var audioPlayer = AudioPlayerService.shared
+    @Environment(AppModel.self) private var appModel
     @State private var showingShareSheet = false
     @State private var scrollOffset: CGFloat = 0
     @State private var gradientOpacity: Double = 1.0
@@ -408,13 +408,14 @@ struct EpisodeDetailView: View {
     // MARK: - Actions
     
     private func playEpisode() {
-        // Check if this episode is already the current episode
-        if audioPlayer.currentEpisode?.id == episodeWithState.episode.id {
-            // If it's the same episode, toggle play/pause
-            audioPlayer.togglePlayPause()
-        } else {
-            // If it's a different episode, load and play it
-            audioPlayer.loadEpisode(episodeWithState.episode, startPlaying: true)
+        Task {
+            if appModel.playback?.currentEpisode?.id == episodeWithState.episode.id {
+                // Same episode: toggle play/pause.
+                await appModel.playback?.togglePlayPause()
+            } else {
+                // Different episode: load and play it.
+                await appModel.play(episodeWithState.episode.asPlaybackEpisode())
+            }
         }
     }
     

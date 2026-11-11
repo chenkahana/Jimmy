@@ -11,13 +11,13 @@ import os
 struct NativeMiniPlayerView: View {
     private let logger = Logger(subsystem: "com.chenkahana.Jimmy", category: "NativeMiniPlayerView")
 
-    @ObservedObject private var audioPlayer = AudioPlayerService.shared
+    @Environment(AppModel.self) private var appModel
     @State private var podcast: Podcast?
 
     let onTap: () -> Void
 
     var body: some View {
-        if let episode = audioPlayer.currentEpisode {
+        if let episode = appModel.playback?.currentEpisode?.asLegacyEpisode() {
             HStack(spacing: JimmyDesign.Spacing.md) {
                 Button(action: onTap) {
                     HStack(spacing: JimmyDesign.Spacing.md) {
@@ -29,10 +29,10 @@ struct NativeMiniPlayerView: View {
                 .buttonStyle(.plain)
 
                 Button(action: {
-                    audioPlayer.togglePlayPause()
+                    Task { await appModel.playback?.togglePlayPause() }
                     Motion.lightHaptic()
                 }) {
-                    Image(systemName: audioPlayer.isPlaying ? "pause.fill" : "play.fill")
+                    Image(systemName: (appModel.playback?.isPlaying ?? false) ? "pause.fill" : "play.fill")
                         .font(.system(size: 17, weight: .semibold))
                         .foregroundStyle(.primary)
                         .frame(width: 40, height: 40)

@@ -42,6 +42,9 @@ public final class Playback {
     /// Minimum spacing between throttled position saves while playing.
     public static let saveInterval: TimeInterval = 5
 
+    /// How long before a `.duration` sleep timer fires that volume starts fading to 0.
+    public static let sleepTimerFadeOutDuration: TimeInterval = 30
+
     // MARK: - Collaborators
 
     private let engine: PlayerEngine
@@ -79,7 +82,15 @@ public final class Playback {
 
     /// Load `episode` for playback, restoring saved progress and optionally starting playback.
     /// Flushes any pending save for the previously-loaded episode first.
-    public func load(episode: Episode, chapters: [Chapter] = [], startPlaying: Bool = false) async {
+    ///
+    /// `audioURLOverride` lets a caller substitute a local file URL (e.g. a downloaded episode)
+    /// for `episode.audioURL`; `nil` (the default) plays the episode's remote URL as usual.
+    public func load(
+        episode: Episode,
+        chapters: [Chapter] = [],
+        startPlaying: Bool = false,
+        audioURLOverride: URL? = nil
+    ) async {
         await flush()
 
         let progress = await progressStore.loadProgress(for: episode.id)
@@ -92,7 +103,7 @@ public final class Playback {
         lastSaveAt = nil
         updateCurrentChapter()
 
-        guard let url = episode.audioURL else {
+        guard let url = audioURLOverride ?? episode.audioURL else {
             isPlaying = false
             return
         }
@@ -131,6 +142,22 @@ public final class Playback {
         } else {
             play()
         }
+    }
+
+    /// Unload the current episode entirely: flushes its position, pauses the engine, and clears
+    /// `currentEpisode` (so Now Playing and the mini player stop showing it). Used when whatever's
+    /// playing is no longer available (e.g. its podcast was unsubscribed) — unlike `pause()`,
+    /// which keeps `currentEpisode` so playback can resume.
+    public func stop() async {
+        await flush()
+        engine.pause()
+        isPlaying = false
+        currentEpisode = nil
+        position = 0
+        duration = nil
+        chapters = []
+        currentChapter = nil
+        cancelSleepTimer()
     }
 
     public func seek(to time: TimeInterval) async {
@@ -189,6 +216,15 @@ public final class Playback {
         sleepTimerMode = nil
         sleepTimerEndDate = nil
         sleepTimerRemaining = nil
+        engine.volume = 1.0
+    }
+
+    /// Push a running `.duration` timer's end date back by `seconds`. A no-op without an active
+    /// `.duration` timer (there's no end date to extend for `.endOfEpisode`).
+    public func extendSleepTimer(by seconds: TimeInterval) {
+        guard let sleepTimerEndDate else { return }
+        self.sleepTimerEndDate = sleepTimerEndDate.addingTimeInterval(seconds)
+        sleepTimerRemaining = self.sleepTimerEndDate?.timeIntervalSince(clock.now())
     }
 
     // MARK: - Chapters
@@ -305,6 +341,9 @@ public final class Playback {
             await pause()
         } else {
             sleepTimerRemaining = remaining
+            if remaining <= Self.sleepTimerFadeOutDuration {
+                engine.volume = Float(remaining / Self.sleepTimerFadeOutDuration)
+            }
         }
     }
 }

@@ -1,6 +1,8 @@
 import Foundation
+import JimmyKit
 import Combine
 import AVFoundation
+import Observation
 
 struct PlaybackViewState: Equatable {
     var isDownloading = false
@@ -42,35 +44,31 @@ class CurrentPlayViewModel: ObservableObject {
         }
     }
     @Published private(set) var state = PlaybackViewState()
-    
+
+    /// Mirrors `AppModel.current?.playback.currentEpisode`, converted to the old richer `Episode`
+    /// type this view model's callers (e.g. `ExpandedNowPlayingView`) still expect.
+    @Published private(set) var currentPlayingEpisode: Episode?
+
     // MARK: - Dependencies
-    private let audioPlayerService: AudioPlayerService
     private var cancellables = Set<AnyCancellable>()
-    
+
     // MARK: - Computed Properties
-    var currentPlayingEpisode: Episode? {
-        audioPlayerService.currentEpisode
-    }
-    
     var routeIcon: String {
-        audioPlayerService.currentAudioRoute.iconName
+        currentOutputDevice.icon
     }
-    
+
     // MARK: - Initialization
-    private init(
-        audioPlayerService: AudioPlayerService = .shared
-    ) {
-        self.audioPlayerService = audioPlayerService
-        
+    private init() {
         setupBindings()
         updateCurrentAudioRoute()
         updateCurrentOutputDevice()
+        startObservingPlayback()
     }
-    
+
     deinit {
         cancellables.removeAll()
     }
-    
+
     // MARK: - Private Methods
     private func setupBindings() {
         // Listen for audio route changes
@@ -81,9 +79,19 @@ class CurrentPlayViewModel: ObservableObject {
             }
             .store(in: &cancellables)
     }
-    
 
-    
+    /// `Playback` is `@Observable`, not an `ObservableObject` this Combine-based view model can
+    /// subscribe to — track `currentEpisode` and re-register on every change instead.
+    private func startObservingPlayback() {
+        withObservationTracking {
+            currentPlayingEpisode = AppModel.current?.playback?.currentEpisode?.asLegacyEpisode()
+        } onChange: { [weak self] in
+            Task { @MainActor [weak self] in
+                self?.startObservingPlayback()
+            }
+        }
+    }
+
     private func updateCurrentAudioRoute() {
         let session = AVAudioSession.sharedInstance()
         currentAudioRoute = session.currentRoute.outputs.first?.portName ?? "Unknown"
@@ -133,19 +141,19 @@ class CurrentPlayViewModel: ObservableObject {
     }
     
     func playPauseCurrentEpisode() {
-        audioPlayerService.togglePlayPause()
+        Task { await AppModel.current?.playback?.togglePlayPause() }
     }
-    
+
     func seekBackward() {
-        audioPlayerService.seekBackward()
+        Task { await AppModel.current?.playback?.skipBackward() }
     }
-    
+
     func seekForward() {
-        audioPlayerService.seekForward()
+        Task { await AppModel.current?.playback?.skipForward() }
     }
-    
+
     func seek(to time: TimeInterval) {
-        audioPlayerService.seek(to: time)
+        Task { await AppModel.current?.playback?.seek(to: time) }
     }
     
     func showEpisodeDetails() {
@@ -157,11 +165,11 @@ class CurrentPlayViewModel: ObservableObject {
     }
     
     func skipForward() {
-        audioPlayerService.seekForward()
+        Task { await AppModel.current?.playback?.skipForward() }
     }
-    
+
     func skipBackward() {
-        audioPlayerService.seekBackward()
+        Task { await AppModel.current?.playback?.skipBackward() }
     }
     
     func showOptionsMenu() {

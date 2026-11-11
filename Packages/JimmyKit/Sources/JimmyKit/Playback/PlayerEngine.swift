@@ -6,6 +6,9 @@ public protocol PlayerEngine: AnyObject {
     /// Playback rate; 1.0 is normal speed. Setting it while playing should take effect immediately.
     var rate: Float { get set }
 
+    /// Output volume, 0...1. Used for the sleep timer's fade-out; 1.0 is full volume.
+    var volume: Float { get set }
+
     /// Current playback position, in seconds.
     var currentTime: TimeInterval { get }
 

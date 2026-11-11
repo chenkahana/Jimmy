@@ -10,16 +10,14 @@ import AVKit
 
 struct ExpandedNowPlayingView: View {
     @StateObject private var viewModel = CurrentPlayViewModel.shared
-    @ObservedObject private var audioPlayer = AudioPlayerService.shared
+    @Environment(AppModel.self) private var appModel
     @Environment(\.nowPlayingNamespace) private var namespace
     @Environment(\.dismiss) private var dismiss
 
     @State private var dragOffset: CGFloat = 0
     @State private var showingSleepTimer = false
     @State private var playPulse = false
-    @ObservedObject private var sleepTimer = SleepTimerService.shared
     @StateObject private var colorExtractor = ArtworkColorExtractor.shared
-    @StateObject private var audioEnhancement = AudioEnhancementService.shared
     private let onClose: (() -> Void)?
 
     init(onClose: (() -> Void)? = nil) {
@@ -63,7 +61,6 @@ struct ExpandedNowPlayingView: View {
                                 progressCard
                                 transportControlsCard
                                 secondaryControlsCard
-                                audioEnhancementsCard
                                 episodeDetailsCard(for: currentEpisode)
                             }
                             .frame(width: max(screenWidth - (horizontalPadding * 2), 0), alignment: .center)
@@ -77,7 +74,7 @@ struct ExpandedNowPlayingView: View {
                     .gesture(dismissGesture)
                     .onAppear {
                         colorExtractor.extractColors(from: currentEpisode.artworkURL ?? viewModel.getPodcast(for: currentEpisode)?.artworkURL)
-                        playPulse = audioPlayer.isPlaying
+                        playPulse = appModel.playback?.isPlaying ?? false
                     }
                 } else {
                     VStack(spacing: JimmyDesign.Spacing.lg) {
@@ -283,7 +280,7 @@ struct ExpandedNowPlayingView: View {
                     Motion.mediumHaptic()
                 }) {
                     ZStack {
-                        if audioPlayer.isPlaying {
+                        if appModel.playback?.isPlaying ?? false {
                             Circle()
                                 .stroke(Color.accentColor.opacity(playPulse ? 0 : 0.6), lineWidth: 3)
                                 .frame(width: playPulse ? 94 : 70, height: playPulse ? 94 : 70)
@@ -297,7 +294,7 @@ struct ExpandedNowPlayingView: View {
                             .fill(Color.accentColor)
                             .frame(width: 70, height: 70)
                             .overlay(
-                                Image(systemName: audioPlayer.isPlaying ? "pause.fill" : "play.fill")
+                                Image(systemName: (appModel.playback?.isPlaying ?? false) ? "pause.fill" : "play.fill")
                                     .font(.title2.weight(.bold))
                                     .foregroundColor(.white)
                                     .contentTransition(.symbolEffect(.replace.downUp))
@@ -306,10 +303,10 @@ struct ExpandedNowPlayingView: View {
                     }
                 }
                 .buttonStyle(BounceButtonStyle())
-                .accessibilityLabel(audioPlayer.isPlaying ? "Pause" : "Play")
-                .accessibilityHint("Double tap to \(audioPlayer.isPlaying ? "pause" : "play") the episode")
-                .onChange(of: audioPlayer.isPlaying) { _, playing in
-                    playPulse = playing
+                .accessibilityLabel((appModel.playback?.isPlaying ?? false) ? "Pause" : "Play")
+                .accessibilityHint("Double tap to \((appModel.playback?.isPlaying ?? false) ? "pause" : "play") the episode")
+                .onChange(of: appModel.playback?.isPlaying) { _, playing in
+                    playPulse = playing ?? false
                 }
 
                 Button(action: {
@@ -356,10 +353,10 @@ struct ExpandedNowPlayingView: View {
 
                 Button(action: { showingSleepTimer = true }) {
                     HStack(spacing: 4) {
-                        Image(systemName: sleepTimer.isActive ? "moon.zzz.fill" : "moon.zzz")
+                        Image(systemName: isSleepTimerActive ? "moon.zzz.fill" : "moon.zzz")
                             .font(.title3)
-                        if sleepTimer.isActive {
-                            Text(sleepTimer.formattedRemaining)
+                        if isSleepTimerActive {
+                            Text(formattedSleepTimerRemaining)
                                 .font(.system(size: 11, weight: .bold, design: .rounded))
                                 .foregroundColor(.accentColor)
                         }
@@ -367,7 +364,7 @@ struct ExpandedNowPlayingView: View {
                 }
                 .buttonStyle(.plain)
                 .foregroundColor(.primary)
-                .accessibilityLabel(sleepTimer.isActive ? "Sleep timer active, \(sleepTimer.formattedRemaining) remaining" : "Sleep timer")
+                .accessibilityLabel(isSleepTimerActive ? "Sleep timer active, \(formattedSleepTimerRemaining) remaining" : "Sleep timer")
                 .accessibilityHint("Double tap to configure sleep timer")
 
                 RoutePickerViewRepresentable()
@@ -384,69 +381,34 @@ struct ExpandedNowPlayingView: View {
         }
     }
 
-    private var audioEnhancementsCard: some View {
-        JimmyCard {
-            VStack(alignment: .leading, spacing: JimmyDesign.Spacing.md) {
-                Text("Listening Tools")
-                    .font(.headline.weight(.semibold))
-
-                enhancementRow(
-                    title: "Trim Silence",
-                    systemImage: "waveform.slash",
-                    value: audioEnhancement.trimSilenceLevel.rawValue,
-                    detail: audioEnhancement.trimSilenceLevel != .off && audioEnhancement.timeSavedSeconds > 0
-                        ? "\(Int(audioEnhancement.timeSavedSeconds))s saved"
-                        : nil
-                ) {
-                    Picker("Trim Silence", selection: $audioEnhancement.trimSilenceLevel) {
-                        ForEach(TrimSilenceLevel.allCases) { level in
-                            Text(level.rawValue).tag(level)
-                        }
-                    }
-                }
-
-                enhancementRow(
-                    title: "Volume Boost",
-                    systemImage: "speaker.wave.3",
-                    value: audioEnhancement.volumeBoostLevel.rawValue
-                ) {
-                    Picker("Volume Boost", selection: $audioEnhancement.volumeBoostLevel) {
-                        ForEach(VolumeBoostLevel.allCases) { level in
-                            Text(level.rawValue).tag(level)
-                        }
-                    }
-                }
-            }
-        }
-        .frame(maxWidth: .infinity)
-    }
-
     private var progressSliderView: some View {
-        VStack(spacing: JimmyDesign.Spacing.sm) {
+        let position = appModel.playback?.position ?? 0
+        let duration = appModel.playback?.duration ?? 0
+        return VStack(spacing: JimmyDesign.Spacing.sm) {
             Slider(
                 value: Binding(
-                    get: { audioPlayer.playbackPosition },
+                    get: { position },
                     set: { newValue in
                         viewModel.seek(to: newValue)
                     }
                 ),
-                in: 0...max(audioPlayer.duration, 1)
+                in: 0...max(duration, 1)
             )
             .frame(height: 44)
             .tint(.accentColor)
             .accessibilityLabel("Playback progress")
-            .accessibilityValue("\(formatTime(audioPlayer.playbackPosition)) of \(formatTime(audioPlayer.duration))")
+            .accessibilityValue("\(formatTime(position)) of \(formatTime(duration))")
             .accessibilityHint("Drag to seek")
 
             HStack {
-                Text(formatTime(audioPlayer.playbackPosition))
+                Text(formatTime(position))
                     .font(.caption.weight(.medium))
                     .foregroundColor(.secondary)
                     .monospacedDigit()
 
                 Spacer()
 
-                Text("-\(formatTime(audioPlayer.duration - audioPlayer.playbackPosition))")
+                Text("-\(formatTime(duration - position))")
                     .font(.caption.weight(.medium))
                     .foregroundColor(.secondary)
                     .monospacedDigit()
@@ -455,6 +417,16 @@ struct ExpandedNowPlayingView: View {
         .if(namespace != nil) { view in
             view.matchedGeometryEffect(id: NowPlayingGeometryID.progress, in: namespace!)
         }
+    }
+
+    private var isSleepTimerActive: Bool {
+        appModel.playback?.sleepTimerMode != nil
+    }
+
+    private var formattedSleepTimerRemaining: String {
+        guard let remaining = appModel.playback?.sleepTimerRemaining else { return "" }
+        let total = Int(max(0, remaining))
+        return String(format: "%d:%02d", total / 60, total % 60)
     }
 
     private func episodeDetailsCard(for episode: Episode) -> some View {
@@ -477,51 +449,6 @@ struct ExpandedNowPlayingView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .frame(maxWidth: .infinity)
-    }
-
-    private func enhancementRow<PickerContent: View>(
-        title: String,
-        systemImage: String,
-        value: String,
-        detail: String? = nil,
-        @ViewBuilder pickerContent: () -> PickerContent
-    ) -> some View {
-        HStack(spacing: JimmyDesign.Spacing.md) {
-            Label {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title)
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(.primary)
-
-                    if let detail {
-                        Text(detail)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-            } icon: {
-                Image(systemName: systemImage)
-                    .foregroundStyle(.secondary)
-            }
-
-            Spacer(minLength: JimmyDesign.Spacing.md)
-
-            Menu {
-                pickerContent()
-            } label: {
-                HStack(spacing: JimmyDesign.Spacing.xs) {
-                    Text(value)
-                        .font(.subheadline.weight(.semibold))
-                    Image(systemName: "chevron.up.chevron.down")
-                        .font(.caption2.weight(.bold))
-                        .foregroundStyle(.secondary)
-                }
-                .padding(.horizontal, JimmyDesign.Spacing.md)
-                .padding(.vertical, JimmyDesign.Spacing.sm)
-                .background(.thinMaterial, in: Capsule())
-            }
-            .buttonStyle(.plain)
-        }
     }
 
     // MARK: - Gestures & Actions

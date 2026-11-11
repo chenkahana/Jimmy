@@ -1,4 +1,5 @@
 import Foundation
+import JimmyKit
 import Combine
 
 /// ViewModel for Podcast Detail functionality following MVVM patterns
@@ -189,17 +190,10 @@ public class PodcastDetailViewModel: ObservableObject {
     
     func playAllEpisodes() async {
         guard !episodes.isEmpty else { return }
-        
-        do {
-            // Add all episodes to queue and start playing
-            let audioPlayerService = AudioPlayerService.shared
-            // Play first episode in the list
-            if let firstEpisode = episodes.first {
-                audioPlayerService.loadEpisode(firstEpisode.episode)
-                audioPlayerService.play()
-            }
-        } catch {
-            errorMessage = "Failed to play episodes: \(error.localizedDescription)"
+
+        // Play first episode in the list
+        if let firstEpisode = episodes.first {
+            await AppModel.current?.play(firstEpisode.episode.asPlaybackEpisode())
         }
     }
     

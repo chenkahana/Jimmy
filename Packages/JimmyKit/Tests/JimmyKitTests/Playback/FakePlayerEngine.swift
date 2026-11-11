@@ -9,6 +9,7 @@ final class FakePlayerEngine: PlayerEngine {
     var onEndOfItem: (() async -> Void)?
 
     var rate: Float = 1.0
+    var volume: Float = 1.0
     private(set) var currentTime: TimeInterval = 0
     private(set) var duration: TimeInterval?
 

@@ -1,14 +1,15 @@
 import Foundation
+import MediaPlayer
 import Observation
 import JimmyKit
 
 /// Owns the one JimmyKit `Store` every screen will eventually read and write through, and the
-/// `Playback` object built on top of it. Opened synchronously, before any old service
-/// (`DatabaseManager`, `DIContainer`, ...) touches the same file — see `JimmyApp.init()`.
+/// `Playback` object built on top of it — the one player now, driving the audio session, remote
+/// commands and Now Playing through `Ready`'s controllers. Opened synchronously, before any old
+/// service (`DatabaseManager`, `DIContainer`, ...) touches the same file — see `JimmyApp.init()`.
 ///
 /// Screens still run on the old services until they move onto `JimmyKit` one at a time in later
-/// PRs, so nothing reads from `store` or drives `playback` yet; `AudioPlayerService` keeps owning
-/// audio, remote commands and Now Playing until PR 16.
+/// PRs, so nothing reads from `store` yet except through the compatibility helpers below.
 ///
 /// `Downloads` joins `AppModel` in the PR that deletes `DownloadManager`: JimmyKit's `Downloads`
 /// uses the same background `URLSession` identifier as `DownloadManager`
@@ -26,6 +27,9 @@ final class AppModel {
     struct Ready {
         let store: Store
         let playback: Playback
+        let audioSession: AudioSessionController
+        let remoteCommands: RemoteCommandController
+        let nowPlaying: NowPlayingController
     }
 
     struct Failure {
@@ -43,9 +47,20 @@ final class AppModel {
     private let databasePath: String
     private let legacyInput: () -> LegacyInput?
 
-    /// Old singletons that can't read the environment (`AudioPlayerService`, `CarPlayManager`,
-    /// episode rows, `ShakeUndoManager`, `AppDataDocument`'s iCloud sync, ...) reach the queue
-    /// through this until they're deleted in PRs 16-21. Set once, in `JimmyApp.init()`.
+    // MARK: - Playback side-effect bookkeeping (see AppModel+Playback.swift)
+
+    /// Avoids restarting `ListeningStatsService`'s tracking timer on every unrelated playback
+    /// state change (duration/rate ticks) — only when `isPlaying` itself actually flips.
+    var lastObservedIsPlaying = false
+    /// Avoids rewriting `lastPlayingEpisodeID` on every tick — only when the episode changes.
+    var lastObservedEpisodeID: UUID?
+    /// Now Playing artwork, fetched once per episode id and reused across position/rate updates.
+    var nowPlayingArtworkCache: [UUID: MPMediaItemArtwork] = [:]
+
+    /// Old singletons that can't read the environment (`CarPlayManager`, episode rows,
+    /// `ShakeUndoManager`, `AppDataDocument`'s iCloud sync, `WatchConnectivityService`, ...) reach
+    /// the queue and `playback` through this until they're deleted in PRs 17-21. Set once, in
+    /// `JimmyApp.init()`.
     static weak var current: AppModel?
 
     init(databasePath: String, legacyInput: @escaping () -> LegacyInput? = { nil }) {
@@ -53,12 +68,14 @@ final class AppModel {
         self.legacyInput = legacyInput
         self.launchState = Self.open(databasePath: databasePath, legacyInput: legacyInput())
         startObservingQueueIfReady()
+        startObservingPlaybackIfReady()
     }
 
     /// Tries opening the store again at the same path, e.g. after the user tapped "Try Again".
     func retry() {
         launchState = Self.open(databasePath: databasePath, legacyInput: legacyInput())
         startObservingQueueIfReady()
+        startObservingPlaybackIfReady()
     }
 
     private func startObservingQueueIfReady() {
@@ -99,13 +116,32 @@ final class AppModel {
             let store = try Store(path: databasePath, legacy: legacyInput)
             let playback = Playback(
                 engine: AVPlayerEngine(),
-                progressStore: StorePlaybackSource(store: store),
+                // Mirrors every save into the legacy columns Library/PodcastDetail/episode rows
+                // still read, until PR 18 moves them onto `progress` directly.
+                progressStore: LegacyProgressMirror(store: store),
                 queueSource: StorePlaybackSource(store: store)
             )
-            return .ready(Ready(store: store, playback: playback))
+            return .ready(Ready(
+                store: store,
+                playback: playback,
+                audioSession: AudioSessionController(playback: playback),
+                remoteCommands: RemoteCommandController(playback: playback),
+                nowPlaying: NowPlayingController()
+            ))
         } catch {
             return .failed(Failure(message: String(describing: error)))
         }
+    }
+}
+
+// MARK: - Playback
+
+extension AppModel {
+    /// The one `Playback`, or `nil` while `launchState` isn't `.ready`. Old singletons that can't
+    /// read the environment reach it through `AppModel.current?.playback`.
+    var playback: Playback? {
+        guard case .ready(let ready) = launchState else { return nil }
+        return ready.playback
     }
 }
 

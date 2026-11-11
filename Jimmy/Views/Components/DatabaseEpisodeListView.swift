@@ -6,6 +6,7 @@ import os
 /// This ensures consistent episode titles, played status, and other metadata
 struct DatabaseEpisodeListView: View {
     private let logger = Logger(subsystem: "com.chenkahana.Jimmy", category: "DatabaseEpisodeListView")
+    @Environment(AppModel.self) private var appModel
     let podcastID: UUID
     let podcastTitle: String
     let podcastArtworkURL: URL?
@@ -137,7 +138,7 @@ struct DatabaseEpisodeListView: View {
                         onEpisodeTap(episodeWithState)
                     },
                     onPlay: {
-                        AudioPlayerService.shared.loadEpisode(episode, startPlaying: true)
+                        Task { await appModel.play(episode.asPlaybackEpisode()) }
                     },
                     onAddToQueue: {
                         Task {
@@ -209,17 +210,15 @@ struct DatabaseEpisodeListView: View {
     }
     
     private func convertToEpisodeWithStatus(_ episode: Episode) -> EpisodeWithStatus {
-        let audioPlayer = AudioPlayerService.shared
-        
         // Get real-time progress from cache first, then fallback to database/episode data
         let playProgress: Double
         let isQueued: Bool
-        
+
        // print("🔍 DatabaseEpisodeListView: Processing episode '\(episode.title.prefix(30))' (ID: \(episode.id))")
        // print("🔍 DatabaseEpisodeListView: Episode duration: \(episode.duration ?? 0)s, playbackPosition: \(episode.playbackPosition)s")
-        
+
         // Check if this is the currently playing episode
-        if let currentEpisode = AudioPlayerService.shared.currentEpisode {
+        if let currentEpisode = appModel.playback?.currentEpisode {
             if episode.id == currentEpisode.id {
                 logger.debug("DatabaseEpisodeListView: This IS the currently playing episode")
             } else if episode.title == currentEpisode.title {
@@ -269,7 +268,7 @@ struct DatabaseEpisodeListView: View {
         }
         
         // Determine status using the derivation rules
-        let isCurrentlyPlaying = audioPlayer.isPlaying && audioPlayer.currentEpisode?.id == episode.id
+        let isCurrentlyPlaying = (appModel.playback?.isPlaying ?? false) && appModel.playback?.currentEpisode?.id == episode.id
         
         let status = EpisodeWithStatus.deriveStatus(
             episode: episode,

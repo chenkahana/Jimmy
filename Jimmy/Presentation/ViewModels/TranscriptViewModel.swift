@@ -1,5 +1,7 @@
 import Foundation
+import JimmyKit
 import Combine
+import Observation
 import os
 
 /// Syncs current transcript segment to playback position, supports search
@@ -13,7 +15,6 @@ class TranscriptViewModel: ObservableObject {
     @Published var hasTranscript = false
 
     private let episodeID: UUID
-    private var cancellables = Set<AnyCancellable>()
 
     var filteredSegments: [TranscriptSegment] {
         if searchText.isEmpty { return segments }
@@ -31,6 +32,7 @@ class TranscriptViewModel: ObservableObject {
         if let record = await TranscriptService.shared.loadTranscript(for: episodeID) {
             segments = record.segments
             hasTranscript = !segments.isEmpty
+            updateCurrentSegment(for: AppModel.current?.playback?.position ?? 0)
         }
         isLoading = false
     }
@@ -43,22 +45,29 @@ class TranscriptViewModel: ObservableObject {
             try await TranscriptService.shared.saveTranscript(for: episodeID, segments: fetched, url: url.absoluteString, format: format)
             segments = fetched
             hasTranscript = !fetched.isEmpty
+            updateCurrentSegment(for: AppModel.current?.playback?.position ?? 0)
         } catch {
             Self.logger.error("Failed to fetch transcript: \(error)")
         }
         isLoading = false
     }
 
+    /// `Playback` is `@Observable`, not an `ObservableObject` this Combine-based view model can
+    /// subscribe to — track `position` and re-register on every change instead.
     private func observePlaybackPosition() {
-        AudioPlayerService.shared.$playbackPosition
-            .throttle(for: .seconds(0.5), scheduler: DispatchQueue.main, latest: true)
-            .sink { [weak self] position in
-                self?.updateCurrentSegment(for: position)
+        withObservationTracking {
+            updateCurrentSegment(for: AppModel.current?.playback?.position ?? 0)
+        } onChange: { [weak self] in
+            Task { @MainActor [weak self] in
+                self?.observePlaybackPosition()
             }
-            .store(in: &cancellables)
+        }
     }
 
     private func updateCurrentSegment(for position: TimeInterval) {
-        currentSegment = segments.last { $0.startTime <= position && position < $0.endTime }
+        let segment = segments.last { $0.startTime <= position && position < $0.endTime }
+        if segment?.startTime != currentSegment?.startTime {
+            currentSegment = segment
+        }
     }
 }

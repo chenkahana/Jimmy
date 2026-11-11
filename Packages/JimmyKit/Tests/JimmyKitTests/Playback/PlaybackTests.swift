@@ -29,6 +29,19 @@ struct PlaybackTests {
         #expect(playback.isPlaying == false)
     }
 
+    /// `audioURLOverride` is how `AppModel` substitutes a downloaded episode's local file URL
+    /// for its remote one, without `Playback` itself knowing anything about downloads.
+    @Test func loadingAnEpisodeWithAnAudioURLOverridePlaysThatURLInstead() async {
+        let (playback, engine) = makeSUT()
+        let episode = makeEpisode()
+        let localURL = URL(fileURLWithPath: "/tmp/downloaded-episode.mp3")
+
+        await playback.load(episode: episode, audioURLOverride: localURL)
+
+        #expect(engine.loadedURLs == [localURL])
+        #expect(playback.currentEpisode == episode)
+    }
+
     @Test func playStartsTheEngineAndSetsIsPlaying() async {
         let (playback, engine) = makeSUT()
         await playback.load(episode: makeEpisode())
@@ -132,5 +145,21 @@ struct PlaybackTests {
         engine.simulateDurationAvailable(321)
 
         #expect(playback.duration == 321)
+    }
+
+    @Test func stopFlushesPositionPausesTheEngineAndClearsCurrentEpisode() async {
+        let progressStore = FakeProgressStore()
+        let (playback, engine) = makeSUT(progressStore: progressStore)
+        await playback.load(episode: makeEpisode(), startPlaying: true)
+        await playback.seek(to: 55)
+
+        await playback.stop()
+
+        #expect(engine.pauseCallCount == 1)
+        #expect(playback.isPlaying == false)
+        #expect(playback.currentEpisode == nil)
+        #expect(playback.position == 0)
+        #expect(playback.duration == nil)
+        #expect(progressStore.savedProgresses.last?.position == 55, "flushed the position before clearing it")
     }
 }

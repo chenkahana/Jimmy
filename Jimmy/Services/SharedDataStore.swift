@@ -19,22 +19,22 @@ final class SharedDataStore {
     /// Update widget data from the current app state
     @MainActor
     func updateWidgetData() async {
-        let audioPlayer = AudioPlayerService.shared
+        let playback = AppModel.current?.playback
 
         var data = WidgetData(updatedAt: Date())
 
         // Now Playing
-        if let current = audioPlayer.currentEpisode {
+        if let current = playback?.currentEpisode {
             data.nowPlayingTitle = current.title
             let podcast = PodcastService.shared.loadPodcasts().first { $0.id == current.podcastID }
             data.nowPlayingPodcast = podcast?.title
             data.nowPlayingArtworkURL = current.artworkURL ?? podcast?.artworkURL
-            data.nowPlayingDuration = current.duration
-            data.nowPlayingPosition = current.playbackPosition
-            if let duration = current.duration, duration > 0 {
-                data.nowPlayingProgress = current.playbackPosition / duration
+            data.nowPlayingDuration = playback?.duration
+            data.nowPlayingPosition = playback?.position ?? 0
+            if let duration = playback?.duration, duration > 0 {
+                data.nowPlayingProgress = (playback?.position ?? 0) / duration
             }
-            data.isPlaying = audioPlayer.isPlaying
+            data.isPlaying = playback?.isPlaying ?? false
         }
 
         // Up Next (first 3 queued episodes after current)

@@ -1,4 +1,5 @@
 import Foundation
+import JimmyKit
 import Combine
 import UIKit
 import os
@@ -87,19 +88,17 @@ class SettingsViewModel: ObservableObject {
     private let podcastService: PodcastService
     private let importService: SubscriptionImportService
     private let feedbackService: FeedbackService
-    private let audioPlayerService: AudioPlayerService
     private let crashPreventionManager: CrashPreventionManager
     private let podcastRepository: PodcastRepository
     private var cancellables = Set<AnyCancellable>()
     private var isInitializing = true
-    
+
     // MARK: - Initialization
     private init(
         cacheService: EpisodeCacheService = .shared,
         podcastService: PodcastService = .shared,
         importService: SubscriptionImportService = .shared,
         feedbackService: FeedbackService = .shared,
-        audioPlayerService: AudioPlayerService = .shared,
         crashPreventionManager: CrashPreventionManager = .shared,
         podcastRepository: PodcastRepository = .shared
     ) {
@@ -107,7 +106,6 @@ class SettingsViewModel: ObservableObject {
         self.podcastService = podcastService
         self.importService = importService
         self.feedbackService = feedbackService
-        self.audioPlayerService = audioPlayerService
         self.crashPreventionManager = crashPreventionManager
         self.podcastRepository = podcastRepository
         
@@ -188,7 +186,9 @@ class SettingsViewModel: ObservableObject {
         $playbackSpeed
             .sink { [weak self] speed in
                 guard let self = self, !self.isInitializing else { return }
-                self.audioPlayerService.updatePlaybackSpeed(Float(speed))
+                Task { @MainActor in
+                    AppModel.current?.playback?.setRate(Float(speed))
+                }
                 UserDefaults.standard.set(speed, forKey: "playbackSpeed")
             }
             .store(in: &cancellables)
@@ -226,7 +226,10 @@ class SettingsViewModel: ObservableObject {
             .sink { [weak self] duration in
                 guard let self = self, !self.isInitializing else { return }
                 UserDefaults.standard.set(duration, forKey: "skipForwardDuration")
-                self.audioPlayerService.updateSkipDurations(forward: duration, backward: self.skipBackwardDuration)
+                let backward = self.skipBackwardDuration
+                Task { @MainActor in
+                    AppModel.current?.updateSkipIntervals(forward: duration, backward: backward)
+                }
             }
             .store(in: &cancellables)
 
@@ -234,7 +237,10 @@ class SettingsViewModel: ObservableObject {
             .sink { [weak self] duration in
                 guard let self = self, !self.isInitializing else { return }
                 UserDefaults.standard.set(duration, forKey: "skipBackwardDuration")
-                self.audioPlayerService.updateSkipDurations(forward: self.skipForwardDuration, backward: duration)
+                let forward = self.skipForwardDuration
+                Task { @MainActor in
+                    AppModel.current?.updateSkipIntervals(forward: forward, backward: duration)
+                }
             }
             .store(in: &cancellables)
     }
