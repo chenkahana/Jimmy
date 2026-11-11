@@ -1,0 +1,39 @@
+{
+  "resultCount": 2,
+  "results": [
+    {
+      "wrapperType": "track",
+      "kind": "podcast",
+      "collectionId": 1200000010,
+      "trackId": 1200000010,
+      "artistName": "Artist One",
+      "collectionName": "Chart Show One",
+      "trackName": "Chart Show One",
+      "feedUrl": "https://feeds.example.com/chart-show-one.rss",
+      "artworkUrl30": "https://example.com/chart1/30x30.jpg",
+      "artworkUrl60": "https://example.com/chart1/60x60.jpg",
+      "artworkUrl100": "https://example.com/chart1/100x100.jpg",
+      "artworkUrl600": "https://example.com/chart1/600x600.jpg",
+      "trackCount": 42,
+      "primaryGenreName": "Comedy",
+      "description": "A chart-topping show."
+    },
+    {
+      "wrapperType": "track",
+      "kind": "podcast",
+      "collectionId": 1200000011,
+      "trackId": 1200000011,
+      "artistName": "Artist Two",
+      "collectionName": "Chart Show Two",
+      "trackName": "Chart Show Two",
+      "feedUrl": "https://feeds.example.com/chart-show-two.rss",
+      "artworkUrl30": null,
+      "artworkUrl60": null,
+      "artworkUrl100": null,
+      "artworkUrl600": null,
+      "trackCount": 7,
+      "primaryGenreName": "News",
+      "description": null
+    }
+  ]
+}

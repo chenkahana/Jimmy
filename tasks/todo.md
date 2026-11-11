@@ -29,7 +29,7 @@ Lanes in the same wave run in parallel, each in its own worktree under `~/.workt
   - Note: whichever PR deletes the old `DownloadManager` (not yet assigned a number above — candidates are 16 or 17/18, since downloads surface in both the player and the episode/library rows) is where `Downloads` joins `AppModel`: JimmyKit's `Downloads` uses the same background `URLSession` identifier (`com.chenkahana.Jimmy.downloads`) as `DownloadManager`, and a process can't run two sessions on one identifier.
 - [x] 17. Library (S)
 - [ ] 18. Podcast detail and Episode (S). PR 16 added `Jimmy/App/LegacyProgressMirror.swift` — a `ProgressStore` wrapper that saves through `StorePlaybackSource` and also mirrors into the legacy `episodes.playbackPosition`/`played`/`status` and `playback_state.position`/`finished` columns, since Library/podcast detail/episode rows still read those until they move onto JimmyKit here. Delete `LegacyProgressMirror` and build `Playback` with a bare `StorePlaybackSource` once this PR moves those screens onto `progress` directly.
-- [ ] 19. Discover and Search (S)
+- [x] 19. Discover and Search (S)
 - [ ] 20. Settings and Import (S)
 - [x] 21. CarPlay (S)
 - [ ] 23. Apple Watch app (S, parallel lane after 16)

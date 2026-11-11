@@ -1,6 +1,7 @@
 import Foundation
 import Combine
 import os
+import JimmyKit
 
 /// Phase 6: Enhanced with error handling and task management
 @MainActor
@@ -14,7 +15,7 @@ class PodcastSearchViewModel: ObservableObject, TaskManagedViewModel {
     @Published var subscriptionMessage: String = ""
     @Published var subscriptionError: SubscriptionError?
     @Published var errorMessage: String = ""
-    
+
     // MARK: - Task Management (Phase 6)
     let taskManager = TaskCancellationManager()
     let errorManager = ErrorStateManager()
@@ -24,7 +25,7 @@ class PodcastSearchViewModel: ObservableObject, TaskManagedViewModel {
         case all = "All"
         case subscribed = "Subscribed"
         case web = "Discover"
-        
+
         var icon: String {
             switch self {
             case .all: return "magnifyingglass"
@@ -35,22 +36,24 @@ class PodcastSearchViewModel: ObservableObject, TaskManagedViewModel {
     }
 
     private var cancellables = Set<AnyCancellable>()
-    private let searchService: ITunesSearchServiceProtocol
+    /// Apple Podcasts search (JimmyKit). Injectable so tests can stub it instead of hitting the
+    /// network.
+    private let directory: PodcastDirectory
     /// Feed URLs with a subscribe in flight, for `isProcessing(_:)`.
     @Published private var processingFeedURLs: Set<URL> = []
 
-    init(searchService: ITunesSearchServiceProtocol = iTunesSearchService.shared) {
-        self.searchService = searchService
+    init(directory: PodcastDirectory = PodcastDirectory()) {
+        self.directory = directory
         setupSearchDebounce()
     }
 
     // MARK: - TaskManagedViewModel Protocol
-    
+
     func onViewAppear() {
         // Subscription states are managed by SubscriptionStateManager
         // No need to manually load local podcasts
     }
-    
+
     func onViewDisappear() {
         // Automatically handled by TaskManagedViewModel extension
         taskManager.cancelAllTasks()
@@ -75,59 +78,50 @@ class PodcastSearchViewModel: ObservableObject, TaskManagedViewModel {
             // Local search only
             return
         }
-        
+
         let trimmedText = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        
+
         // Check if the search text is a URL
         if trimmedText.hasPrefix("http://") || trimmedText.hasPrefix("https://") {
             // Handle as direct URL import
             handleDirectURLImport(trimmedText)
             return
         }
-        
+
         // Cancel any existing search
         taskManager.cancelGroup("search")
-        
+
         isSearching = true
         errorManager.clearError()
-        
+
         let searchTask = Task.managed(
             id: "podcast-search",
             group: "search",
             manager: taskManager
         ) {
             do {
-                let results = await self.searchService.searchPodcasts(query: self.searchText)
-                
+                let results = try await self.directory.search(query: self.searchText)
+
                 await MainActor.run {
-                    self.searchResults = results
+                    self.searchResults = results.map(Self.podcastSearchResult(from:))
                     self.isSearching = false
                 }
-                
+
             } catch {
-                // Handle 304 Not Modified as success case (though unlikely for search)
-                if let fetchError = error as? FetchError, case .notModified = fetchError {
-                    await MainActor.run {
-                        // 304 Not Modified means cached results are still valid
-                        self.isSearching = false
-                    }
-                    return
-                }
-                
-                // For other errors, try with retry logic
+                // For errors, retry with backoff before giving up
                 do {
                     let results = try await self.retryManager.executeWithRetry(
                         operation: {
-                            await self.searchService.searchPodcasts(query: self.searchText)
+                            try await self.directory.search(query: self.searchText)
                         },
                         shouldRetry: RetryManager.shouldRetryNetworkError
                     )
-                    
+
                     await MainActor.run {
-                        self.searchResults = results
+                        self.searchResults = results.map(Self.podcastSearchResult(from:))
                         self.isSearching = false
                     }
-                    
+
                 } catch {
                     await MainActor.run {
                         self.isSearching = false
@@ -140,17 +134,25 @@ class PodcastSearchViewModel: ObservableObject, TaskManagedViewModel {
             }
         }
     }
-    
+
     /// Handle direct URL import when user enters a URL in search field
     private func handleDirectURLImport(_ urlString: String) {
         Self.logger.info("Search URL Import: Attempting to import URL: \(urlString)")
-        
+
         // Cancel any existing search
         taskManager.cancelGroup("search")
-        
+
         isSearching = true
         errorManager.clearError()
-        
+
+        guard let feedURL = URL(string: urlString) else {
+            isSearching = false
+            errorManager.showError("That doesn't look like a valid URL.") { [weak self] in
+                self?.handleDirectURLImport(urlString)
+            }
+            return
+        }
+
         let importTask = Task.managed(
             id: "url-import",
             group: "search",
@@ -159,7 +161,7 @@ class PodcastSearchViewModel: ObservableObject, TaskManagedViewModel {
             do {
                 Self.logger.info("Search URL Import: Starting import from URL: \(urlString)")
                 // Try to add the podcast directly from the URL
-                guard let podcast = try await AppModel.current?.subscribe(feedURL: URL(string: urlString)!) else {
+                guard let podcast = try await AppModel.current?.subscribe(feedURL: feedURL) else {
                     throw AppModelError.storeNotReady
                 }
                 Self.logger.info("Search URL Import: Successfully imported \(podcast.title)")
@@ -171,7 +173,7 @@ class PodcastSearchViewModel: ObservableObject, TaskManagedViewModel {
                     self.showingSubscriptionAlert = true
                     self.searchText = "" // Clear search after successful import
                 }
-                
+
             } catch {
                 Self.logger.error("Search URL Import: Failed to import podcast: \(error.localizedDescription)")
                 await MainActor.run {
@@ -192,7 +194,7 @@ class PodcastSearchViewModel: ObservableObject, TaskManagedViewModel {
     func isProcessing(_ result: PodcastSearchResult) -> Bool {
         processingFeedURLs.contains(result.feedURL)
     }
-    
+
     func getSubscribedPodcasts() async -> [Podcast] {
         do {
             return try await DIContainer.shared.subscriptionRepository.fetchSubscriptions(ignoreCache: false)
@@ -238,13 +240,13 @@ class PodcastSearchViewModel: ObservableObject, TaskManagedViewModel {
             }
         }
     }
-    
+
     /// Get user-friendly error message
     private func getFriendlyErrorMessage(_ error: Error) -> String {
         if error is CancellationError {
             return "Operation was cancelled"
         }
-        
+
         let nsError = error as NSError
         switch nsError.code {
         case NSURLErrorNotConnectedToInternet:
@@ -260,8 +262,23 @@ class PodcastSearchViewModel: ObservableObject, TaskManagedViewModel {
         }
     }
 
+    /// Converts a `JimmyKit.PodcastDirectoryResult` into the app's own `PodcastSearchResult`,
+    /// so screens and views keep the type they already render.
+    private static func podcastSearchResult(from result: PodcastDirectoryResult) -> PodcastSearchResult {
+        PodcastSearchResult(
+            id: result.id,
+            title: result.title,
+            author: result.author,
+            feedURL: result.feedURL,
+            artworkURL: result.artworkURL,
+            description: result.description,
+            genre: result.genre,
+            trackCount: result.trackCount
+        )
+    }
+
     deinit {
         cancellables.forEach { $0.cancel() }
         cancellables.removeAll()
     }
-} 
+}

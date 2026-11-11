@@ -157,11 +157,6 @@ protocol NetworkRepositoryProtocol {
     func isReachable(url: URL) async -> Bool
 }
 
-/// Protocol for search operations
-protocol SearchRepositoryProtocol {
-    func searchPodcasts(query: String) async throws -> [Podcast]
-}
-
 // MARK: - Supporting Types
 
 /// Changes to podcast data for reactive updates
