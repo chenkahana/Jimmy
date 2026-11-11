@@ -25,8 +25,12 @@ public nonisolated final class Store: Sendable {
         let pool: DatabasePool
         do {
             // DatabasePool always runs in WAL mode; `Configuration().foreignKeysEnabled`
-            // already defaults to `true`.
-            pool = try DatabasePool(path: path)
+            // already defaults to `true`. From PR 15 on, the legacy app's own `DatabasePool`
+            // writes this same file concurrently — `busyMode` makes a write wait for the other
+            // pool's transaction to finish instead of immediately failing with `SQLITE_BUSY`.
+            var configuration = Configuration()
+            configuration.busyMode = .timeout(5)
+            pool = try DatabasePool(path: path, configuration: configuration)
         } catch {
             throw StoreError.openFailed(underlying: String(describing: error))
         }
