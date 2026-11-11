@@ -1,11 +1,7 @@
 name: CI
 
 on:
-  # Pull requests only: re-running on every push to main doubled the macOS minutes.
   pull_request:
-    paths-ignore:
-      - '**/*.md'
-      - 'docs/**'
   workflow_dispatch:
 
 concurrency:
