@@ -51,13 +51,13 @@ enum DemoLibrary {
     /// Public feeds picked for reliable artwork and English titles — verified to parse with
     /// `FeedParser` (title, artwork and audio enclosures all present) before being added here.
     static let feedURLs: [URL] = [
-        URL(string: "https://feeds.npr.org/510289/podcast.xml")!, // Planet Money
-        URL(string: "https://www.thisamericanlife.org/podcast/rss.xml")!, // This American Life
-        URL(string: "https://feeds.simplecast.com/EmVW7VGp")!, // Radiolab
-        URL(string: "https://feeds.simplecast.com/BqbsxVfO")!, // 99% Invisible
-        URL(string: "https://feeds.simplecast.com/6HKOhNgS")!, // Hard Fork
-        URL(string: "https://rss.amperwave.net/v2/feed/audacynetwork/search-engine")!, // Search Engine
-    ]
+        "https://feeds.npr.org/510289/podcast.xml", // Planet Money
+        "https://www.thisamericanlife.org/podcast/rss.xml", // This American Life
+        "https://feeds.simplecast.com/EmVW7VGp", // Radiolab
+        "https://feeds.simplecast.com/BqbsxVfO", // 99% Invisible
+        "https://feeds.simplecast.com/6HKOhNgS", // Hard Fork
+        "https://rss.amperwave.net/v2/feed/audacynetwork/search-engine", // Search Engine
+    ].compactMap(URL.init(string:))
 
     /// How many episodes (across distinct podcasts, for visual variety) to add to the queue.
     private static let queuedEpisodeCount = 4
