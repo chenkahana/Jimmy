@@ -122,7 +122,7 @@ final class CarPlayManager: NSObject {
             let item = CPListItem(text: episode.title, detailText: detail)
             item.handler = { _, completion in
                 Task { @MainActor in
-                    try? await QueueViewModel.shared.playEpisode(episode)
+                    AudioPlayerService.shared.loadEpisode(episode, startPlaying: true)
                 }
                 completion()
             }
@@ -149,7 +149,7 @@ final class CarPlayManager: NSObject {
 
     @MainActor
     private func buildQueueTemplate() async -> CPListTemplate {
-        let queueData = QueueViewModel.shared.queuedEpisodes
+        let queueData = await AppModel.current?.resolveQueueEpisodes() ?? []
         let podcasts = PodcastService.shared.loadPodcasts()
 
         let items = queueData.compactMap { episode -> CPListItem? in
@@ -160,7 +160,7 @@ final class CarPlayManager: NSObject {
 
             item.handler = { _, completion in
                 Task { @MainActor in
-                    try? await QueueViewModel.shared.playEpisode(episode)
+                    AudioPlayerService.shared.loadEpisode(episode, startPlaying: true)
                 }
                 completion()
             }

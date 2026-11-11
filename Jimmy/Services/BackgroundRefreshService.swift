@@ -144,31 +144,23 @@ final class BackgroundRefreshService {
     }
 
     /// Auto-add new episodes to queue for podcasts with autoAddToQueue enabled
+    @MainActor
     private func autoAddNewEpisodesToQueue(podcasts: [Podcast], episodesByPodcast: [UUID: [Episode]]) async {
         let autoAddPodcasts = podcasts.filter { $0.autoAddToQueue }
         guard !autoAddPodcasts.isEmpty else { return }
 
         let maxAutoAddPerRefresh = 5
         var addedCount = 0
-        let repository = DIContainer.shared.playbackStateRepository
 
         for podcast in autoAddPodcasts {
             guard addedCount < maxAutoAddPerRefresh else { break }
             guard let newEpisodes = episodesByPodcast[podcast.id] else { continue }
 
             // Only add episodes that aren't already in the queue
-            let currentQueue = (try? await repository.fetchQueuedEpisodes()) ?? []
-            let queuedIDs = Set(currentQueue.map { $0.episode.id })
-
-            for episode in newEpisodes where !queuedIDs.contains(episode.id) {
+            for episode in newEpisodes where AppModel.current?.isQueued(episode.id) != true {
                 guard addedCount < maxAutoAddPerRefresh else { break }
-                do {
-                    let maxPos = (try? await repository.getMaxQueuePosition()) ?? 0
-                    try await repository.addToQueue(episodeID: episode.id, position: maxPos + 1)
-                    addedCount += 1
-                } catch {
-                    // Skip duplicates or errors silently
-                }
+                await AppModel.current?.enqueue(episode.id)
+                addedCount += 1
             }
         }
 

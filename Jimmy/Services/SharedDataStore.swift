@@ -18,14 +18,13 @@ final class SharedDataStore {
 
     /// Update widget data from the current app state
     @MainActor
-    func updateWidgetData() {
+    func updateWidgetData() async {
         let audioPlayer = AudioPlayerService.shared
-        let queueVM = QueueViewModel.shared
 
         var data = WidgetData(updatedAt: Date())
 
         // Now Playing
-        if let current = queueVM.currentEpisode {
+        if let current = audioPlayer.currentEpisode {
             data.nowPlayingTitle = current.title
             let podcast = PodcastService.shared.loadPodcasts().first { $0.id == current.podcastID }
             data.nowPlayingPodcast = podcast?.title
@@ -40,8 +39,8 @@ final class SharedDataStore {
 
         // Up Next (first 3 queued episodes after current)
         let podcasts = PodcastService.shared.loadPodcasts()
-        let queueEpisodes = Array(queueVM.episodes.prefix(3))
-        data.upNext = queueEpisodes.map { episode in
+        let queueEpisodes = await AppModel.current?.resolveQueueEpisodes() ?? []
+        data.upNext = Array(queueEpisodes.prefix(3)).map { episode in
             let podcast = podcasts.first { $0.id == episode.podcastID }
             return WidgetEpisode(
                 id: episode.id,
@@ -54,7 +53,7 @@ final class SharedDataStore {
         }
 
         // Continue Listening — in-progress episodes (position > 0, not finished)
-        let inProgress = queueVM.episodes.filter { $0.playbackPosition > 0 && !$0.played }
+        let inProgress = queueEpisodes.filter { $0.playbackPosition > 0 && !$0.played }
         data.continueListening = Array(inProgress.prefix(3)).map { episode in
             let podcast = podcasts.first { $0.id == episode.podcastID }
             return WidgetEpisode(

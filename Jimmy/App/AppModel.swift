@@ -35,18 +35,49 @@ final class AppModel {
 
     private(set) var launchState: LaunchState
 
+    /// The queue's episodes, in play order — kept current by `store.observeQueue()`. Empty
+    /// (rather than stale) whenever `launchState` isn't `.ready`.
+    private(set) var queue: [JimmyKit.Episode] = []
+    private var queueObservationTask: Task<Void, Never>?
+
     private let databasePath: String
     private let legacyInput: () -> LegacyInput?
+
+    /// Old singletons that can't read the environment (`AudioPlayerService`, `CarPlayManager`,
+    /// episode rows, `ShakeUndoManager`, `AppDataDocument`'s iCloud sync, ...) reach the queue
+    /// through this until they're deleted in PRs 16-21. Set once, in `JimmyApp.init()`.
+    static weak var current: AppModel?
 
     init(databasePath: String, legacyInput: @escaping () -> LegacyInput? = { nil }) {
         self.databasePath = databasePath
         self.legacyInput = legacyInput
         self.launchState = Self.open(databasePath: databasePath, legacyInput: legacyInput())
+        startObservingQueueIfReady()
     }
 
     /// Tries opening the store again at the same path, e.g. after the user tapped "Try Again".
     func retry() {
         launchState = Self.open(databasePath: databasePath, legacyInput: legacyInput())
+        startObservingQueueIfReady()
+    }
+
+    private func startObservingQueueIfReady() {
+        queueObservationTask?.cancel()
+        queueObservationTask = nil
+        queue = []
+
+        guard case .ready(let ready) = launchState else { return }
+        let store = ready.store
+        queueObservationTask = Task { [weak self] in
+            do {
+                for try await episodes in store.observeQueue() {
+                    guard let self, !Task.isCancelled else { return }
+                    self.queue = episodes
+                }
+            } catch {
+                // The observation stopped (e.g. the store closed); the queue just stops updating.
+            }
+        }
     }
 
     /// Moves `jimmy.db` and its `-wal`/`-shm` files aside (to `<name>.broken-<timestamp>`, in the
@@ -99,7 +130,7 @@ extension AppModel {
     /// Reads today's legacy sources from disk, for `Store`'s one-time `v20_legacy_import`
     /// migration. Keys and paths match what the old app writes today:
     /// `AudioPlayerService.lastPlayingEpisodeID`, `GRDBRepositories`/`PodcastRepository`'s
-    /// `"saved_podcasts"`, `QueueViewModel`'s `"episode_queue"`, `FileStorage`'s
+    /// `"saved_podcasts"`, the old queue's `"episode_queue"`, `FileStorage`'s
     /// `Documents/AppData/podcasts.json`, and `ListeningStatsService`'s
     /// `Documents/listening_stats.json`.
     static func legacyInputFromDisk() -> LegacyInput {
@@ -120,5 +151,126 @@ extension AppModel {
                 .flatMap { try? Data(contentsOf: $0.appendingPathComponent("listening_stats.json")) },
             lastPlayedEpisodeID: lastPlayedEpisodeID
         )
+    }
+}
+
+// MARK: - Queue
+
+extension AppModel {
+    private var readyStore: Store? {
+        guard case .ready(let ready) = launchState else { return nil }
+        return ready.store
+    }
+
+    /// The queue's episode ids, in play order.
+    var queueEpisodeIDs: [UUID] { queue.map(\.id) }
+
+    /// Whether `episodeID` is currently queued.
+    func isQueued(_ episodeID: UUID) -> Bool {
+        queue.contains { $0.id == episodeID }
+    }
+
+    /// Inserts (or moves, if already queued) `episodeID` to `position` (1 = first). Omitting
+    /// `position` appends to the end of the queue.
+    ///
+    /// Posts the same `.episodeAddedToQueue`/`.queueOrderChanged` notifications the old
+    /// `GRDBPlaybackStateRepository` used to, so old `ObservableObject` view models that can't
+    /// use `@Observable` tracking (unlike a SwiftUI view body reading `AppModel` directly) stay
+    /// live without each one re-implementing its own polling.
+    func enqueue(_ episodeID: UUID, at position: Int? = nil) async {
+        guard let readyStore else { return }
+        // Read the live queue rather than trusting `self.queue`: it's only refreshed
+        // asynchronously by `observeQueue()`, so it can still be stale immediately after a
+        // preceding enqueue/dequeue call on the same episode-adding sequence.
+        let currentQueue = (try? await readyStore.queue()) ?? []
+        let wasQueued = currentQueue.contains { $0.id == episodeID }
+        try? await readyStore.enqueue(episodeID, at: position ?? currentQueue.count + 1)
+        NotificationCenter.default.post(name: wasQueued ? .queueOrderChanged : .episodeAddedToQueue, object: episodeID)
+    }
+
+    /// "Play Next": inserts (or moves) `episodeID` to position 2, right after whatever's playing.
+    func playNext(_ episodeID: UUID) async {
+        await enqueue(episodeID, at: 2)
+    }
+
+    /// Moves an already-queued `episodeID` to the front of the queue. A no-op if it isn't queued.
+    func moveToTop(_ episodeID: UUID) async {
+        await moveInQueue(episodeID, to: 1)
+    }
+
+    /// Moves an already-queued `episodeID` to the end of the queue. A no-op if it isn't queued.
+    func moveToBottom(_ episodeID: UUID) async {
+        guard let readyStore else { return }
+        let currentQueue = (try? await readyStore.queue()) ?? []
+        await moveInQueue(episodeID, to: currentQueue.count)
+    }
+
+    /// Moves an already-queued `episodeID` to `position` (1 = first).
+    func moveInQueue(_ episodeID: UUID, to position: Int) async {
+        guard let readyStore else { return }
+        try? await readyStore.moveInQueue(episodeID, to: position)
+        NotificationCenter.default.post(name: .queueOrderChanged, object: episodeID)
+    }
+
+    /// Removes `episodeID` from the queue, if present.
+    func dequeue(_ episodeID: UUID) async {
+        guard let readyStore else { return }
+        try? await readyStore.dequeue(episodeID)
+        NotificationCenter.default.post(name: .episodeRemovedFromQueue, object: episodeID)
+    }
+
+    /// Removes every queued episode belonging to `podcastID` (e.g. on unsubscribe).
+    func removeEpisodesFromPodcast(_ podcastID: UUID) async {
+        guard let readyStore else { return }
+        let currentQueue = (try? await readyStore.queue()) ?? []
+        for episode in currentQueue where episode.podcastID == podcastID {
+            try? await readyStore.dequeue(episode.id)
+        }
+    }
+
+    /// Empties the queue.
+    func clearQueue() async {
+        guard let readyStore else { return }
+        let currentQueue = (try? await readyStore.queue()) ?? []
+        for episode in currentQueue {
+            try? await readyStore.dequeue(episode.id)
+        }
+    }
+
+    /// Moves every queued episode to a random position.
+    func shuffleQueue() async {
+        guard let readyStore else { return }
+        var ids = ((try? await readyStore.queue()) ?? []).map(\.id)
+        ids.shuffle()
+        for (index, episodeID) in ids.enumerated() {
+            try? await readyStore.moveInQueue(episodeID, to: index + 1)
+        }
+    }
+
+    /// Replaces the whole queue with `episodeIDs`, in order (e.g. importing a backup or merging
+    /// an iCloud sync payload). Unknown or already-deleted episode ids are silently skipped.
+    func replaceQueue(withEpisodeIDs episodeIDs: [UUID]) async {
+        guard let readyStore else { return }
+        let currentQueue = (try? await readyStore.queue()) ?? []
+        for episode in currentQueue {
+            try? await readyStore.dequeue(episode.id)
+        }
+        for (index, episodeID) in episodeIDs.enumerated() {
+            try? await readyStore.enqueue(episodeID, at: index + 1)
+        }
+    }
+
+    /// Resolves the queue's episode ids into the old app's richer `Episode` model (progress,
+    /// played state, title, artwork — fields `JimmyKit.Episode` doesn't carry yet), for the old
+    /// singletons that still render or export them. Goes away once those callers move onto
+    /// `JimmyKit` directly in later PRs.
+    func resolveQueueEpisodes() async -> [Jimmy.Episode] {
+        var episodes: [Jimmy.Episode] = []
+        for episodeID in queueEpisodeIDs {
+            if let episodeWithState = try? await DIContainer.shared.episodeRepository.fetchEpisode(by: episodeID) {
+                episodes.append(episodeWithState.episode)
+            }
+        }
+        return episodes
     }
 }

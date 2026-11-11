@@ -95,18 +95,16 @@ struct AppDataDocument: FileDocument {
         PodcastService.shared.savePodcasts(existingPodcasts)
         
         // Import queue
-        await MainActor.run {
-            QueueViewModel.shared.episodes = validAppData.queue
-        }
+        await AppModel.current?.replaceQueue(withEpisodeIDs: validAppData.queue.map(\.id))
     }
-    
+
     @MainActor
-    func exportAppData() -> AppData {
+    func exportAppData() async -> AppData {
         let episodes = LibraryViewModel.shared.allEpisodes
         let podcasts = PodcastService.shared.loadPodcasts()
-        let queue = QueueViewModel.shared.episodes
+        let queue = await AppModel.current?.resolveQueueEpisodes() ?? []
         let settings: [String: String] = [:]
-        
+
         return AppData(
             podcasts: podcasts,
             episodes: episodes,
@@ -115,12 +113,12 @@ struct AppDataDocument: FileDocument {
             exportDate: Date()
         )
     }
-    
+
     func importAppData(_ appData: AppData) async {
         // Import episodes
         // Note: Episode import functionality needs to be implemented through proper services
         // For now, we'll skip episode import and focus on podcast import
-        
+
         // Import podcasts
         var existingPodcasts = PodcastService.shared.loadPodcasts()
         for podcast in appData.podcasts {
@@ -129,11 +127,9 @@ struct AppDataDocument: FileDocument {
             }
         }
         PodcastService.shared.savePodcasts(existingPodcasts)
-        
+
         // Import queue
-        await MainActor.run {
-            QueueViewModel.shared.episodes = appData.queue
-        }
+        await AppModel.current?.replaceQueue(withEpisodeIDs: appData.queue.map(\.id))
     }
 }
 
@@ -201,7 +197,7 @@ extension AppDataDocument {
             let podcasts = PodcastService.shared.loadPodcasts()
             let feedURLs = podcasts.compactMap { $0.feedURL.absoluteString }
 
-            let queueEpisodes = await MainActor.run { QueueViewModel.shared.episodes }
+            let queueEpisodes = await AppModel.current?.resolveQueueEpisodes() ?? []
             let queueIDs = queueEpisodes.map { $0.id.uuidString }
 
             // Collect playback positions from queue episodes

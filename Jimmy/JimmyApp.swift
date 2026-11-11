@@ -36,6 +36,7 @@ struct JimmyApp: App {
             legacyInput: isRunningUnitTests ? { nil } : { AppModel.legacyInputFromDisk() }
         )
         _appModel = State(initialValue: model)
+        AppModel.current = model
 
         startOldServicesIfReady(model)
     }

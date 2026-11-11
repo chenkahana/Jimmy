@@ -9,7 +9,6 @@ final class DIContainer {
     // MARK: - Stores (Actors for thread safety)
     lazy var podcastStore: CleanPodcastStoreProtocol = CleanPodcastStore.shared
     lazy var episodeStore: CleanEpisodeStoreProtocol = CleanEpisodeStore.shared
-    lazy var queueStore = QueueStore.shared
     @MainActor lazy var progressCacheStore = ProgressCacheStore.shared
     
     // MARK: - Core Infrastructure

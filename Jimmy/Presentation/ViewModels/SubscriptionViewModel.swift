@@ -22,7 +22,6 @@ class SubscriptionViewModel: ObservableObject {
     private let subscriptionRepository: SubscriptionRepositoryProtocol
     private let episodeRepository: EpisodeRepositoryProtocol
     private let audioPlayerService: AudioPlayerService
-    private let queueViewModel: QueueViewModel
     // Shared integration layer for coordinated fetches and persistence.
     private let worldClassIntegration = WorldClassIntegration.shared
     private var cachedEpisodeHeap: EpisodeMergeHeap?
@@ -38,14 +37,12 @@ class SubscriptionViewModel: ObservableObject {
     private init(
         subscriptionRepository: SubscriptionRepositoryProtocol = DIContainer.shared.subscriptionRepository,
         episodeRepository: EpisodeRepositoryProtocol = DIContainer.shared.episodeRepository,
-        audioPlayerService: AudioPlayerService = AudioPlayerService.shared,
-        queueViewModel: QueueViewModel = QueueViewModel.shared
+        audioPlayerService: AudioPlayerService = AudioPlayerService.shared
     ) {
         self.subscriptionRepository = subscriptionRepository
         self.episodeRepository = episodeRepository
         self.audioPlayerService = audioPlayerService
-        self.queueViewModel = queueViewModel
-        
+
         setupBindings()
         loadInitialData()
     }
@@ -124,7 +121,8 @@ class SubscriptionViewModel: ObservableObject {
     }
     
     private func loadQueueEpisodes() async {
-        queueEpisodes = queueViewModel.episodes
+        let queuedIDs = Set(AppModel.current?.queueEpisodeIDs ?? [])
+        queueEpisodes = episodes.filter { queuedIDs.contains($0.id) }
     }
     
     private func updateEpisodeStatus(_ updatedEpisode: Episode) {
@@ -179,9 +177,9 @@ class SubscriptionViewModel: ObservableObject {
         impactFeedback.impactOccurred()
         
         showToast(message: "Unsubscribed")
-        
+
         // Remove all episodes from this podcast from the queue
-        queueViewModel.removeEpisodesFromPodcast(podcastID: showID)
+        await AppModel.current?.removeEpisodesFromPodcast(showID)
         
         // Handle edge case: if show is currently playing
         if let currentEpisode = audioPlayerService.currentEpisode,
