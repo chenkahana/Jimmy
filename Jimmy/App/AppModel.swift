@@ -56,6 +56,10 @@ final class AppModel {
     var lastObservedEpisodeID: UUID?
     /// Now Playing artwork, fetched once per episode id and reused across position/rate updates.
     var nowPlayingArtworkCache: [UUID: MPMediaItemArtwork] = [:]
+    /// Up to `WatchSessionState.maxRecentCount` distinct episodes that started playing this
+    /// session, most-recent-first — mirrored to the watch as "Recent" (see
+    /// `AppModel+WatchSession.swift`). Not persisted: starts empty each launch.
+    var recentlyPlayedEpisodes: [JimmyKit.Episode] = []
 
     /// Old singletons that can't read the environment (`CarPlayManager`, episode rows,
     /// `ShakeUndoManager`, `AppDataDocument`'s iCloud sync, `WatchConnectivityService`, ...) reach
@@ -90,6 +94,7 @@ final class AppModel {
                 for try await episodes in store.observeQueue() {
                     guard let self, !Task.isCancelled else { return }
                     self.queue = episodes
+                    self.pushWatchState()
                 }
             } catch {
                 // The observation stopped (e.g. the store closed); the queue just stops updating.
