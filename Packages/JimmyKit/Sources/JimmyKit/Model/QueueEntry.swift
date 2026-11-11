@@ -4,7 +4,7 @@ import Foundation
 public nonisolated struct QueueEntry: Sendable, Hashable, Codable, Identifiable {
     public var id: UUID { episodeID }
     public var episodeID: UUID
-    /// 0-based position in the queue; lower plays sooner.
+    /// 1-based (1…n, no gaps) position in the queue; lower plays sooner.
     public var position: Int
 
     public init(episodeID: UUID, position: Int) {
