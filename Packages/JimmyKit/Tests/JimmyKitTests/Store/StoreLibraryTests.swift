@@ -140,6 +140,32 @@ struct StoreLibraryTests {
         #expect(updatedPodcast?.etag == "\"abc123\"")
     }
 
+    @Test func applySkipsAnEpisodeAnOlderBuildSavedUnderARandomID() async throws {
+        let (store, path) = try makeStore()
+        let feedURL = URL(string: "https://libsyn-example.libsyn.com/feed.xml")!
+        let parsed = try parseFixture("04_libsyn_style_basic.xml", feedURL: feedURL)
+        let podcast = try await store.subscribe(feedURL: feedURL, parsed: parsed)
+        let original = try await store.episodes(podcastID: podcast.id)
+
+        // Give every stored episode a random id, as builds before deterministic ids did.
+        let pool = try DatabasePool(path: path)
+        try await pool.write { db in
+            for episode in original {
+                try db.execute(sql: "UPDATE episodes SET id = ? WHERE id = ?", arguments: [UUID().uuidString, episode.id.uuidString])
+            }
+        }
+        try pool.close()
+
+        let outcome = FeedRefreshOutcome(
+            podcastID: podcast.id,
+            result: .success(.updated(parsed, etag: nil, lastModified: nil))
+        )
+        let inserted = try await store.apply(outcome)
+
+        #expect(inserted.isEmpty)
+        #expect(try await store.episodes(podcastID: podcast.id).count == original.count)
+    }
+
     @Test func applyFailureIsANoOp() async throws {
         let (store, _) = try makeStore()
         let feedURL = URL(string: "https://libsyn-example.libsyn.com/feed.xml")!

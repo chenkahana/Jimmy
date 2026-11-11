@@ -85,8 +85,15 @@ nonisolated extension Store {
 
             var insertedIDs: [UUID] = []
             for episode in parsed.episodes {
+                // Also match on audio URL within the podcast: episodes saved by older builds can
+                // carry random ids instead of the deterministic ones `FeedParser` stamps.
                 let alreadyExists = try Bool.fetchOne(
-                    db, sql: "SELECT EXISTS(SELECT 1 FROM episodes WHERE id = ?)", arguments: [episode.id.uuidString]
+                    db,
+                    sql: """
+                        SELECT EXISTS(SELECT 1 FROM episodes WHERE id = ?
+                            OR (podcastID = ? AND audioURL IS NOT NULL AND audioURL = ?))
+                        """,
+                    arguments: [episode.id.uuidString, outcome.podcastID.uuidString, episode.audioURL?.absoluteString]
                 ) ?? false
                 guard !alreadyExists else { continue }
                 try episode.insert(db)
