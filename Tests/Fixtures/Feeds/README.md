@@ -27,7 +27,7 @@ This directory contains 25 synthetic RSS feed XML files, each designed to test s
 | 19 | `19_rfc822_dates_odd_timezones.xml` | RFC 822 dates with unusual timezone formats | 3 | 3 |
 | 20 | `20_non_rfc_date_formats.xml` | Non-RFC date formats (ISO, long form, abbreviated) | 3 | 3 |
 | 21 | `21_missing_pubdate.xml` | Some items missing pubDate element | 3 | 3 |
-| 22 | `22_malformed_xml_unclosed_tag.xml` | Intentional XML malformation (unclosed tag) | 2 | 2 |
+| 22 | `22_malformed_xml_unclosed_tag.xml` | Intentional XML malformation (unclosed tag): the parser throws and keeps nothing, as today's refresh path does | 0 | 0 |
 | 23 | `23_atom_style_feed.xml` | Atom feed format instead of RSS 2.0 | 2 | 2 |
 | 24 | `24_itunes_new_feed_url_redirect.xml` | Feed with `itunes:new-feed-url` migration indicator | 2 | 2 |
 | 25 | `25_large_feed_2000_items.xml` | Large feed for performance testing | 2000 | 2000 |
