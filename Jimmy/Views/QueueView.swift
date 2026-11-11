@@ -15,6 +15,7 @@ struct QueueView: View {
     @Namespace private var queueNamespace
     @State private var selectedEpisodeDestination: QueueNavigationDestination?
     @State private var progressRefreshTick = false
+    @State private var showingSuggestions = false
 
     var currentPlayingEpisode: Episode? {
         return appModel.playback?.currentEpisode?.asLegacyEpisode()
@@ -34,6 +35,20 @@ struct QueueView: View {
                             .font(.system(size: 16, weight: .medium))
                             .popoverTip(QueueReorderTip(), arrowEdge: .top)
                     }
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        showingSuggestions = true
+                    } label: {
+                        Image(systemName: "sparkles")
+                            .font(.system(size: 16, weight: .medium))
+                    }
+                    .accessibilityLabel("Suggestions")
+                }
+            }
+            .sheet(isPresented: $showingSuggestions) {
+                NavigationStack {
+                    SuggestionsView()
                 }
             }
             .onAppear {
