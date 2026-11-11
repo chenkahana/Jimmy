@@ -10,7 +10,7 @@ UNSIGNED := CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO
 XCB      := xcodebuild -project $(PROJECT) -scheme $(SCHEME) -derivedDataPath $(DERIVED) -quiet
 
 .DEFAULT_GOAL := help
-.PHONY: help bootstrap project kit build watch test run archive clean
+.PHONY: help bootstrap project kit build watch test run screenshots archive clean
 
 help: ## List the available targets
 	@awk 'BEGIN {FS = ":.*## "} /^[a-z-]+:.*## / {printf "  %-10s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -38,6 +38,9 @@ test: project ## Run the unit tests on $(SIM) (override with SIM="...")
 
 run: ## Build, install, launch, and screenshot Jimmy in the simulator
 	./scripts/run_in_simulator.sh
+
+screenshots: ## Seed the -demoLibrary demo data and capture docs/screenshots/ (light + dark)
+	./Tools/screenshots.sh
 
 archive: project ## Signed Release archive for App Store Connect, in build/archives
 	xcodebuild archive -project $(PROJECT) -scheme $(SCHEME) -configuration Release \

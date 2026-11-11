@@ -27,7 +27,12 @@ extension AppModel {
     /// did. Without this, the `progress`/`queue` tables' foreign keys against `episodes` silently
     /// fail (every write here goes through `try?`), so nothing — position, queue membership,
     /// restore-on-launch — persists for it.
-    private func ensureEpisodeIsSaved(_ episode: JimmyKit.Episode) async {
+    ///
+    /// Not `private`: `DemoLibrary.seed(into:)` calls this too, for every episode it queues (not
+    /// just the one it plays) — the Queue screen still resolves queued episodes through this same
+    /// legacy repository (see `QueueView`'s doc comment), so a demo episode never saved here would
+    /// never show up there.
+    func ensureEpisodeIsSaved(_ episode: JimmyKit.Episode) async {
         guard let podcastID = episode.podcastID else { return }
         guard (try? await DIContainer.shared.episodeRepository.fetchEpisode(by: episode.id)) == nil else { return }
         let placeholder = EpisodeWithPlaybackState(

@@ -225,6 +225,24 @@ extension AppModel {
         return directory.appendingPathComponent("jimmy.db").path
     }
 
+    /// Chooses the on-disk database path for this launch: `DemoLibrary`'s throwaway temp path
+    /// when `-demoLibrary` is passed (see `DemoLibrary.seed(into:)`, called separately once the
+    /// store opens), a temp path for unit tests, and the user's real `Documents/jimmy.db`
+    /// otherwise — in that priority order, so a demo-library test launch never touches the real
+    /// database even if `XCTestConfigurationFilePath` also happens to be set.
+    static func launchDatabasePath(
+        arguments: [String] = ProcessInfo.processInfo.arguments,
+        isRunningUnitTests: Bool
+    ) -> String {
+        if DemoLibrary.isRequested(arguments: arguments) {
+            return DemoLibrary.makeDatabasePath()
+        }
+        if isRunningUnitTests {
+            return temporaryDatabasePath()
+        }
+        return defaultDatabasePath()
+    }
+
     /// Reads today's legacy sources from disk, for `Store`'s one-time `v20_legacy_import`
     /// migration. Keys and paths match what the old app writes today:
     /// `AudioPlayerService.lastPlayingEpisodeID`, `GRDBRepositories`/`PodcastRepository`'s

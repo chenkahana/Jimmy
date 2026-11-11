@@ -34,4 +34,37 @@ final class AppModelTests: XCTestCase {
         }
         XCTAssertFalse(failure.message.isEmpty)
     }
+
+    // MARK: - Launch database path selection
+
+    func testDemoLibraryArgumentNeverSelectsTheRealDatabasePath() {
+        let path = AppModel.launchDatabasePath(arguments: ["Jimmy", "-demoLibrary"], isRunningUnitTests: false)
+
+        XCTAssertNotEqual(path, AppModel.defaultDatabasePath())
+        XCTAssertTrue(
+            path.hasPrefix(FileManager.default.temporaryDirectory.path),
+            "Expected the demo library path to live under the temporary directory, got \(path)"
+        )
+    }
+
+    func testDemoLibraryArgumentWinsOverUnitTestMode() {
+        // `-demoLibrary` still shouldn't collide with the regular unit-test temp path, which a
+        // demo-library launch has no reason to share.
+        let path = AppModel.launchDatabasePath(arguments: ["Jimmy", "-demoLibrary"], isRunningUnitTests: true)
+
+        XCTAssertNotEqual(path, AppModel.defaultDatabasePath())
+        XCTAssertTrue(path.contains("AppModel-Demo-"))
+    }
+
+    func testWithoutTheDemoLibraryArgumentUnitTestsStillGetATemporaryPath() {
+        let path = AppModel.launchDatabasePath(arguments: ["Jimmy"], isRunningUnitTests: true)
+
+        XCTAssertNotEqual(path, AppModel.defaultDatabasePath())
+    }
+
+    func testWithoutTheDemoLibraryArgumentOrUnitTestsTheRealDatabasePathIsUsed() {
+        let path = AppModel.launchDatabasePath(arguments: ["Jimmy"], isRunningUnitTests: false)
+
+        XCTAssertEqual(path, AppModel.defaultDatabasePath())
+    }
 }
