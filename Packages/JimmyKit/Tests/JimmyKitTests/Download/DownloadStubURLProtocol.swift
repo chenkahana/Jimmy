@@ -7,7 +7,7 @@ import Foundation
 /// `nonisolated` to match the (synchronous, framework-called) `URLProtocol` override points;
 /// its one piece of shared mutable state is a `nonisolated(unsafe)` dictionary guarded by a lock,
 /// rather than `@unchecked Sendable` on the type itself.
-nonisolated final class StubURLProtocol: URLProtocol {
+nonisolated final class DownloadStubURLProtocol: URLProtocol {
     private static let lock = NSLock()
     private nonisolated(unsafe) static var stubs: [URL: Result<Data, Error>] = [:]
 

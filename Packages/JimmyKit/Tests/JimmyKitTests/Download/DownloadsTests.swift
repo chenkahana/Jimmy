@@ -16,7 +16,7 @@ struct DownloadsTests {
 
     private func stubbedConfiguration() -> URLSessionConfiguration {
         let config = URLSessionConfiguration.ephemeral
-        config.protocolClasses = [StubURLProtocol.self]
+        config.protocolClasses = [DownloadStubURLProtocol.self]
         return config
     }
 
@@ -43,8 +43,8 @@ struct DownloadsTests {
         let (downloads, store, baseDirectory) = makeSUT()
         let episode = makeEpisode()
         let data = Data(repeating: 0x42, count: 4_096)
-        StubURLProtocol.stub(url: episode.audioURL!, data: data)
-        defer { StubURLProtocol.removeStub(url: episode.audioURL!) }
+        DownloadStubURLProtocol.stub(url: episode.audioURL!, data: data)
+        defer { DownloadStubURLProtocol.removeStub(url: episode.audioURL!) }
 
         downloads.download(episode)
         await waitUntil { downloads.states[episode.id] == .done }
@@ -67,8 +67,8 @@ struct DownloadsTests {
     @Test func failedDownloadRecordsFailedState() async {
         let (downloads, store, _) = makeSUT()
         let episode = makeEpisode()
-        StubURLProtocol.stub(url: episode.audioURL!, error: URLError(.notConnectedToInternet))
-        defer { StubURLProtocol.removeStub(url: episode.audioURL!) }
+        DownloadStubURLProtocol.stub(url: episode.audioURL!, error: URLError(.notConnectedToInternet))
+        defer { DownloadStubURLProtocol.removeStub(url: episode.audioURL!) }
 
         downloads.download(episode)
         await waitUntil { downloads.states[episode.id] == .failed }
@@ -106,8 +106,8 @@ struct DownloadsTests {
         let (downloads, store, baseDirectory) = makeSUT()
         let episode = makeEpisode()
         let data = Data(repeating: 0x1, count: 128)
-        StubURLProtocol.stub(url: episode.audioURL!, data: data)
-        defer { StubURLProtocol.removeStub(url: episode.audioURL!) }
+        DownloadStubURLProtocol.stub(url: episode.audioURL!, data: data)
+        defer { DownloadStubURLProtocol.removeStub(url: episode.audioURL!) }
 
         downloads.download(episode)
         await waitUntil { downloads.states[episode.id] == .done }
