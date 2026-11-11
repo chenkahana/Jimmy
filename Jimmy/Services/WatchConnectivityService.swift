@@ -41,13 +41,14 @@ final class WatchConnectivityService: NSObject, WCSessionDelegate {
     func session(_ session: WCSession, didReceiveMessage message: [String : Any]) {
         guard let command = message["command"] as? String else { return }
         Task { @MainActor in
+            guard let playback = AppModel.current?.playback else { return }
             switch command {
             case "playPause":
-                AudioPlayerService.shared.togglePlayPause()
+                await playback.togglePlayPause()
             case "seekForward":
-                AudioPlayerService.shared.seekForward()
+                await playback.skipForward()
             case "seekBackward":
-                AudioPlayerService.shared.seekBackward()
+                await playback.skipBackward()
             default:
                 break
             }

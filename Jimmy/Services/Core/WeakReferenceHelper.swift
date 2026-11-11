@@ -19,7 +19,6 @@ final class WeakReferenceHelper {
         // Based on performance baseline: "3 strong delegate references (retain cycle risk)"
         // These are common patterns that can cause retain cycles
         
-        strongReferences.insert("AudioPlayerService") // Often has strong delegate references
         strongReferences.insert("BackgroundTaskManager") // May hold strong references to completion handlers
         
         logger.info("Identified \(self.strongReferences.count) services with potential strong reference issues")

@@ -1,5 +1,4 @@
 import SwiftUI
-import AVFoundation
 import os.log
 import UIKit
 import TipKit
@@ -63,9 +62,10 @@ struct JimmyApp: App {
         // Apply dark mode setting
         applyInitialDarkModeSetting()
 
-        // Configure audio session
+        // Restore whatever was last playing (paused) — after `applyInitialDarkModeSetting()`,
+        // which is what first writes `SettingsViewModel`'s `autoRestoreLastEpisode` default.
         if !isRunningUnitTests {
-            configureAudioSession()
+            Task { await model.restoreLastEpisodeIfEnabled() }
         }
     }
 
@@ -162,12 +162,8 @@ struct JimmyApp: App {
         _ = DatabaseManager.shared
         let dbElapsed = CFAbsoluteTimeGetCurrent() - dbStart
 
-        let audioStart = CFAbsoluteTimeGetCurrent()
-        _ = AudioPlayerService.shared
-        let audioElapsed = CFAbsoluteTimeGetCurrent() - audioStart
-
         let criticalElapsed = CFAbsoluteTimeGetCurrent() - startTime
-        Self.logger.info("Critical services initialized in \(String(format: "%.3f", criticalElapsed))s | DatabaseManager: \(String(format: "%.3f", dbElapsed))s | AudioPlayerService: \(String(format: "%.3f", audioElapsed))s")
+        Self.logger.info("Critical services initialized in \(String(format: "%.3f", criticalElapsed))s | DatabaseManager: \(String(format: "%.3f", dbElapsed))s")
         
         // Background initialization for non-critical services
         // These will initialize lazily when first accessed
@@ -210,20 +206,8 @@ struct JimmyApp: App {
         // - SubscriptionViewModel.shared
     }
     
-    // MARK: - App Setup
-    
-    private func configureAudioSession() {
-        let audioSession = AVAudioSession.sharedInstance()
-        do {
-            try audioSession.setCategory(.playback, mode: .default)
-            try audioSession.setActive(true)
-        } catch {
-            Self.logger.error("Failed to configure audio session: \(error)")
-        }
-    }
-    
     // MARK: - Scene Phase Handling
-    
+
     private func handleScenePhaseChange(from oldPhase: ScenePhase, to newPhase: ScenePhase) {
         guard !isRunningUnitTests else {
             return
@@ -231,6 +215,7 @@ struct JimmyApp: App {
 
         switch newPhase {
         case .background:
+            appModel.flushPlaybackForBackground()
             Task.detached(priority: .background) {
                 await BackgroundTaskManager.shared.scheduleBackgroundRefresh()
                 await BackgroundTaskManager.shared.scheduleLibraryIncrementalRefresh()

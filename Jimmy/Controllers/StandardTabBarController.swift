@@ -1,6 +1,7 @@
 import UIKit
 import SwiftUI
 import Combine
+import JimmyKit
 import Observation
 import os
 
@@ -42,7 +43,7 @@ final class StandardTabBarController: UITabBarController, UITabBarControllerDele
     private let shell = ShellStore.shared
     private let chrome = ShellStore.shared.chrome
     private let tracker = InteractionLatencyTracker.shared
-    private let audioPlayer = AudioPlayerService.shared
+    private var playback: Playback? { AppModel.current?.playback }
 
     private var miniPlayerHostingController: MiniPlayerHostingController?
     private var miniPlayerContainerView: UIView?
@@ -186,20 +187,24 @@ final class StandardTabBarController: UITabBarController, UITabBarControllerDele
     }
 
     private func setupMiniPlayerBindings() {
-        audioPlayer.$currentEpisode
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] episode in
-                guard let self else {
-                    return
-                }
-                self.chrome.showsMiniPlayer = episode != nil
+        observePlaybackEpisode()
+    }
+
+    private func observePlaybackEpisode() {
+        withObservationTracking { [weak self] in
+            _ = self?.playback?.currentEpisode
+        } onChange: { [weak self] in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.chrome.showsMiniPlayer = self.playback?.currentEpisode != nil
                 self.updateMiniPlayerVisibility(animated: true)
+                self.observePlaybackEpisode()
             }
-            .store(in: &cancellables)
+        }
     }
 
     private func updateMiniPlayerVisibility(animated: Bool) {
-        let shouldShow = audioPlayer.currentEpisode != nil
+        let shouldShow = playback?.currentEpisode != nil
         chrome.showsMiniPlayer = shouldShow
 
         guard let miniPlayerContainerView else {
@@ -289,7 +294,7 @@ final class StandardTabBarController: UITabBarController, UITabBarControllerDele
     private func applyShellSelection(_ tab: ShellTab) {
         guard let uiTab = tabs.first(where: { $0.identifier == tab.identifier }),
               selectedTab?.identifier != tab.identifier else {
-            updateHostedContentBottomInset(isMiniPlayerVisible: audioPlayer.currentEpisode != nil)
+            updateHostedContentBottomInset(isMiniPlayerVisible: playback?.currentEpisode != nil)
             return
         }
 
@@ -300,7 +305,7 @@ final class StandardTabBarController: UITabBarController, UITabBarControllerDele
         isApplyingShellSelection = true
         selectedTab = uiTab
         isApplyingShellSelection = false
-        updateHostedContentBottomInset(isMiniPlayerVisible: audioPlayer.currentEpisode != nil)
+        updateHostedContentBottomInset(isMiniPlayerVisible: playback?.currentEpisode != nil)
         tracker.endTabSwitch(tab: tab)
     }
 

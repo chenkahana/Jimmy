@@ -782,7 +782,7 @@ struct LibraryView: View {
         // FALLBACK: Use LibraryViewModel episodes for now (sync approach)
         // TODO: Make this async to use database directly like QueueView
         let recentEpisodes = viewModel.getRecentEpisodes(limit: 100)
-        let audioPlayer = AudioPlayerService.shared
+        let playback = AppModel.current?.playback
         let progressCache = DIContainer.shared.progressCacheStore
         
         return recentEpisodes.map { episode in
@@ -819,7 +819,7 @@ struct LibraryView: View {
 
             
             // Determine status using the derivation rules
-            let isCurrentlyPlaying = audioPlayer.isPlaying && audioPlayer.currentEpisode?.id == episode.id
+            let isCurrentlyPlaying = (playback?.isPlaying ?? false) && playback?.currentEpisode?.id == episode.id
             let isQueued = AppModel.current?.isQueued(episode.id) ?? false
             
             let status = EpisodeWithStatus.deriveStatus(
@@ -961,11 +961,7 @@ struct LibraryView: View {
     // MARK: - Episode Actions
     
     private func playEpisode(_ episode: Episode) async {
-        // Use AudioPlayerService to load and play the episode
-        let audioPlayerService = AudioPlayerService.shared
-        await MainActor.run {
-            audioPlayerService.loadEpisode(episode, startPlaying: true)
-        }
+        await AppModel.current?.play(episode.asPlaybackEpisode())
     }
     
     private func addToQueue(_ episode: Episode) {

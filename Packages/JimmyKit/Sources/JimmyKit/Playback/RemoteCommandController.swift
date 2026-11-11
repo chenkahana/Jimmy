@@ -39,7 +39,10 @@ public final class RemoteCommandController {
         commandCenter.skipForwardCommand.isEnabled = true
         commandCenter.skipBackwardCommand.isEnabled = true
         commandCenter.changePlaybackPositionCommand.isEnabled = true
-        commandCenter.nextTrackCommand.isEnabled = true
+        // Left disabled, as the old service left it: `advanceToNextEpisode` doesn't move the
+        // skipped episode out of queue position 1, so once *that* episode also finished,
+        // `episode(after:)` would fall back to it again instead of the actual next one.
+        commandCenter.nextTrackCommand.isEnabled = false
 
         commandCenter.playCommand.addTarget { [weak self] _ in
             Task { @MainActor [weak self] in self?.playback?.play() }
@@ -70,11 +73,6 @@ public final class RemoteCommandController {
             guard let event = event as? MPChangePlaybackPositionCommandEvent else { return .commandFailed }
             let positionTime = event.positionTime
             Task { @MainActor [weak self] in await self?.playback?.seek(to: positionTime) }
-            return .success
-        }
-
-        commandCenter.nextTrackCommand.addTarget { [weak self] _ in
-            Task { @MainActor [weak self] in await self?.playback?.advanceToNextEpisode() }
             return .success
         }
     }

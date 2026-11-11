@@ -122,7 +122,7 @@ final class CarPlayManager: NSObject {
             let item = CPListItem(text: episode.title, detailText: detail)
             item.handler = { _, completion in
                 Task { @MainActor in
-                    AudioPlayerService.shared.loadEpisode(episode, startPlaying: true)
+                    await AppModel.current?.play(episode.asPlaybackEpisode())
                 }
                 completion()
             }
@@ -160,7 +160,7 @@ final class CarPlayManager: NSObject {
 
             item.handler = { _, completion in
                 Task { @MainActor in
-                    AudioPlayerService.shared.loadEpisode(episode, startPlaying: true)
+                    await AppModel.current?.play(episode.asPlaybackEpisode())
                 }
                 completion()
             }
@@ -177,11 +177,11 @@ final class CarPlayManager: NSObject {
 
     @MainActor
     private func cyclePlaybackSpeed() {
+        guard let playback = AppModel.current?.playback else { return }
         let speeds: [Float] = [1.0, 1.25, 1.5, 2.0, 0.75]
-        let current = AudioPlayerService.shared.playbackSpeed
-        let currentIndex = speeds.firstIndex(of: current) ?? 0
+        let currentIndex = speeds.firstIndex(of: playback.rate) ?? 0
         let nextIndex = (currentIndex + 1) % speeds.count
-        AudioPlayerService.shared.playbackSpeed = speeds[nextIndex]
+        playback.setRate(speeds[nextIndex])
     }
 
     // MARK: - Helpers

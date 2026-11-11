@@ -142,10 +142,16 @@ final class DownloadManager: NSObject, ObservableObject {
 
     /// Returns local URL if available, otherwise the remote URL
     func effectiveURL(for episode: Episode) -> URL? {
-        if case .downloaded(let url) = downloadStates[episode.id] {
+        effectiveURL(forEpisodeID: episode.id, remoteURL: episode.audioURL)
+    }
+
+    /// Same lookup as `effectiveURL(for:)`, keyed by id directly — for callers (e.g. `AppModel`,
+    /// playing a `JimmyKit.Episode`) that don't have the old, richer `Episode` type on hand.
+    func effectiveURL(forEpisodeID id: UUID, remoteURL: URL?) -> URL? {
+        if case .downloaded(let url) = downloadStates[id] {
             return url
         }
-        return episode.audioURL
+        return remoteURL
     }
 
     // MARK: - Private Helpers

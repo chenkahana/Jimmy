@@ -6,6 +6,9 @@ public protocol PlayerEngine: AnyObject {
     /// Playback rate; 1.0 is normal speed. Setting it while playing should take effect immediately.
     var rate: Float { get set }
 
+    /// Output volume, 0...1. Used for the sleep timer's fade-out; 1.0 is full volume.
+    var volume: Float { get set }
+
     /// Current playback position, in seconds.
     var currentTime: TimeInterval { get }
 
@@ -24,7 +27,10 @@ public protocol PlayerEngine: AnyObject {
     var onEndOfItem: (() async -> Void)? { get set }
 
     /// Load a new item for playback, replacing whatever was loaded before. Does not start playing.
-    func load(url: URL)
+    /// `startPosition` is where a resumed episode should pick up (0 for a fresh one); a real
+    /// implementation defers actually seeking there, and reporting any `onTimeUpdate` ticks, until
+    /// the item is ready to play, instead of a seek issued too early silently dropping.
+    func load(url: URL, startPosition: TimeInterval)
 
     /// Start/resume playback of the loaded item.
     func play()

@@ -7,7 +7,6 @@ import TipKit
 /// still comes from the old episode pipeline, resolved by id as the queue's order changes.
 struct QueueView: View {
     @Environment(AppModel.self) private var appModel
-    @ObservedObject private var audioPlayer = AudioPlayerService.shared
     @State private var editMode: EditMode = .inactive
     @State private var allPodcasts: [Podcast] = []
     @State private var episodes: [Episode] = []
@@ -18,7 +17,7 @@ struct QueueView: View {
     @State private var progressRefreshTick = false
 
     var currentPlayingEpisode: Episode? {
-        return audioPlayer.currentEpisode
+        return appModel.playback?.currentEpisode?.asLegacyEpisode()
     }
 
     var body: some View {
@@ -280,8 +279,7 @@ struct QueueView: View {
             },
             onPlay: {
                 if editMode == .inactive {
-                    Task { await appModel.moveToTop(episode.id) }
-                    audioPlayer.loadEpisode(episode, startPlaying: true)
+                    Task { await appModel.play(episode.asPlaybackEpisode()) }
                 }
             },
             onRemove: {
@@ -317,7 +315,6 @@ struct QueueView: View {
     private func convertToEpisodeWithStatus(_ episode: Episode, index: Int) -> EpisodeWithStatus {
         _ = progressRefreshTick
 
-        let audioPlayer = AudioPlayerService.shared
         let podcast = getPodcast(for: episode)
         let progressCache = DIContainer.shared.progressCacheStore
 
@@ -344,7 +341,7 @@ struct QueueView: View {
 
 
         // Determine status using the derivation rules
-        let isCurrentlyPlaying = audioPlayer.isPlaying && audioPlayer.currentEpisode?.id == episode.id
+        let isCurrentlyPlaying = (appModel.playback?.isPlaying ?? false) && appModel.playback?.currentEpisode?.id == episode.id
         let isQueued = true // Always queued since this is QueueView
 
         let status = EpisodeWithStatus.deriveStatus(

@@ -14,10 +14,10 @@ struct EpisodeCard: View, Equatable {
     let onMoveToLast: (() -> Void)?
     let queuePosition: Int?
 
-    @ObservedObject private var audioPlayer = AudioPlayerService.shared
+    @Environment(AppModel.self) private var appModel
 
     private var isActuallyPlaying: Bool {
-        audioPlayer.isPlaying && audioPlayer.currentEpisode?.id == episode.id
+        (appModel.playback?.isPlaying ?? false) && appModel.playback?.currentEpisode?.id == episode.id
     }
 
     init(

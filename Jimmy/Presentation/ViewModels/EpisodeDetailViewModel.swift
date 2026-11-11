@@ -1,5 +1,7 @@
 import Foundation
+import JimmyKit
 import Combine
+import Observation
 
 /// ViewModel for Episode Detail functionality following MVVM patterns
 @MainActor
@@ -19,7 +21,6 @@ class EpisodeDetailViewModel: ObservableObject {
     
     // MARK: - Private Properties
     private let podcastService: PodcastService
-    private let audioPlayerService: AudioPlayerService
     private let cacheService: EpisodeCacheService
     private var cancellables = Set<AnyCancellable>()
 
@@ -27,35 +28,24 @@ class EpisodeDetailViewModel: ObservableObject {
     init(
         episode: Episode,
         podcastService: PodcastService = .shared,
-        audioPlayerService: AudioPlayerService = .shared,
         cacheService: EpisodeCacheService = .shared
     ) {
         self.episode = episode
         self.podcastService = podcastService
-        self.audioPlayerService = audioPlayerService
         self.cacheService = cacheService
 
         setupBindings()
         loadInitialData()
     }
-    
+
     deinit {
         cancellables.removeAll()
     }
-    
+
     // MARK: - Private Methods
     private func setupBindings() {
-        // Bind to audio player state - check both current episode and playing state
-        Publishers.CombineLatest(
-            audioPlayerService.$currentEpisode,
-            audioPlayerService.$isPlaying
-        )
-        .map { [weak self] currentEpisode, isPlaying in
-            currentEpisode?.id == self?.episode.id && isPlaying
-        }
-        .assign(to: \.isPlaying, on: self)
-        .store(in: &cancellables)
-        
+        observePlaybackState()
+
         // Bind to queue state
         isInQueue = AppModel.current?.isQueued(episode.id) ?? false
         Publishers.MergeMany(
@@ -74,7 +64,28 @@ class EpisodeDetailViewModel: ObservableObject {
         // Monitor download status manually since $cachedEpisodes doesn't exist
         updateDownloadStatus()
     }
-    
+
+    /// `Playback` is `@Observable`, not an `ObservableObject` this Combine-based view model can
+    /// subscribe to — mirrors `AppModel`'s own tracking loop instead.
+    private func observePlaybackState() {
+        withObservationTracking { [weak self] in
+            _ = AppModel.current?.playback?.currentEpisode
+            _ = AppModel.current?.playback?.isPlaying
+        } onChange: { [weak self] in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.updateIsPlaying()
+                self.observePlaybackState()
+            }
+        }
+        updateIsPlaying()
+    }
+
+    private func updateIsPlaying() {
+        let playback = AppModel.current?.playback
+        isPlaying = playback?.currentEpisode?.id == episode.id && (playback?.isPlaying ?? false)
+    }
+
     private func loadInitialData() {
         Task {
             await loadPodcast()
@@ -102,28 +113,7 @@ class EpisodeDetailViewModel: ObservableObject {
     }
     
     // MARK: - Public Methods
-    func playEpisode() async {
-        do {
-            audioPlayerService.loadEpisode(episode)
-            audioPlayerService.play()
-            errorMessage = nil
-        } catch {
-            errorMessage = "Failed to play episode: \(error.localizedDescription)"
-        }
-    }
-    
-    func pauseEpisode() {
-        audioPlayerService.pause()
-    }
-    
-    func togglePlayPause() async {
-        if isPlaying {
-            pauseEpisode()
-        } else {
-            await playEpisode()
-        }
-    }
-    
+
     func downloadEpisode() async {
         guard !isDownloaded && !isDownloading else { return }
         

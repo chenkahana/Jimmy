@@ -1,14 +1,47 @@
 import SwiftUI
+import JimmyKit
+
+/// A preset duration (or end-of-episode) the sleep timer can be started with — purely a UI
+/// label; `startSleepTimer` is called with the `SleepTimerMode` it maps to.
+enum SleepTimerPreset: String, CaseIterable, Identifiable {
+    case minutes5, minutes15, minutes30, minutes45, minutes60, endOfEpisode
+
+    var id: String { label }
+
+    var label: String {
+        switch self {
+        case .minutes5: return "5 min"
+        case .minutes15: return "15 min"
+        case .minutes30: return "30 min"
+        case .minutes45: return "45 min"
+        case .minutes60: return "60 min"
+        case .endOfEpisode: return "End of Episode"
+        }
+    }
+
+    var mode: SleepTimerMode {
+        switch self {
+        case .minutes5: return .duration(5 * 60)
+        case .minutes15: return .duration(15 * 60)
+        case .minutes30: return .duration(30 * 60)
+        case .minutes45: return .duration(45 * 60)
+        case .minutes60: return .duration(60 * 60)
+        case .endOfEpisode: return .endOfEpisode
+        }
+    }
+}
 
 /// Sheet for configuring the sleep timer with preset durations
 struct SleepTimerView: View {
-    @ObservedObject private var sleepTimer = SleepTimerService.shared
+    @Environment(AppModel.self) private var appModel
     @Environment(\.dismiss) private var dismiss
+
+    private var isActive: Bool { appModel.playback?.sleepTimerMode != nil }
 
     var body: some View {
         NavigationView {
             VStack(spacing: 24) {
-                if sleepTimer.isActive {
+                if isActive {
                     activeTimerView
                 } else {
                     presetSelectionView
@@ -31,23 +64,24 @@ struct SleepTimerView: View {
         VStack(spacing: 24) {
             Spacer()
 
-            // Countdown display
-            Text(sleepTimer.formattedRemaining)
-                .font(.system(size: 64, weight: .thin, design: .rounded))
-                .monospacedDigit()
-                .foregroundColor(.primary)
-
-            if let preset = sleepTimer.selectedPreset {
-                Text(preset.label)
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
+            // An end-of-episode timer has no end date to count down to, so it shows its own label
+            // instead of "--:--".
+            if appModel.playback?.sleepTimerMode == .endOfEpisode {
+                Text(SleepTimerPreset.endOfEpisode.label)
+                    .font(.system(size: 36, weight: .medium, design: .rounded))
+                    .foregroundColor(.primary)
+            } else {
+                Text(formattedRemaining)
+                    .font(.system(size: 64, weight: .thin, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundColor(.primary)
             }
 
             Spacer()
 
             // Action buttons
             HStack(spacing: 16) {
-                Button(action: { sleepTimer.extend(by: 5 * 60) }) {
+                Button(action: { appModel.playback?.extendSleepTimer(by: 5 * 60) }) {
                     Label("+5 min", systemImage: "plus.circle")
                         .font(.system(.subheadline, weight: .semibold))
                         .padding(.horizontal, 20)
@@ -59,7 +93,7 @@ struct SleepTimerView: View {
                 .accessibilityLabel("Add 5 minutes")
                 .accessibilityHint("Extends the sleep timer by 5 minutes")
 
-                Button(action: { sleepTimer.extend(by: 15 * 60) }) {
+                Button(action: { appModel.playback?.extendSleepTimer(by: 15 * 60) }) {
                     Label("+15 min", systemImage: "plus.circle")
                         .font(.system(.subheadline, weight: .semibold))
                         .padding(.horizontal, 20)
@@ -73,7 +107,7 @@ struct SleepTimerView: View {
             }
 
             Button(role: .destructive, action: {
-                sleepTimer.cancel()
+                appModel.playback?.cancelSleepTimer()
                 dismiss()
             }) {
                 Text("Cancel Timer")
@@ -102,9 +136,9 @@ struct SleepTimerView: View {
                 .foregroundColor(.secondary)
 
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                ForEach(SleepTimerService.SleepTimerPreset.allCases) { preset in
+                ForEach(SleepTimerPreset.allCases) { preset in
                     Button(action: {
-                        sleepTimer.start(preset: preset)
+                        appModel.playback?.startSleepTimer(preset.mode)
                     }) {
                         Text(preset.label)
                             .font(.system(.body, weight: .medium))
@@ -119,5 +153,11 @@ struct SleepTimerView: View {
                 }
             }
         }
+    }
+
+    private var formattedRemaining: String {
+        guard let remaining = appModel.playback?.sleepTimerRemaining else { return "--:--" }
+        let total = Int(max(0, remaining))
+        return String(format: "%d:%02d", total / 60, total % 60)
     }
 }

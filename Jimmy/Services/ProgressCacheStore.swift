@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import Observation
 import os
 
 /// Actor-based progress cache store that maintains real-time episode progress
@@ -97,30 +98,10 @@ final class ProgressCacheStore: ObservableObject {
     // MARK: - Private Methods
     
     private func setupAudioPlayerSubscription() {
-        let audioPlayer = AudioPlayerService.shared
-        
-        // Subscribe to enhanced progress updates with episode ID
-        audioPlayer.episodeProgressPublisher
-            .sink { [weak self] episodeID, position in
-                guard let self = self else { return }
-                
-                // Get duration from audio player
-                let duration = audioPlayer.duration
-                
-                // Update progress maps
-                self.progressMap[episodeID] = position
-                
-                if duration > 0 {
-                    self.progressPercentageMap[episodeID] = min(1.0, max(0.0, position / duration))
-                } else {
-                    self.progressPercentageMap[episodeID] = 0.0
-                }
-                
-                // Throttled persistence
-                self.throttledPersist(episodeID: episodeID, position: position)
-            }
-            .store(in: &cancellables)
-        
+        // `Playback` is `@Observable`, not a Combine publisher — poll its state via an
+        // observation loop instead of subscribing, the same pattern `AppModel` uses.
+        observePlaybackPosition()
+
         // Listen for episode completion
         NotificationCenter.default.publisher(for: .episodeStatusUpdated)
             .sink { [weak self] notification in
@@ -135,6 +116,30 @@ final class ProgressCacheStore: ObservableObject {
             .store(in: &cancellables)
     }
     
+    private func observePlaybackPosition() {
+        withObservationTracking { [weak self] in
+            _ = AppModel.current?.playback?.position
+            _ = AppModel.current?.playback?.currentEpisode
+        } onChange: { [weak self] in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.handlePlaybackPositionChange()
+                self.observePlaybackPosition()
+            }
+        }
+    }
+
+    private func handlePlaybackPositionChange() {
+        guard let playback = AppModel.current?.playback, let episodeID = playback.currentEpisode?.id else { return }
+        let position = playback.position
+        let duration = playback.duration ?? 0
+
+        progressMap[episodeID] = position
+        progressPercentageMap[episodeID] = duration > 0 ? min(1.0, max(0.0, position / duration)) : 0.0
+
+        throttledPersist(episodeID: episodeID, position: position)
+    }
+
     private func throttledPersist(episodeID: UUID, position: Double) {
         let now = Date()
         guard now.timeIntervalSince(lastPersistTime) >= persistThrottleInterval else { return }

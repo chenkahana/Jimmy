@@ -65,6 +65,13 @@ nonisolated enum Migrations {
             // Progress isn't re-synced here — it stays on the legacy columns until PR 16.
             try Self.runQueueBackfill(db)
         }
+        migrator.registerMigration("v24_resync_progress") { db in
+            // The old app kept writing `episodes.playbackPosition`/`played`/`status` and
+            // `playback_state.position`/`finished` after `v19_progress`'s one-time copy, until this
+            // PR (16) moved playback onto `Playback`/`progress`. Re-run the same backfill once more
+            // so `progress` catches up with whatever those legacy columns became since v19 ran.
+            try Self.runProgressBackfill(db)
+        }
     }
 
     // MARK: - v18_uuid_text
