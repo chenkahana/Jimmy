@@ -115,21 +115,17 @@ extension AppModel {
             lastObservedIsPlaying = playback.isPlaying
         }
 
-        if let episodeID = playback.currentEpisode?.id, episodeID != lastObservedEpisodeID {
-            lastObservedEpisodeID = episodeID
-            UserDefaults.standard.set(episodeID.uuidString, forKey: "lastPlayingEpisodeID")
+        if let episode = playback.currentEpisode, episode.id != lastObservedEpisodeID {
+            lastObservedEpisodeID = episode.id
+            UserDefaults.standard.set(episode.id.uuidString, forKey: "lastPlayingEpisodeID")
+            recordRecentlyPlayed(episode)
         }
 
         syncNowPlaying(ready)
 
         Task { @MainActor in await SharedDataStore.shared.updateWidgetData() }
 
-        WatchConnectivityService.shared.sendPlaybackUpdate(
-            episode: playback.currentEpisode?.asLegacyEpisode(),
-            isPlaying: playback.isPlaying,
-            position: playback.position,
-            duration: playback.duration ?? 0
-        )
+        pushWatchState()
     }
 
     private func syncNowPlaying(_ ready: Ready) {

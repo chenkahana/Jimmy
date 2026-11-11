@@ -85,6 +85,55 @@ struct ModelCodableTests {
         let value = ListeningStat(date: "2026-11-11", podcastID: UUID(), seconds: 900)
         try assertRoundTrip(value)
     }
+
+    @Test func watchNowPlayingRoundTrip() throws {
+        let value = WatchNowPlaying(
+            episodeID: UUID(),
+            title: "Episode 1",
+            showTitle: "A Show",
+            artworkURL: URL(string: "https://example.com/art.png"),
+            position: 42,
+            duration: 1_800,
+            isPlaying: true,
+            rate: 1.5
+        )
+        try assertRoundTrip(value)
+    }
+
+    @Test func watchNowPlayingRoundTripWithoutOptionals() throws {
+        let value = WatchNowPlaying(episodeID: UUID(), title: "Episode 1", position: 0, isPlaying: false, rate: 1.0)
+        try assertRoundTrip(value)
+    }
+
+    @Test func watchEpisodeSummaryRoundTrip() throws {
+        try assertRoundTrip(WatchEpisodeSummary(id: UUID(), title: "Episode 1", showTitle: "A Show"))
+    }
+
+    @Test func watchSessionStateRoundTrip() throws {
+        let value = WatchSessionState(
+            nowPlaying: WatchNowPlaying(episodeID: UUID(), title: "Episode 1", position: 10, isPlaying: true, rate: 1.0),
+            queue: [WatchEpisodeSummary(id: UUID(), title: "Episode 2", showTitle: "A Show")],
+            recent: [WatchEpisodeSummary(id: UUID(), title: "Episode 3")]
+        )
+        try assertRoundTrip(value)
+    }
+
+    @Test func watchSessionStateCapsQueueAndRecentCounts() {
+        let queue = (0..<60).map { WatchEpisodeSummary(id: UUID(), title: "Episode \($0)") }
+        let recent = (0..<30).map { WatchEpisodeSummary(id: UUID(), title: "Episode \($0)") }
+        let value = WatchSessionState(queue: queue, recent: recent)
+        #expect(value.queue.count == WatchSessionState.maxQueueCount)
+        #expect(value.recent.count == WatchSessionState.maxRecentCount)
+    }
+
+    @Test func watchCommandRoundTrip() throws {
+        try assertRoundTrip(WatchCommand.play)
+        try assertRoundTrip(WatchCommand.pause)
+        try assertRoundTrip(WatchCommand.skipForward)
+        try assertRoundTrip(WatchCommand.skipBackward)
+        try assertRoundTrip(WatchCommand.playEpisode(UUID()))
+        try assertRoundTrip(WatchCommand.removeFromQueue(UUID()))
+    }
 }
 
 private func assertRoundTrip<T: Codable & Equatable>(_ value: T) throws {

@@ -10,7 +10,7 @@ UNSIGNED := CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO
 XCB      := xcodebuild -project $(PROJECT) -scheme $(SCHEME) -derivedDataPath $(DERIVED) -quiet
 
 .DEFAULT_GOAL := help
-.PHONY: help bootstrap project kit build test run archive clean
+.PHONY: help bootstrap project kit build watch test run archive clean
 
 help: ## List the available targets
 	@awk 'BEGIN {FS = ":.*## "} /^[a-z-]+:.*## / {printf "  %-10s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -28,6 +28,10 @@ kit: ## Run the JimmyKit package tests
 
 build: project ## Build the app for the simulator (unsigned)
 	$(XCB) -destination 'generic/platform=iOS Simulator' $(UNSIGNED) build
+
+watch: project ## Build the watch app alone for the simulator (unsigned)
+	xcodebuild -project $(PROJECT) -scheme JimmyWatch -derivedDataPath $(DERIVED) -quiet \
+		-destination 'generic/platform=watchOS Simulator' $(UNSIGNED) build
 
 test: project ## Run the unit tests on $(SIM) (override with SIM="...")
 	$(XCB) -destination 'platform=iOS Simulator,name=$(SIM)' $(UNSIGNED) test
