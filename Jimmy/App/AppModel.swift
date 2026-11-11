@@ -119,12 +119,25 @@ final class AppModel {
                 // Mirrors every save into the legacy columns Library/PodcastDetail/episode rows
                 // still read, until PR 18 moves them onto `progress` directly.
                 progressStore: LegacyProgressMirror(store: store),
-                queueSource: StorePlaybackSource(store: store)
+                // Posts `.episodeRemovedFromQueue` on auto-advance too, not just a user-initiated
+                // `AppModel.dequeue` — see `NotifyingQueueSource`.
+                queueSource: NotifyingQueueSource(store: store)
             )
+            // A downloaded episode plays from disk no matter how playback reaches it — a direct
+            // `AppModel.play`, auto-advance, or the remote "next track" command.
+            playback.resolveAudioURL = { episode in
+                DownloadManager.shared.effectiveURL(forEpisodeID: episode.id, remoteURL: episode.audioURL)
+            }
+            let audioSession = AudioSessionController(playback: playback)
+            // Activated once, here, rather than reactively the first time `playback.isPlaying`
+            // flips: that happens after the engine has already started playing, so the very first
+            // play right after launch (or one CarPlay/background initiates) could begin under
+            // whatever category the session defaulted to.
+            try? audioSession.activate()
             return .ready(Ready(
                 store: store,
                 playback: playback,
-                audioSession: AudioSessionController(playback: playback),
+                audioSession: audioSession,
                 remoteCommands: RemoteCommandController(playback: playback),
                 nowPlaying: NowPlayingController()
             ))

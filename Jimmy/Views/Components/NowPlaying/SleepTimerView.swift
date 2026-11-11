@@ -64,16 +64,17 @@ struct SleepTimerView: View {
         VStack(spacing: 24) {
             Spacer()
 
-            // Countdown display
-            Text(formattedRemaining)
-                .font(.system(size: 64, weight: .thin, design: .rounded))
-                .monospacedDigit()
-                .foregroundColor(.primary)
-
-            if let mode = appModel.playback?.sleepTimerMode, mode == .endOfEpisode {
+            // An end-of-episode timer has no end date to count down to, so it shows its own label
+            // instead of "--:--".
+            if appModel.playback?.sleepTimerMode == .endOfEpisode {
                 Text(SleepTimerPreset.endOfEpisode.label)
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .font(.system(size: 36, weight: .medium, design: .rounded))
+                    .foregroundColor(.primary)
+            } else {
+                Text(formattedRemaining)
+                    .font(.system(size: 64, weight: .thin, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundColor(.primary)
             }
 
             Spacer()

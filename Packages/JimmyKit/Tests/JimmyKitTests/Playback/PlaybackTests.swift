@@ -29,14 +29,17 @@ struct PlaybackTests {
         #expect(playback.isPlaying == false)
     }
 
-    /// `audioURLOverride` is how `AppModel` substitutes a downloaded episode's local file URL
-    /// for its remote one, without `Playback` itself knowing anything about downloads.
-    @Test func loadingAnEpisodeWithAnAudioURLOverridePlaysThatURLInstead() async {
+    /// `resolveAudioURL` is how `AppModel` substitutes a downloaded episode's local file URL for
+    /// its remote one, without `Playback` itself knowing anything about downloads. It's a closure
+    /// `Playback` consults on every `load`, not a one-off parameter, so it also applies to loads
+    /// `AppModel` doesn't directly call — see `autoAdvanceResolvesTheNextEpisodesURLToo` below.
+    @Test func loadingAnEpisodeResolvesItsURLThroughResolveAudioURL() async {
         let (playback, engine) = makeSUT()
         let episode = makeEpisode()
         let localURL = URL(fileURLWithPath: "/tmp/downloaded-episode.mp3")
+        playback.resolveAudioURL = { _ in localURL }
 
-        await playback.load(episode: episode, audioURLOverride: localURL)
+        await playback.load(episode: episode)
 
         #expect(engine.loadedURLs == [localURL])
         #expect(playback.currentEpisode == episode)
@@ -161,5 +164,78 @@ struct PlaybackTests {
         #expect(playback.position == 0)
         #expect(playback.duration == nil)
         #expect(progressStore.savedProgresses.last?.position == 55, "flushed the position before clearing it")
+    }
+
+    @Test func seekBumpsSeekCountSoNowPlayingCanResyncElapsedTime() async {
+        let (playback, _) = makeSUT()
+        await playback.load(episode: makeEpisode())
+        #expect(playback.seekCount == 0)
+
+        await playback.seek(to: 10)
+        #expect(playback.seekCount == 1)
+
+        await playback.skipForward()
+        #expect(playback.seekCount == 2)
+
+        await playback.skipBackward()
+        #expect(playback.seekCount == 3)
+    }
+
+    /// A sleep timer that elapsed while paused shouldn't immediately re-pause what the user just
+    /// resumed — it should only ever pause from a tick that arrives while actually playing.
+    @Test func resumingAfterASleepTimerElapsedWhilePausedDoesNotImmediatelyRePause() async {
+        let clock = FakeClock()
+        let (playback, engine) = makeSUT(clock: clock)
+        await playback.load(episode: makeEpisode(), startPlaying: true)
+        playback.startSleepTimer(.duration(60))
+
+        await playback.pause()
+        clock.advance(by: 120) // elapses the timer while paused
+
+        playback.play()
+
+        #expect(playback.isPlaying == true)
+        #expect(playback.sleepTimerMode == nil, "the stale timer is cancelled, not re-triggered")
+        #expect(engine.pauseCallCount == 1, "only the explicit pause above — resuming didn't pause again")
+    }
+
+    // MARK: - S1: don't seek or save before the item is ready
+
+    @Test func loadDefersTheRestoreSeekUntilTheEngineBecomesReady() async {
+        let progressStore = FakeProgressStore()
+        let episode = makeEpisode()
+        await progressStore.saveProgress(Progress(episodeID: episode.id, position: 120, duration: 1_000))
+        let (playback, engine) = makeSUT(progressStore: progressStore)
+        engine.becomesReadySlowly = true
+
+        await playback.load(episode: episode, startPlaying: true)
+
+        #expect(playback.position == 120, "Playback's own restored position is known immediately")
+        #expect(engine.seekedTimes.isEmpty, "but the engine hasn't seeked there yet — it isn't ready")
+        #expect(engine.playCallCount == 0, "and hasn't started playing yet either")
+
+        engine.simulateBecomesReady()
+
+        #expect(engine.seekedTimes == [120])
+        #expect(engine.playCallCount == 1)
+    }
+
+    @Test func aTimeUpdateBeforeTheEngineIsReadyIsIgnoredAndCannotOverwriteTheSavedPosition() async {
+        let progressStore = FakeProgressStore()
+        let episode = makeEpisode()
+        await progressStore.saveProgress(Progress(episodeID: episode.id, position: 120, duration: 1_000))
+        let (playback, engine) = makeSUT(progressStore: progressStore)
+        engine.becomesReadySlowly = true
+
+        await playback.load(episode: episode, startPlaying: true)
+        await engine.simulateTimeUpdate(0) // a stray pre-ready tick, as a real AVPlayer can emit
+
+        #expect(playback.position == 120, "the stray tick before readiness was ignored")
+        #expect(progressStore.savedProgresses.last?.position == 120, "and nothing overwrote the saved position")
+
+        engine.simulateBecomesReady()
+        await engine.simulateTimeUpdate(125)
+
+        #expect(playback.position == 125, "a tick after readiness is honored normally")
     }
 }

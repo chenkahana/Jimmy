@@ -4,20 +4,37 @@ import MediaPlayer
 import UIKit
 
 /// Drives everything around `Playback` that used to live in `AudioPlayerService`: Now Playing
-/// (title/show/artwork/elapsed/duration/rate), the audio session's first activation, listening
-/// stats, the widget's and watch's copies of what's playing, and `lastPlayingEpisodeID` for
-/// restore-on-launch. All of it is driven from one `withObservationTracking` loop on `playback`'s
-/// observable state — the same pattern `StandardTabBarController` already uses for shell/chrome
-/// state, since `Playback` is `@Observable`, not an `ObservableObject` Combine can subscribe to.
+/// (title/show/artwork/elapsed/duration/rate), listening stats, the widget's and watch's copies of
+/// what's playing, and `lastPlayingEpisodeID` for restore-on-launch. (The audio session itself is
+/// activated once, at launch — see `AppModel.open`.) All of it is driven from one
+/// `withObservationTracking` loop on `playback`'s observable state — the same pattern
+/// `StandardTabBarController` already uses for shell/chrome state, since `Playback` is `@Observable`,
+/// not an `ObservableObject` Combine can subscribe to.
 extension AppModel {
-    /// Loads `episode` into `Playback`, preferring a downloaded local file over its remote URL,
-    /// and moves it to queue position 1 — the same "resume/play now always goes to the front of
-    /// the queue" behavior `AudioPlayerService.loadEpisode` applied.
+    /// Loads `episode` into `Playback` (which resolves a downloaded local file over its remote URL
+    /// itself — see `playback.resolveAudioURL`), and moves it to queue position 1 — the same
+    /// "resume/play now always goes to the front of the queue" behavior `AudioPlayerService
+    /// .loadEpisode` applied.
     func play(_ episode: JimmyKit.Episode, startPlaying: Bool = true) async {
         guard let playback else { return }
-        let url = DownloadManager.shared.effectiveURL(forEpisodeID: episode.id, remoteURL: episode.audioURL)
-        await playback.load(episode: episode, startPlaying: startPlaying, audioURLOverride: url)
+        await ensureEpisodeIsSaved(episode)
+        await playback.load(episode: episode, startPlaying: startPlaying)
         await enqueue(episode.id, at: 1)
+    }
+
+    /// Upserts `episode` first when it isn't in the database yet — e.g. a Discover preview episode
+    /// the user taps play on before ever subscribing — the way `AudioPlayerService.loadEpisode`
+    /// did. Without this, the `progress`/`queue` tables' foreign keys against `episodes` silently
+    /// fail (every write here goes through `try?`), so nothing — position, queue membership,
+    /// restore-on-launch — persists for it.
+    private func ensureEpisodeIsSaved(_ episode: JimmyKit.Episode) async {
+        guard let podcastID = episode.podcastID else { return }
+        guard (try? await DIContainer.shared.episodeRepository.fetchEpisode(by: episode.id)) == nil else { return }
+        let placeholder = EpisodeWithPlaybackState(
+            episode: episode.asLegacyEpisode(),
+            playbackState: PlaybackState(episodeID: episode.id, position: 0, finished: false)
+        )
+        try? await DIContainer.shared.episodeRepository.saveEpisodes([placeholder], for: podcastID)
     }
 
     /// Restores whatever was last playing, paused, the way `AudioPlayerService` did at launch.
@@ -49,6 +66,19 @@ extension AppModel {
 
     func startObservingPlaybackIfReady() {
         guard case .ready(let ready) = launchState else { return }
+        // Clears `lastPlayingEpisodeID` the moment an episode finishes — whether or not there was
+        // a next one to advance to — instead of leaving it pointing at an already-finished episode
+        // until something else happens to overwrite it (which is what let a finished last-in-queue
+        // episode get re-enqueued by `restoreLastEpisodeIfEnabled` on the next launch).
+        ready.playback.onEpisodeFinished = { [weak self] episodeID in
+            guard let self else { return }
+            if self.lastObservedEpisodeID == episodeID {
+                self.lastObservedEpisodeID = nil
+            }
+            if UserDefaults.standard.string(forKey: "lastPlayingEpisodeID") == episodeID.uuidString {
+                UserDefaults.standard.removeObject(forKey: "lastPlayingEpisodeID")
+            }
+        }
         observePlaybackSideEffects(ready)
     }
 
@@ -58,6 +88,11 @@ extension AppModel {
             _ = self?.playback?.isPlaying
             _ = self?.playback?.duration
             _ = self?.playback?.rate
+            // Not `position` itself: it ticks once a second while playing, far too often to drive
+            // this loop from. `seekCount` instead reports exactly when the user jumped to a new
+            // position (seek/skip/chapter-skip) — see `syncNowPlaying`, which reads `position` only
+            // once `handlePlaybackSideEffects` has already decided to run.
+            _ = self?.playback?.seekCount
         } onChange: { [weak self] in
             Task { @MainActor [weak self] in
                 guard let self else { return }
@@ -70,10 +105,6 @@ extension AppModel {
 
     private func handlePlaybackSideEffects(_ ready: Ready) {
         let playback = ready.playback
-
-        if playback.isPlaying {
-            try? ready.audioSession.activate()
-        }
 
         if playback.isPlaying != lastObservedIsPlaying {
             if playback.isPlaying {
