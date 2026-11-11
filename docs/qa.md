@@ -32,9 +32,8 @@ make run  # Build, install, launch, and screenshot
 - [ ] Pull to refresh: New episodes appear for all podcasts; no duplicates
 - [ ] Add podcast by URL: Entering a valid podcast URL subscribes and adds episodes within 30 seconds
 - [ ] Add podcast by search: Search for a popular podcast (e.g., "NPR"), tap to subscribe, episodes load
-- [ ] Unsubscribe from podcast: Podcast is removed from the library; queue entries for that podcast remain but are marked as inaccessible
-- [ ] Sort podcasts: Tapping the sort menu and selecting by name / date added / unplay count updates the list order
-- [ ] Search library: Typing in the search bar filters podcasts by title (case-insensitive)
+- [ ] Unsubscribe from podcast: Podcast is removed from the library, and its episodes leave the queue
+- [ ] Sort podcasts: Each option in the sort menu reorders the list, and the choice survives a relaunch
 - [ ] Empty library on first launch: Empty state message appears; Add Podcast button is prominent
 
 ### Podcast Detail and Episode
