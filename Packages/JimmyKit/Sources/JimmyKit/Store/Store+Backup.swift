@@ -8,10 +8,6 @@ nonisolated extension Store {
         try await pool.read { db in try Episode.fetchAll(db) }
     }
 
-    public func allProgress() async throws -> [Progress] {
-        try await pool.read { db in try Progress.fetchAll(db) }
-    }
-
     public func allBookmarks() async throws -> [Bookmark] {
         try await pool.read { db in try Bookmark.fetchAll(db) }
     }
