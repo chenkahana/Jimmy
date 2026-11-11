@@ -1,193 +1,157 @@
-import Foundation
 import CarPlay
-import os
+import Foundation
+import JimmyKit
+import Observation
+import UIKit
 
-/// Manages CarPlay interface with a tab bar template: Library, Queue, Now Playing
+/// CarPlay's three templates — Queue, Library, and the system Now Playing template — read and
+/// write through `AppModel` alone: no `DIContainer`, no `NotificationCenter`, no polling timer.
+/// `withObservationTracking` loops re-register themselves on every change to `queue`/`podcasts`
+/// (rebuilding the Queue and Library rows) and to `playback` (refreshing which row, if any, shows
+/// the "now playing" indicator).
+@MainActor
 final class CarPlayManager: NSObject {
-    private static let logger = Logger(subsystem: "com.chenkahana.Jimmy", category: "CarPlayManager")
     static let shared = CarPlayManager()
 
+    /// A podcast's episode list, currently pushed onto the interface controller's stack — kept
+    /// around so a `playback` change can refresh its rows' "now playing" indicator without
+    /// re-reading the store. Cleared once the user navigates back past it.
+    private struct PushedEpisodeList {
+        let template: CPListTemplate
+        let rows: [AppModel.CarPlayEpisodeRow]
+    }
+
     private var interfaceController: CPInterfaceController?
-    private let queue = DispatchQueue(label: "com.jimmy.carplay", qos: .userInteractive)
+    private let queueTemplate: CPListTemplate = {
+        let template = CPListTemplate(title: "Queue", sections: [])
+        template.tabImage = UIImage(systemName: "list.bullet")
+        return template
+    }()
+    private let libraryTemplate: CPListTemplate = {
+        let template = CPListTemplate(title: "Library", sections: [])
+        template.tabImage = UIImage(systemName: "music.note.list")
+        return template
+    }()
+    private var pushedEpisodeList: PushedEpisodeList?
 
     private override init() {
         super.init()
     }
 
-    // MARK: - Connection Lifecycle
+    // MARK: - Connection lifecycle
 
-    func connect(interfaceController: CPInterfaceController, window: CPWindow) {
-        queue.async { [weak self] in
-            guard let self = self else { return }
-            self.interfaceController = interfaceController
-
-            DispatchQueue.main.async {
-                Task { @MainActor in
-                    let tabBar = await self.buildTabBarTemplate()
-                    interfaceController.setRootTemplate(tabBar, animated: false) { _, error in
-                        if let error = error {
-                            Self.logger.error("CarPlay: Failed to set root template: \(error)")
-                        }
-                    }
-                }
-            }
-        }
+    func connect(interfaceController: CPInterfaceController) {
+        self.interfaceController = interfaceController
+        let tabBar = CPTabBarTemplate(templates: [queueTemplate, libraryTemplate, CPNowPlayingTemplate.shared])
+        interfaceController.setRootTemplate(tabBar, animated: false, completion: nil)
+        refreshQueueTemplate()
+        refreshLibraryTemplate()
+        observeQueueAndLibrary()
+        observePlayback()
     }
 
     func disconnect() {
-        queue.async { [weak self] in
-            self?.interfaceController = nil
-        }
+        interfaceController = nil
+        pushedEpisodeList = nil
     }
 
-    func reloadData() {
-        queue.async { [weak self] in
-            guard let self = self,
-                  let controller = self.interfaceController else { return }
+    // MARK: - Queue tab
 
-            DispatchQueue.main.async {
-                Task { @MainActor in
-                    let tabBar = await self.buildTabBarTemplate()
-                    controller.setRootTemplate(tabBar, animated: false) { _, error in
-                        if let error = error {
-                            Self.logger.error("CarPlay: Failed to reload template: \(error)")
-                        }
-                    }
-                }
-            }
-        }
+    private func refreshQueueTemplate() {
+        let rows = AppModel.current?.carPlayQueueRows ?? []
+        queueTemplate.updateSections([listSection(for: rows)])
     }
 
-    // MARK: - Tab Bar Template
+    // MARK: - Library tab
 
-    @MainActor
-    private func buildTabBarTemplate() async -> CPTabBarTemplate {
-        let libraryTab = await buildLibraryTemplate()
-        let queueTab = await buildQueueTemplate()
-        let nowPlayingTab = CPNowPlayingTemplate.shared
-
-        // Add playback speed button to Now Playing
-        let speedButton = CPNowPlayingPlaybackRateButton { [weak self] _ in
-            Task { @MainActor in
-                self?.cyclePlaybackSpeed()
-            }
-        }
-        nowPlayingTab.updateNowPlayingButtons([speedButton])
-
-        let tabBar = CPTabBarTemplate(templates: [libraryTab, queueTab, nowPlayingTab])
-        return tabBar
-    }
-
-    // MARK: - Library Tab
-
-    @MainActor
-    private func buildLibraryTemplate() async -> CPListTemplate {
-        let podcasts = (AppModel.current?.podcasts.map { $0.asLegacyPodcast() } ?? [])
-
-        let items: [CPListItem] = podcasts.map { podcast in
-            let item = CPListItem(text: podcast.cleanTitle, detailText: podcast.author)
-
-            // Load artwork if available
-            if let artworkURL = podcast.artworkURL {
-                Task {
-                    if let data = try? Data(contentsOf: artworkURL),
-                       let image = UIImage(data: data) {
-                        item.setImage(image)
-                    }
-                }
-            }
-
+    private func refreshLibraryTemplate() {
+        let rows = AppModel.current?.carPlayLibraryRows ?? []
+        let items = rows.map { row -> CPListItem in
+            let item = CPListItem(text: row.title, detailText: row.subtitle)
             item.handler = { [weak self] _, completion in
                 Task { @MainActor in
-                    await self?.showEpisodesForPodcast(podcast)
+                    await self?.pushEpisodeList(for: row.podcast)
+                    completion()
                 }
-                completion()
             }
             return item
         }
-
-        let section = CPListSection(items: items)
-        let template = CPListTemplate(title: "Library", sections: [section])
-        template.tabImage = UIImage(systemName: "music.note.list")
-        return template
+        libraryTemplate.updateSections([CPListSection(items: items)])
     }
 
-    @MainActor
-    private func showEpisodesForPodcast(_ podcast: Podcast) async {
-        guard let controller = interfaceController else { return }
+    private func pushEpisodeList(for podcast: JimmyKit.Podcast) async {
+        guard let interfaceController, let appModel = AppModel.current else { return }
+        let rows = await appModel.carPlayEpisodeRows(podcastID: podcast.id)
+        let template = CPListTemplate(title: podcast.title, sections: [listSection(for: rows)])
+        pushedEpisodeList = PushedEpisodeList(template: template, rows: rows)
+        interfaceController.pushTemplate(template, animated: true, completion: nil)
+    }
 
-        let episodes = await getEpisodesForPodcast(podcast)
-        let items: [CPListItem] = episodes.prefix(20).map { episode in
-            let detail = episode.formattedDuration
-            let item = CPListItem(text: episode.title, detailText: detail)
+    /// Refreshes the pushed podcast-episode list's "now playing" indicator. A no-op once the user
+    /// has navigated back past it (its template is no longer on the interface controller's stack).
+    private func refreshPushedEpisodeList() {
+        guard let pushedEpisodeList else { return }
+        guard interfaceController?.templates.contains(where: { $0 === pushedEpisodeList.template }) == true else {
+            self.pushedEpisodeList = nil
+            return
+        }
+        pushedEpisodeList.template.updateSections([listSection(for: pushedEpisodeList.rows)])
+    }
+
+    // MARK: - Shared row building
+
+    /// Builds one section of episode rows: tapping a row plays it, through `AppModel.play(_:)`
+    /// (which also moves it to the front of the queue — the same write every other "tap to play"
+    /// in the app goes through). The row currently playing, if any, shows CarPlay's "now playing"
+    /// indicator.
+    private func listSection(for rows: [AppModel.CarPlayEpisodeRow]) -> CPListSection {
+        let nowPlayingEpisodeID = currentlyPlayingEpisodeID()
+        let items = rows.map { row -> CPListItem in
+            let item = CPListItem(text: row.title, detailText: row.subtitle)
+            item.isPlaying = row.episode.id == nowPlayingEpisodeID
             item.handler = { _, completion in
                 Task { @MainActor in
-                    await AppModel.current?.play(episode.asPlaybackEpisode())
+                    await AppModel.current?.play(row.episode)
+                    completion()
                 }
-                completion()
             }
             return item
         }
-
-        let section = CPListSection(items: items)
-        let template = CPListTemplate(title: podcast.cleanTitle, sections: [section])
-        controller.pushTemplate(template, animated: true, completion: nil)
+        return CPListSection(items: items)
     }
 
-    @MainActor
-    private func getEpisodesForPodcast(_ podcast: Podcast) async -> [Episode] {
-        do {
-            let repository = DIContainer.shared.episodeRepository
-            let episodesWithState = try await repository.fetchEpisodes(for: podcast.id, ignoreCache: false)
-            return episodesWithState.map { $0.episode }
-        } catch {
-            return []
-        }
+    private func currentlyPlayingEpisodeID() -> UUID? {
+        guard let playback = AppModel.current?.playback, playback.isPlaying else { return nil }
+        return playback.currentEpisode?.id
     }
 
-    // MARK: - Queue Tab
+    // MARK: - Observation
 
-    @MainActor
-    private func buildQueueTemplate() async -> CPListTemplate {
-        let queueData = await AppModel.current?.resolveQueueEpisodes() ?? []
-        let podcasts = (AppModel.current?.podcasts.map { $0.asLegacyPodcast() } ?? [])
-
-        let items = queueData.compactMap { episode -> CPListItem? in
-            guard !episode.title.isEmpty else { return nil }
-
-            let podcastTitle = podcasts.first { $0.id == episode.podcastID }?.title ?? ""
-            let item = CPListItem(text: episode.title, detailText: podcastTitle)
-
-            item.handler = { _, completion in
-                Task { @MainActor in
-                    await AppModel.current?.play(episode.asPlaybackEpisode())
-                }
-                completion()
+    private func observeQueueAndLibrary() {
+        withObservationTracking { [weak self] in
+            _ = AppModel.current?.queue
+            _ = AppModel.current?.podcasts
+        } onChange: { [weak self] in
+            Task { @MainActor [weak self] in
+                guard let self, self.interfaceController != nil else { return }
+                self.refreshQueueTemplate()
+                self.refreshLibraryTemplate()
+                self.observeQueueAndLibrary()
             }
-            return item
         }
-
-        let section = CPListSection(items: items)
-        let template = CPListTemplate(title: "Queue", sections: [section])
-        template.tabImage = UIImage(systemName: "list.bullet")
-        return template
     }
 
-    // MARK: - Playback Speed
-
-    @MainActor
-    private func cyclePlaybackSpeed() {
-        guard let playback = AppModel.current?.playback else { return }
-        let speeds: [Float] = [1.0, 1.25, 1.5, 2.0, 0.75]
-        let currentIndex = speeds.firstIndex(of: playback.rate) ?? 0
-        let nextIndex = (currentIndex + 1) % speeds.count
-        playback.setRate(speeds[nextIndex])
-    }
-
-    // MARK: - Helpers
-
-    @MainActor
-    private func getPodcast(for episode: Episode) -> Podcast? {
-        return (AppModel.current?.podcasts.map { $0.asLegacyPodcast() } ?? []).first { $0.id == episode.podcastID }
+    private func observePlayback() {
+        withObservationTracking { [weak self] in
+            _ = AppModel.current?.playback?.currentEpisode
+            _ = AppModel.current?.playback?.isPlaying
+        } onChange: { [weak self] in
+            Task { @MainActor [weak self] in
+                guard let self, self.interfaceController != nil else { return }
+                self.refreshQueueTemplate()
+                self.refreshPushedEpisodeList()
+                self.observePlayback()
+            }
+        }
     }
 }

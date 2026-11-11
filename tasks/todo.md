@@ -31,7 +31,7 @@ Lanes in the same wave run in parallel, each in its own worktree under `~/.workt
 - [ ] 18. Podcast detail and Episode (S). PR 16 added `Jimmy/App/LegacyProgressMirror.swift` — a `ProgressStore` wrapper that saves through `StorePlaybackSource` and also mirrors into the legacy `episodes.playbackPosition`/`played`/`status` and `playback_state.position`/`finished` columns, since Library/podcast detail/episode rows still read those until they move onto JimmyKit here. Delete `LegacyProgressMirror` and build `Playback` with a bare `StorePlaybackSource` once this PR moves those screens onto `progress` directly.
 - [ ] 19. Discover and Search (S)
 - [ ] 20. Settings and Import (S)
-- [ ] 21. CarPlay (S)
+- [x] 21. CarPlay (S)
 - [ ] 23. Apple Watch app (S, parallel lane after 16)
 - [x] 24. AI chat that acts (S, parallel lane after 14)
 - [ ] 25. AI suggestions (S, after 24)

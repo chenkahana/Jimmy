@@ -73,10 +73,11 @@ final class AppModel {
     /// `AppModel+WatchSession.swift`). Not persisted: starts empty each launch.
     var recentlyPlayedEpisodes: [JimmyKit.Episode] = []
 
-    /// Old singletons that can't read the environment (`CarPlayManager`, episode rows,
-    /// `ShakeUndoManager`, `AppDataDocument`'s iCloud sync, `WatchConnectivityService`, ...) reach
-    /// the queue and `playback` through this until they're deleted in PRs 17-21. Set once, in
-    /// `JimmyApp.init()`.
+    /// Old singletons that can't read the environment (episode rows, `ShakeUndoManager`,
+    /// `AppDataDocument`'s iCloud sync, ...) reach the queue and `playback` through this until
+    /// they're deleted in later PRs. `WatchConnectivityService` and `CarPlayManager` reach it the
+    /// same way, permanently — both are session/scene delegates with no SwiftUI environment of
+    /// their own to read from. Set once, in `JimmyApp.init()`.
     static weak var current: AppModel?
 
     /// Fetches feeds for `subscribe(feedURL:)`/`refreshAll()`/`refresh(_:)` — see
