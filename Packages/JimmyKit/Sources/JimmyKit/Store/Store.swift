@@ -189,3 +189,15 @@ public nonisolated final class Store: Sendable {
         }
     }
 }
+
+// MARK: - Downloads records
+
+extension Store: DownloadRecords {
+    public func loadDownloads() async throws -> [Download] {
+        try await downloads()
+    }
+
+    public func deleteDownload(_ episodeID: UUID) async throws {
+        _ = try await pool.write { db in try Download.deleteOne(db, key: episodeID.uuidString) }
+    }
+}
