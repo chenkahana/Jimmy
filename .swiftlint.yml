@@ -1,0 +1,37 @@
+included:
+  - Jimmy
+  - Packages/Networking
+  - Packages/UIComponents
+  - Tests
+opt_in_rules:
+  - fatal_error_message
+  - empty_count
+  - force_try
+  - force_unwrapping
+  - implicitly_unwrapped_optional
+  - legacy_cggeometry_functions
+  - legacy_constant
+  - legacy_constructor
+  - legacy_nsgeometry_functions
+  - redundant_optional_initialization
+  - return_arrow_whitespace
+  - trailing_newline
+  - trailing_semicolon
+  - trailing_whitespace
+  - unused_closure_parameter
+  - unused_control_flow_label
+  - unused_enumerated
+  - unused_optional_binding
+  - unused_setter_value
+  - valid_ibinspectable
+  - vertical_parameter_alignment
+  - vertical_whitespace
+  - void_return
+  - xctfail_message
+
+excluded:
+  - Pods
+  - Carthage
+  - .build
+  - .swiftpm
+

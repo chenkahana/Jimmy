@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Feed with emoji and HTML entities in titles -->
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
+<channel>
+<title>🎙️ Podcast &amp; Friends</title>
+<link>https://example.com/emoji-show</link>
+<description>A show with emojis &#127881; and entities &lt;3</description>
+<itunes:author>Emoji Creator</itunes:author>
+<itunes:image href="https://example.com/emoji-artwork.jpg"/>
+<item>
+<title>🚀 Episode 1: Launch &amp; Learn &#10024;</title>
+<guid isPermaLink="false">emoji-001</guid>
+<description>Let&apos;s get started with &#x1F44D; and &#x1F389;</description>
+<link>https://example.com/episodes/emoji-001</link>
+<pubDate>Fri, 19 Jan 2024 14:00:00 GMT</pubDate>
+<enclosure url="https://example.com/emoji/ep1.mp3" length="13500000" type="audio/mpeg"/>
+<itunes:duration>30:00</itunes:duration>
+</item>
+<item>
+<title>🎯 Episode 2: Target &amp; Achieve 💪</title>
+<guid isPermaLink="false">emoji-002</guid>
+<description>Setting goals &lt;br/&gt; and achieving them &#x1F3C6;</description>
+<link>https://example.com/episodes/emoji-002</link>
+<pubDate>Fri, 26 Jan 2024 14:00:00 GMT</pubDate>
+<enclosure url="https://example.com/emoji/ep2.mp3" length="15300000" type="audio/mpeg"/>
+<itunes:duration>34:00</itunes:duration>
+</item>
+</channel>
+</rss>

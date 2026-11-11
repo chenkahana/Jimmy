@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Buzzsprout podcast format -->
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+<channel>
+<title>Buzzsprout Example</title>
+<link>https://example-show.buzzsprout.com</link>
+<description>A show hosted on Buzzsprout</description>
+<itunes:author>Buzzsprout Creator</itunes:author>
+<itunes:image href="https://example.com/buzzsprout-artwork.jpg"/>
+<item>
+<title>Episode 1: Buzzsprout Intro</title>
+<guid isPermaLink="false">buzzsprout-bs-001</guid>
+<description>Introduction to our Buzzsprout show</description>
+<link>https://example-show.buzzsprout.com/episodes/buzzsprout-001</link>
+<pubDate>Mon, 15 Jan 2024 08:00:00 GMT</pubDate>
+<enclosure url="https://example.com/buzzsprout/ep1.m4a" length="17280000" type="audio/mp4"/>
+<itunes:duration>38:24</itunes:duration>
+<content:encoded><![CDATA[<p>Welcome to our Buzzsprout hosted show.</p>]]></content:encoded>
+</item>
+<item>
+<title>Episode 2: Quality Audio</title>
+<guid isPermaLink="false">buzzsprout-bs-002</guid>
+<description>High quality audio on Buzzsprout</description>
+<link>https://example-show.buzzsprout.com/episodes/buzzsprout-002</link>
+<pubDate>Mon, 22 Jan 2024 08:00:00 GMT</pubDate>
+<enclosure url="https://example.com/buzzsprout/ep2.m4a" length="19440000" type="audio/mp4"/>
+<itunes:duration>43:12</itunes:duration>
+<content:encoded><![CDATA[<p>We discuss audio quality and production.</p>]]></content:encoded>
+</item>
+</channel>
+</rss>

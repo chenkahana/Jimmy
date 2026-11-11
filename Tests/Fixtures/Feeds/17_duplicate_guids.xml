@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Feed with duplicate GUIDs -->
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
+<channel>
+<title>Duplicate GUIDs Show</title>
+<link>https://example.com/duplicate-guids</link>
+<description>Feed with duplicate episode identifiers</description>
+<itunes:author>Example Author</itunes:author>
+<itunes:image href="https://example.com/dup-guids-artwork.jpg"/>
+<item>
+<title>Episode 1: Original</title>
+<guid isPermaLink="false">dup-guid-001</guid>
+<description>First version of this episode</description>
+<link>https://example.com/episodes/001-orig</link>
+<pubDate>Mon, 22 Jan 2024 12:00:00 GMT</pubDate>
+<enclosure url="https://example.com/episodes/001-orig.mp3" length="14400000" type="audio/mpeg"/>
+<itunes:duration>32:00</itunes:duration>
+</item>
+<item>
+<title>Episode 1: Reissue</title>
+<guid isPermaLink="false">dup-guid-001</guid>
+<description>Reissued version with corrections</description>
+<link>https://example.com/episodes/001-reissue</link>
+<pubDate>Tue, 23 Jan 2024 12:00:00 GMT</pubDate>
+<enclosure url="https://example.com/episodes/001-reissue.mp3" length="14400000" type="audio/mpeg"/>
+<itunes:duration>32:00</itunes:duration>
+</item>
+<item>
+<title>Episode 2: Unique</title>
+<guid isPermaLink="false">dup-guid-002</guid>
+<description>This episode has a unique GUID</description>
+<link>https://example.com/episodes/002</link>
+<pubDate>Mon, 29 Jan 2024 12:00:00 GMT</pubDate>
+<enclosure url="https://example.com/episodes/002.mp3" length="15300000" type="audio/mpeg"/>
+<itunes:duration>34:00</itunes:duration>
+</item>
+</channel>
+</rss>

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Anchor/Spotify Podcasts format -->
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" xmlns:spotify="http://www.spotify.com/ns/rss">
+<channel>
+<title>Anchor Show Example</title>
+<link>https://anchor.fm/example-show</link>
+<description>Show hosted on Anchor</description>
+<itunes:author>Anchor Creator</itunes:author>
+<itunes:image href="https://example.com/anchor-artwork.jpg"/>
+<item>
+<title>Episode 1: Welcome to Anchor</title>
+<guid isPermaLink="false">anchor-001</guid>
+<description>Our first episode on Anchor</description>
+<link>https://anchor.fm/example-show/episodes/anchor-001</link>
+<pubDate>Sun, 14 Jan 2024 10:00:00 GMT</pubDate>
+<enclosure url="https://example.com/anchor/ep1.mp3" length="12600000" type="audio/mpeg"/>
+<itunes:duration>28:00</itunes:duration>
+</item>
+<item>
+<title>Episode 2: Spotify Integration</title>
+<guid isPermaLink="false">anchor-002</guid>
+<description>Now available on Spotify</description>
+<link>https://anchor.fm/example-show/episodes/anchor-002</link>
+<pubDate>Sun, 21 Jan 2024 10:00:00 GMT</pubDate>
+<enclosure url="https://example.com/anchor/ep2.mp3" length="14400000" type="audio/mpeg"/>
+<itunes:duration>32:00</itunes:duration>
+</item>
+</channel>
+</rss>

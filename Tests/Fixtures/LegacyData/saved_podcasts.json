@@ -1,0 +1,40 @@
+[
+  {
+    "id": "550e8400-e29b-41d4-a716-446655440001",
+    "title": "Example Show One",
+    "cleanTitle": "Example Show One",
+    "author": "Host Author One",
+    "description": "A synthetic example podcast for testing.",
+    "feedURL": "https://example.com/feeds/show-one.xml",
+    "artworkURL": "https://example.com/artwork/show-one.jpg",
+    "autoAddToQueue": false,
+    "notificationsEnabled": false,
+    "lastEpisodeDate": 728215200.0,
+    "etag": "\"abc123def456\"",
+    "lastFetched": 728216100.0
+  },
+  {
+    "id": "550e8400-e29b-41d4-a716-446655440002",
+    "title": "Example Show Two",
+    "cleanTitle": "Example Show Two",
+    "author": "Host Author Two",
+    "description": "Another synthetic example podcast.",
+    "feedURL": "https://example.com/feeds/show-two.xml",
+    "artworkURL": "https://example.com/artwork/show-two.jpg",
+    "autoAddToQueue": true,
+    "notificationsEnabled": true,
+    "lastEpisodeDate": 728145000.0,
+    "etag": "\"xyz789uvw012\"",
+    "lastFetched": 728146800.0
+  },
+  {
+    "id": "550e8400-e29b-41d4-a716-446655440003",
+    "title": "Example Show Three",
+    "cleanTitle": "Example Show Three",
+    "author": "Host Author Three",
+    "description": "Third example podcast for migration testing.",
+    "feedURL": "https://example.com/feeds/show-three.xml",
+    "autoAddToQueue": false,
+    "notificationsEnabled": false
+  }
+]

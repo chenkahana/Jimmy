@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Feed with itunes:new-feed-url indicating a feed migration -->
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
+<channel>
+<title>Migrated Show</title>
+<link>https://example.com/old-show</link>
+<description>This show has moved to a new feed</description>
+<language>en-us</language>
+<itunes:author>Show Author</itunes:author>
+<itunes:image href="https://example.com/show-artwork.jpg"/>
+<itunes:new-feed-url>https://example.com/new-feed-url</itunes:new-feed-url>
+<item>
+<title>Episode 1: Last on Old Feed</title>
+<guid isPermaLink="false">migrate-001</guid>
+<description>This is the final episode on the old feed</description>
+<link>https://example.com/episodes/001</link>
+<pubDate>Sat, 27 Jan 2024 11:00:00 GMT</pubDate>
+<enclosure url="https://example.com/episodes/001.mp3" length="14400000" type="audio/mpeg"/>
+<itunes:duration>32:00</itunes:duration>
+</item>
+<item>
+<title>Episode 2: Also Old Feed</title>
+<guid isPermaLink="false">migrate-002</guid>
+<description>Another old episode</description>
+<link>https://example.com/episodes/002</link>
+<pubDate>Sat, 20 Jan 2024 11:00:00 GMT</pubDate>
+<enclosure url="https://example.com/episodes/002.mp3" length="15300000" type="audio/mpeg"/>
+<itunes:duration>34:00</itunes:duration>
+</item>
+</channel>
+</rss>

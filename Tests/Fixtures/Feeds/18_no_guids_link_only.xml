@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Feed with no GUIDs - only link elements -->
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
+<channel>
+<title>No GUIDs Show</title>
+<link>https://example.com/no-guids</link>
+<description>Feed with episodes identified only by link</description>
+<itunes:author>Example Author</itunes:author>
+<itunes:image href="https://example.com/no-guids-artwork.jpg"/>
+<item>
+<title>Episode 1: No GUID</title>
+<description>This episode has no GUID</description>
+<link>https://example.com/episodes/001</link>
+<pubDate>Tue, 23 Jan 2024 15:00:00 GMT</pubDate>
+<enclosure url="https://example.com/episodes/001.mp3" length="14400000" type="audio/mpeg"/>
+<itunes:duration>32:00</itunes:duration>
+</item>
+<item>
+<title>Episode 2: Also No GUID</title>
+<description>Another episode without GUID</description>
+<link>https://example.com/episodes/002</link>
+<pubDate>Tue, 30 Jan 2024 15:00:00 GMT</pubDate>
+<enclosure url="https://example.com/episodes/002.mp3" length="15300000" type="audio/mpeg"/>
+<itunes:duration>34:00</itunes:duration>
+</item>
+<item>
+<title>Episode 3: Still No GUID</title>
+<description>Third episode also without GUID</description>
+<link>https://example.com/episodes/003</link>
+<pubDate>Wed, 07 Feb 2024 15:00:00 GMT</pubDate>
+<enclosure url="https://example.com/episodes/003.mp3" length="16200000" type="audio/mpeg"/>
+<itunes:duration>36:00</itunes:duration>
+</item>
+</channel>
+</rss>

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Simplecast podcast format -->
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
+<channel>
+<title>Simplecast Show</title>
+<link>https://simplecast.example.com/shows/example</link>
+<description>Show hosted on Simplecast</description>
+<itunes:author>Simplecast Host</itunes:author>
+<itunes:image href="https://example.com/simplecast-artwork.jpg"/>
+<item>
+<title>Episode 1: Welcome</title>
+<guid isPermaLink="false">simplecast-sc-001</guid>
+<description>Welcome to our Simplecast show</description>
+<link>https://simplecast.example.com/episodes/simplecast-001</link>
+<pubDate>Tue, 16 Jan 2024 07:00:00 GMT</pubDate>
+<enclosure url="https://example.com/simplecast/ep1.mp3" length="13500000" type="audio/mpeg"/>
+<itunes:duration>30:00</itunes:duration>
+</item>
+<item>
+<title>Episode 2: Hosting</title>
+<guid isPermaLink="false">simplecast-sc-002</guid>
+<description>All about podcast hosting</description>
+<link>https://simplecast.example.com/episodes/simplecast-002</link>
+<pubDate>Tue, 23 Jan 2024 07:00:00 GMT</pubDate>
+<enclosure url="https://example.com/simplecast/ep2.mp3" length="18900000" type="audio/mpeg"/>
+<itunes:duration>42:00</itunes:duration>
+</item>
+</channel>
+</rss>

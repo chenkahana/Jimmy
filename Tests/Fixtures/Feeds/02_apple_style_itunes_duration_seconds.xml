@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Apple Podcasts format with itunes:duration in seconds -->
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
+<channel>
+<title>Apple Seconds Podcast</title>
+<link>https://example.com/apple-seconds</link>
+<description>Example show with duration in seconds</description>
+<itunes:author>Example Author</itunes:author>
+<itunes:image href="https://example.com/apple-seconds-artwork.jpg"/>
+<item>
+<title>Episode 1: First</title>
+<guid isPermaLink="false">apple-seconds-001</guid>
+<description>First episode</description>
+<link>https://example.com/episodes/1</link>
+<pubDate>Mon, 08 Jan 2024 10:00:00 GMT</pubDate>
+<enclosure url="https://example.com/episodes/001.mp3" length="12960000" type="audio/mpeg"/>
+<itunes:duration>3600</itunes:duration>
+</item>
+<item>
+<title>Episode 2: Second</title>
+<guid isPermaLink="false">apple-seconds-002</guid>
+<description>Second episode</description>
+<link>https://example.com/episodes/2</link>
+<pubDate>Mon, 15 Jan 2024 10:00:00 GMT</pubDate>
+<enclosure url="https://example.com/episodes/002.mp3" length="8640000" type="audio/mpeg"/>
+<itunes:duration>2400</itunes:duration>
+</item>
+</channel>
+</rss>

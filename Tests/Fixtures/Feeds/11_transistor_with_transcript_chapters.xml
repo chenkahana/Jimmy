@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Transistor format with podcast:transcript and podcast:chapters -->
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" xmlns:podcast="https://podcastindex.org/namespace/1.0">
+<channel>
+<title>Transistor Show</title>
+<link>https://transistor.example.com/shows/example</link>
+<description>Show hosted on Transistor</description>
+<itunes:author>Transistor Host</itunes:author>
+<itunes:image href="https://example.com/transistor-artwork.jpg"/>
+<item>
+<title>Episode 1: Introduction to Transcripts</title>
+<guid isPermaLink="false">transistor-txr-001</guid>
+<description>Our first episode with transcript and chapters</description>
+<link>https://transistor.example.com/episodes/txr-001</link>
+<pubDate>Wed, 17 Jan 2024 09:30:00 GMT</pubDate>
+<enclosure url="https://example.com/transistor/ep1.mp3" length="14400000" type="audio/mpeg"/>
+<itunes:duration>32:00</itunes:duration>
+<podcast:transcript url="https://example.com/transistor/ep1-transcript.vtt" type="text/vtt"/>
+<podcast:chapters url="https://example.com/transistor/ep1-chapters.json" type="application/json"/>
+</item>
+<item>
+<title>Episode 2: Advanced Topics</title>
+<guid isPermaLink="false">transistor-txr-002</guid>
+<description>Exploring more complex topics with transcripts</description>
+<link>https://transistor.example.com/episodes/txr-002</link>
+<pubDate>Wed, 24 Jan 2024 09:30:00 GMT</pubDate>
+<enclosure url="https://example.com/transistor/ep2.mp3" length="18900000" type="audio/mpeg"/>
+<itunes:duration>42:00</itunes:duration>
+<podcast:transcript url="https://example.com/transistor/ep2-transcript.vtt" type="text/vtt"/>
+<podcast:chapters url="https://example.com/transistor/ep2-chapters.json" type="application/json"/>
+</item>
+</channel>
+</rss>

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Feed with Hebrew titles and descriptions (RTL text) -->
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
+<channel>
+<title>פודקאסט ישראלי</title>
+<link>https://example.com/hebrew-show</link>
+<description>שידור עברי לדוגמה</description>
+<language>he</language>
+<itunes:author>משדר ישראלי</itunes:author>
+<itunes:image href="https://example.com/hebrew-artwork.jpg"/>
+<item>
+<title>פרק 1: התחלה</title>
+<guid isPermaLink="false">hebrew-001</guid>
+<description>ברוכים הבאים לפודקאסט שלנו</description>
+<link>https://example.com/episodes/hebrew-001</link>
+<pubDate>Thu, 18 Jan 2024 16:00:00 GMT</pubDate>
+<enclosure url="https://example.com/hebrew/ep1.mp3" length="12960000" type="audio/mpeg"/>
+<itunes:duration>28:48</itunes:duration>
+</item>
+<item>
+<title>פרק 2: דיון עמוק</title>
+<guid isPermaLink="false">hebrew-002</guid>
+<description>אנחנו דנים בנושאים מעמיקים ומעניינים</description>
+<link>https://example.com/episodes/hebrew-002</link>
+<pubDate>Thu, 25 Jan 2024 16:00:00 GMT</pubDate>
+<enclosure url="https://example.com/hebrew/ep2.mp3" length="16200000" type="audio/mpeg"/>
+<itunes:duration>36:00</itunes:duration>
+</item>
+</channel>
+</rss>

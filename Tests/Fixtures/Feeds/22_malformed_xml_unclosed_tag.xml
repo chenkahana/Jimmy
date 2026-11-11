@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Malformed XML with an unclosed tag mid-file -->
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
+<channel>
+<title>Malformed XML Show</title>
+<link>https://example.com/malformed</link>
+<description>Feed with intentional XML error</description>
+<itunes:author>Example Author</itunes:author>
+<itunes:image href="https://example.com/malformed-artwork.jpg"/>
+<item>
+<title>Episode 1: Valid</title>
+<guid isPermaLink="false">malformed-001</guid>
+<description>This episode is properly formatted</description>
+<link>https://example.com/episodes/001</link>
+<pubDate>Fri, 26 Jan 2024 09:00:00 GMT</pubDate>
+<enclosure url="https://example.com/episodes/001.mp3" length="14400000" type="audio/mpeg"/>
+<itunes:duration>32:00</itunes:duration>
+</item>
+<item>
+<title>Episode 2: Broken
+<guid isPermaLink="false">malformed-002</guid>
+<description>This item has an unclosed title tag</description>
+<link>https://example.com/episodes/002</link>
+<pubDate>Fri, 02 Feb 2024 09:00:00 GMT</pubDate>
+<enclosure url="https://example.com/episodes/002.mp3" length="15300000" type="audio/mpeg"/>
+<itunes:duration>34:00</itunes:duration>
+</item>
+</channel>
+</rss>

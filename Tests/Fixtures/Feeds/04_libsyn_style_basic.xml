@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Libsyn podcast format -->
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+<channel>
+<title>Libsyn Example Show</title>
+<link>https://libsyn-example.libsyn.com</link>
+<description>A show hosted on Libsyn</description>
+<language>en</language>
+<itunes:author>Libsyn Podcaster</itunes:author>
+<itunes:image href="https://example.com/libsyn-artwork.jpg"/>
+<itunes:category text="Technology"/>
+<item>
+<title>Episode 1: Welcome</title>
+<guid isPermaLink="false">libsyn-001-guid</guid>
+<description>Welcome to our show</description>
+<link>https://example.com/episodes/001</link>
+<pubDate>Wed, 10 Jan 2024 14:00:00 GMT</pubDate>
+<enclosure url="https://example.com/libsyn/episode-001.mp3" length="15000000" type="audio/mpeg"/>
+<itunes:duration>30:00</itunes:duration>
+<content:encoded><![CDATA[<p>Welcome to our first episode.</p>]]></content:encoded>
+</item>
+<item>
+<title>Episode 2: Learning</title>
+<guid isPermaLink="false">libsyn-002-guid</guid>
+<description>We learn something new</description>
+<link>https://example.com/episodes/002</link>
+<pubDate>Wed, 17 Jan 2024 14:00:00 GMT</pubDate>
+<enclosure url="https://example.com/libsyn/episode-002.mp3" length="18000000" type="audio/mpeg"/>
+<itunes:duration>37:30</itunes:duration>
+<content:encoded><![CDATA[<p>In this episode we learn about podcasting.</p>]]></content:encoded>
+</item>
+</channel>
+</rss>

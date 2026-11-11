@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Megaphone with ad markers in description -->
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
+<channel>
+<title>Megaphone Ads Show</title>
+<link>https://megaphone-ads.megaphone.fm</link>
+<description>Show with ad markers</description>
+<itunes:author>Megaphone Host</itunes:author>
+<itunes:image href="https://example.com/megaphone-ads-artwork.jpg"/>
+<item>
+<title>Episode 1: Ad Spot Test</title>
+<guid isPermaLink="false">550e8400-e29b-41d4-a716-446655550001</guid>
+<description>This episode contains [ADVERTISEMENT_START] sponsored content [ADVERTISEMENT_END] in the middle.</description>
+<link>https://megaphone-ads.megaphone.fm/episodes/ads1</link>
+<pubDate>Sat, 13 Jan 2024 12:00:00 GMT</pubDate>
+<enclosure url="https://example.com/megaphone/ads1.mp3" length="15120000" type="audio/mpeg"/>
+<itunes:duration>33:36</itunes:duration>
+</item>
+<item>
+<title>Episode 2: Multiple Ads</title>
+<guid isPermaLink="false">550e8400-e29b-41d4-a716-446655550002</guid>
+<description>First ad at [AD:0] seconds, second ad at [AD:900] seconds.</description>
+<link>https://megaphone-ads.megaphone.fm/episodes/ads2</link>
+<pubDate>Sat, 20 Jan 2024 12:00:00 GMT</pubDate>
+<enclosure url="https://example.com/megaphone/ads2.mp3" length="20880000" type="audio/mpeg"/>
+<itunes:duration>46:24</itunes:duration>
+</item>
+</channel>
+</rss>

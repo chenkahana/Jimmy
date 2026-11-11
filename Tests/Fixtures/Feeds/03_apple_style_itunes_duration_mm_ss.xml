@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Apple Podcasts format with itunes:duration in MM:SS format -->
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
+<channel>
+<title>Apple MM:SS Podcast</title>
+<link>https://example.com/apple-mm-ss</link>
+<description>Example show with MM:SS duration format</description>
+<itunes:author>Example Author</itunes:author>
+<itunes:image href="https://example.com/apple-mm-ss-artwork.jpg"/>
+<item>
+<title>Episode 1: Short</title>
+<guid isPermaLink="false">apple-mmss-001</guid>
+<description>A short episode</description>
+<link>https://example.com/episodes/1</link>
+<pubDate>Mon, 01 Jan 2024 12:00:00 GMT</pubDate>
+<enclosure url="https://example.com/episodes/001.mp3" length="6048000" type="audio/mpeg"/>
+<itunes:duration>42:00</itunes:duration>
+</item>
+<item>
+<title>Episode 2: Medium</title>
+<guid isPermaLink="false">apple-mmss-002</guid>
+<description>A medium episode</description>
+<link>https://example.com/episodes/2</link>
+<pubDate>Mon, 08 Jan 2024 12:00:00 GMT</pubDate>
+<enclosure url="https://example.com/episodes/002.mp3" length="10368000" type="audio/mpeg"/>
+<itunes:duration>72:00</itunes:duration>
+</item>
+</channel>
+</rss>

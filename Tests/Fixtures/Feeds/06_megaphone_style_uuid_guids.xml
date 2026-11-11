@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Megaphone format with UUID-style GUIDs -->
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" xmlns:podcast="https://podcastindex.org/namespace/1.0">
+<channel>
+<title>Megaphone Example Show</title>
+<link>https://megaphone-example.megaphone.fm</link>
+<description>Show hosted on Megaphone</description>
+<itunes:author>Megaphone Host</itunes:author>
+<itunes:image href="https://example.com/megaphone-artwork.jpg"/>
+<item>
+<title>Episode 1: Introduction</title>
+<guid isPermaLink="false">550e8400-e29b-41d4-a716-446655440001</guid>
+<description>Welcome to Megaphone</description>
+<link>https://megaphone-example.megaphone.fm/episodes/intro</link>
+<pubDate>Fri, 12 Jan 2024 11:00:00 GMT</pubDate>
+<enclosure url="https://example.com/megaphone/ep1.mp3" length="16200000" type="audio/mpeg"/>
+<itunes:duration>36:00</itunes:duration>
+</item>
+<item>
+<title>Episode 2: Deep Dive</title>
+<guid isPermaLink="false">550e8400-e29b-41d4-a716-446655440002</guid>
+<description>We dive deep into topics</description>
+<link>https://megaphone-example.megaphone.fm/episodes/deepdive</link>
+<pubDate>Fri, 19 Jan 2024 11:00:00 GMT</pubDate>
+<enclosure url="https://example.com/megaphone/ep2.mp3" length="19800000" type="audio/mpeg"/>
+<itunes:duration>44:00</itunes:duration>
+</item>
+</channel>
+</rss>

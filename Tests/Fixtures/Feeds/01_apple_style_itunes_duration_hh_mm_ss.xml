@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Apple Podcasts format with itunes:duration in HH:MM:SS format -->
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
+<channel>
+<title>Apple Style Podcast</title>
+<link>https://example.com/apple-style</link>
+<description>Example show using Apple Podcasts format</description>
+<language>en-us</language>
+<itunes:author>Example Author</itunes:author>
+<itunes:image href="https://example.com/apple-style-artwork.jpg"/>
+<itunes:category text="Technology"/>
+<item>
+<title>Episode 1: Getting Started</title>
+<guid isPermaLink="false">apple-style-001</guid>
+<description>In this episode we explore the basics.</description>
+<link>https://example.com/episodes/1</link>
+<pubDate>Mon, 15 Jan 2024 09:00:00 GMT</pubDate>
+<enclosure url="https://example.com/episodes/001.mp3" length="54432000" type="audio/mpeg"/>
+<itunes:duration>01:30:45</itunes:duration>
+</item>
+<item>
+<title>Episode 2: Advanced Topics</title>
+<guid isPermaLink="false">apple-style-002</guid>
+<description>We dive deeper into complex subjects.</description>
+<link>https://example.com/episodes/2</link>
+<pubDate>Mon, 22 Jan 2024 09:00:00 GMT</pubDate>
+<enclosure url="https://example.com/episodes/002.mp3" length="36288000" type="audio/mpeg"/>
+<itunes:duration>02:15:30</itunes:duration>
+</item>
+<item>
+<title>Episode 3: Q&amp;A Session</title>
+<guid isPermaLink="false">apple-style-003</guid>
+<description>Listener questions answered.</description>
+<link>https://example.com/episodes/3</link>
+<pubDate>Mon, 29 Jan 2024 09:00:00 GMT</pubDate>
+<enclosure url="https://example.com/episodes/003.mp3" length="27216000" type="audio/mpeg"/>
+<itunes:duration>00:45:20</itunes:duration>
+</item>
+</channel>
+</rss>

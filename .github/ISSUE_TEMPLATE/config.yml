@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/chenkahana/Jimmy/security/advisories/new
+    about: Please report security issues privately, not as public issues.
+  - name: Privacy policy
+    url: https://github.com/chenkahana/Jimmy/blob/main/docs/privacy.md
+    about: How Jimmy handles your data.

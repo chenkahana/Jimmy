@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Atom podcast feed format -->
+<feed xmlns="http://www.w3.org/2005/Atom" xmlns:podcast="https://podcastindex.org/namespace/1.0">
+<title>Atom Example Show</title>
+<id>urn:uuid:60a76c80-d399-11d9-b91C-0003939e0af6</id>
+<updated>2024-02-02T10:00:00Z</updated>
+<link href="https://example.com/atom-show"/>
+<author>
+<name>Atom Creator</name>
+</author>
+<entry>
+<title>Episode 1: Atom Introduction</title>
+<id>urn:uuid:1225c695-cfb8-4ebb-aaaa-80da344efa6a</id>
+<updated>2024-01-27T10:00:00Z</updated>
+<link href="https://example.com/episodes/atom-001"/>
+<summary>Welcome to our Atom-formatted show</summary>
+<link rel="enclosure" href="https://example.com/episodes/001.mp3" type="audio/mpeg"/>
+</entry>
+<entry>
+<title>Episode 2: Atom Features</title>
+<id>urn:uuid:1225c695-cfb8-4ebb-aaaa-80da344efa6b</id>
+<updated>2024-02-03T10:00:00Z</updated>
+<link href="https://example.com/episodes/atom-002"/>
+<summary>Exploring Atom feed features for podcasts</summary>
+<link rel="enclosure" href="https://example.com/episodes/002.mp3" type="audio/mpeg"/>
+</entry>
+</feed>

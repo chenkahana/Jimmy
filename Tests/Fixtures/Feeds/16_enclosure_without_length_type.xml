@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Feed with enclosures missing length and type attributes -->
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
+<channel>
+<title>Incomplete Enclosures Show</title>
+<link>https://example.com/incomplete-enclosures</link>
+<description>Enclosures with missing attributes</description>
+<itunes:author>Example Author</itunes:author>
+<itunes:image href="https://example.com/incomplete-encl-artwork.jpg"/>
+<item>
+<title>Episode 1: Complete Enclosure</title>
+<guid isPermaLink="false">incomplete-encl-001</guid>
+<description>This has all enclosure attributes</description>
+<link>https://example.com/episodes/001</link>
+<pubDate>Mon, 22 Jan 2024 10:00:00 GMT</pubDate>
+<enclosure url="https://example.com/episodes/001.mp3" length="14400000" type="audio/mpeg"/>
+<itunes:duration>32:00</itunes:duration>
+</item>
+<item>
+<title>Episode 2: No Length or Type</title>
+<guid isPermaLink="false">incomplete-encl-002</guid>
+<description>Enclosure with only URL</description>
+<link>https://example.com/episodes/002</link>
+<pubDate>Mon, 29 Jan 2024 10:00:00 GMT</pubDate>
+<enclosure url="https://example.com/episodes/002.mp3"/>
+<itunes:duration>35:00</itunes:duration>
+</item>
+<item>
+<title>Episode 3: Only Type</title>
+<guid isPermaLink="false">incomplete-encl-003</guid>
+<description>Enclosure with URL and type only</description>
+<link>https://example.com/episodes/003</link>
+<pubDate>Tue, 02 Feb 2024 10:00:00 GMT</pubDate>
+<enclosure url="https://example.com/episodes/003.mp3" type="audio/mpeg"/>
+<itunes:duration>28:00</itunes:duration>
+</item>
+</channel>
+</rss>

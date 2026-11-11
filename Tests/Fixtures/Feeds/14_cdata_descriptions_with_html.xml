@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Feed with CDATA descriptions containing HTML -->
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
+<channel>
+<title>CDATA HTML Show</title>
+<link>https://example.com/cdata-show</link>
+<description>Show with rich HTML descriptions</description>
+<itunes:author>CDATA Creator</itunes:author>
+<itunes:image href="https://example.com/cdata-artwork.jpg"/>
+<item>
+<title>Episode 1: Rich Content</title>
+<guid isPermaLink="false">cdata-001</guid>
+<description><![CDATA[
+<p>Welcome to our show with <strong>rich HTML content</strong>.</p>
+<ul>
+<li>Point one</li>
+<li>Point two</li>
+</ul>
+<p>Visit us at <a href="https://example.com">our website</a>.</p>
+]]></description>
+<link>https://example.com/episodes/cdata-001</link>
+<pubDate>Sat, 20 Jan 2024 13:00:00 GMT</pubDate>
+<enclosure url="https://example.com/cdata/ep1.mp3" length="14400000" type="audio/mpeg"/>
+<itunes:duration>32:00</itunes:duration>
+</item>
+<item>
+<title>Episode 2: More HTML</title>
+<guid isPermaLink="false">cdata-002</guid>
+<description><![CDATA[
+<p>This episode features <em>italic text</em> and <code>code blocks</code>.</p>
+<p>Check out our links:</p>
+<ul>
+<li><a href="https://example.com/resource1">Resource 1</a></li>
+<li><a href="https://example.com/resource2">Resource 2</a></li>
+</ul>
+]]></description>
+<link>https://example.com/episodes/cdata-002</link>
+<pubDate>Sat, 27 Jan 2024 13:00:00 GMT</pubDate>
+<enclosure url="https://example.com/cdata/ep2.mp3" length="16200000" type="audio/mpeg"/>
+<itunes:duration>36:00</itunes:duration>
+</item>
+</channel>
+</rss>

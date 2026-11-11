@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Libsyn with analytics tracking codes in descriptions -->
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
+<channel>
+<title>Libsyn Analytics Show</title>
+<link>https://libsyn-analytics.libsyn.com</link>
+<description>Show with analytics</description>
+<itunes:author>Analytics Podcaster</itunes:author>
+<itunes:image href="https://example.com/analytics-artwork.jpg"/>
+<item>
+<title>Episode 1: Tracked</title>
+<guid isPermaLink="false">libsyn-analytics-001</guid>
+<description>Episode with tracking pixel</description>
+<link>https://example.com/episodes/001?ref=abc123</link>
+<pubDate>Thu, 11 Jan 2024 15:00:00 GMT</pubDate>
+<enclosure url="https://example.com/libsyn/analytics-001.mp3" length="14400000" type="audio/mpeg"/>
+<itunes:duration>30:00</itunes:duration>
+</item>
+<item>
+<title>Episode 2: Monitored</title>
+<guid isPermaLink="false">libsyn-analytics-002</guid>
+<description>Another tracked episode</description>
+<link>https://example.com/episodes/002?ref=def456</link>
+<pubDate>Thu, 18 Jan 2024 15:00:00 GMT</pubDate>
+<enclosure url="https://example.com/libsyn/analytics-002.mp3" length="21600000" type="audio/mpeg"/>
+<itunes:duration>45:00</itunes:duration>
+</item>
+</channel>
+</rss>

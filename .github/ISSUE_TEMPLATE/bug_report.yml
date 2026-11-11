@@ -1,0 +1,43 @@
+name: Bug report
+description: Something in Jimmy doesn't work as expected.
+labels: [bug, needs-triage]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for the report. Please don't include personal data such as passwords or private URLs.
+  - type: input
+    id: version
+    attributes:
+      label: Jimmy version
+      description: Settings › About shows it.
+      placeholder: "7.1 (42)"
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device and iOS version
+      placeholder: "iPhone 15 Pro, iOS 18.1"
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open …
+        2. Tap …
+        3. See …
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected, and what happened instead
+    validations:
+      required: true
+  - type: textarea
+    id: extra
+    attributes:
+      label: Screenshots, recordings or other context
+      description: For playback or sync problems, include details about the podcast feed and your device setup.

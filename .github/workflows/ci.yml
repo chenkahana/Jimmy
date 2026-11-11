@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  # Pull requests only: re-running on every push to main doubled the macOS minutes.
+  pull_request:
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: xcode-27
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Select the newest Xcode 27
+        run: |
+          xcode=$(ls -d /Applications/Xcode_27*.app 2>/dev/null | sort -V | tail -1)
+          if [ -n "$xcode" ]; then sudo xcode-select -s "$xcode"; fi
+          xcodebuild -version
+
+      - name: Install XcodeGen
+        run: command -v xcodegen || brew install xcodegen
+
+      - name: Cache Swift packages
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: build/DerivedData/SourcePackages
+          key: spm-${{ runner.os }}-${{ hashFiles('project.yml', 'Packages/JimmyKit/Package.resolved') }}
+
+      - name: JimmyKit tests
+        run: make kit
+
+      - name: Build
+        run: make build
+
+      - name: Test
+        run: |
+          SIM=$(xcrun simctl list devices available | awk '/^-- iOS 27/{f=1;next} /^--/{f=0} f && /iPhone/{sub(/^ +/,""); sub(/ \(.*/,""); print; exit}')
+          echo "Using simulator: $SIM"
+          test -n "$SIM" || { xcrun simctl list devices available; exit 1; }
+          make test SIM="$SIM"
