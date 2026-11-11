@@ -135,7 +135,7 @@ extension AppModel {
             return
         }
 
-        let podcast = PodcastService.shared.loadPodcasts().first { $0.id == episode.podcastID }
+        let podcast = podcasts.first { $0.id == episode.podcastID }
         ready.nowPlaying.update(
             title: episode.title,
             podcastTitle: podcast?.title,

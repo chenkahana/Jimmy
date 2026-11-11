@@ -47,7 +47,6 @@ struct JimmyApp: App {
         guard case .ready = model.launchState else { return }
 
         _ = DIContainer.shared
-        _ = DIContainer.shared.podcastService
 
         if !isRunningUnitTests {
             configureTips()
@@ -66,6 +65,7 @@ struct JimmyApp: App {
         // which is what first writes `SettingsViewModel`'s `autoRestoreLastEpisode` default.
         if !isRunningUnitTests {
             Task { await model.restoreLastEpisodeIfEnabled() }
+            Task { await model.refreshAll() }
         }
     }
 
@@ -244,7 +244,7 @@ struct JimmyApp: App {
                       let queryItems = components.queryItems,
                       let feedURLString = queryItems.first(where: { $0.name == "url" })?.value,
                       let feedURL = URL(string: feedURLString) {
-                _ = try? await PodcastService.shared.addPodcast(from: feedURL)
+                _ = try? await AppModel.current?.subscribe(feedURL: feedURL)
             }
         }
     }
@@ -264,7 +264,6 @@ struct JimmyApp: App {
 @MainActor
 class ServiceContainer: ObservableObject {
     lazy var uiUpdateService = UIUpdateService.shared
-    lazy var shakeUndoManager = ShakeUndoManager.shared
     lazy var uiPerformanceManager = UIPerformanceManager.shared
 }
 

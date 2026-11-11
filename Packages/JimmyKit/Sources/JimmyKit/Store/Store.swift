@@ -15,7 +15,14 @@ public enum StoreError: Error, Sendable {
 /// `v19_progress` through `v22_downloads`. Nothing from the legacy schema is dropped or
 /// altered, so today's app can keep reading/writing the same file during the transition.
 public nonisolated final class Store: Sendable {
-    private let pool: DatabasePool
+    // Internal (not `private`) so `Store+Library.swift` and other same-module extensions can
+    // drive their own `pool.read`/`pool.write` calls.
+    let pool: DatabasePool
+
+    /// The on-disk path this store was opened with. Not used by any production code path (every
+    /// read/write goes through `pool`) — kept only so tests can open a second raw connection to
+    /// poke at a column `Store`'s own API never writes (e.g. the legacy `played` column).
+    let testOnlyPath: String
 
     /// Opens (creating if needed) the database at `path`, running the frozen legacy migrations
     /// followed by this package's own, then — if `legacy` is non-nil — importing legacy
@@ -46,6 +53,7 @@ public nonisolated final class Store: Sendable {
         }
 
         self.pool = pool
+        self.testOnlyPath = path
     }
 
     // MARK: - Podcasts

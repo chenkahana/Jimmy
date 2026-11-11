@@ -78,7 +78,7 @@ final class DeepLinkRouter {
             ShellStore.shared.navigate(to: .podcast(id))
         case .subscribe(let feedURL):
             Task {
-                _ = try? await PodcastService.shared.addPodcast(from: feedURL)
+                _ = try? await AppModel.current?.subscribe(feedURL: feedURL)
             }
             ShellStore.shared.navigate(to: .library)
         }

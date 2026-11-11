@@ -26,7 +26,7 @@ final class SharedDataStore {
         // Now Playing
         if let current = playback?.currentEpisode {
             data.nowPlayingTitle = current.title
-            let podcast = PodcastService.shared.loadPodcasts().first { $0.id == current.podcastID }
+            let podcast = AppModel.current?.podcasts.first { $0.id == current.podcastID }
             data.nowPlayingPodcast = podcast?.title
             data.nowPlayingArtworkURL = current.artworkURL ?? podcast?.artworkURL
             data.nowPlayingDuration = playback?.duration
@@ -38,7 +38,7 @@ final class SharedDataStore {
         }
 
         // Up Next (first 3 queued episodes after current)
-        let podcasts = PodcastService.shared.loadPodcasts()
+        let podcasts = AppModel.current?.podcasts ?? []
         let queueEpisodes = await AppModel.current?.resolveQueueEpisodes() ?? []
         data.upNext = Array(queueEpisodes.prefix(3)).map { episode in
             let podcast = podcasts.first { $0.id == episode.podcastID }

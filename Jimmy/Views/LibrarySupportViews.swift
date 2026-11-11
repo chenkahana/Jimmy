@@ -86,7 +86,7 @@ struct ResolvedPodcastDetailView: View {
                 return
             }
 
-            if let livePodcast = PodcastService.shared.loadPodcasts().first(where: { $0.id == podcastID }) {
+            if let livePodcast = AppModel.current?.podcasts.first(where: { $0.id == podcastID })?.asLegacyPodcast() {
                 await MainActor.run {
                     resolvedPodcast = livePodcast
                     isLoading = false

@@ -45,3 +45,24 @@ extension Jimmy.Episode {
         )
     }
 }
+
+extension JimmyKit.Podcast {
+    /// Converts to the old `Jimmy.Podcast` model (same table, same columns — see
+    /// `Packages/JimmyKit/Sources/JimmyKit/Store/Records.swift`), for screens not yet moved onto
+    /// `JimmyKit` (podcast detail, episode rows, CarPlay; PR 18) that still render it.
+    func asLegacyPodcast() -> Jimmy.Podcast {
+        Jimmy.Podcast(
+            id: id,
+            title: title,
+            author: author,
+            description: description,
+            feedURL: feedURL,
+            artworkURL: artworkURL,
+            autoAddToQueue: autoAddToQueue,
+            notificationsEnabled: notificationsEnabled,
+            lastEpisodeDate: lastEpisodeDate,
+            etag: etag,
+            lastFetched: lastFetched
+        )
+    }
+}

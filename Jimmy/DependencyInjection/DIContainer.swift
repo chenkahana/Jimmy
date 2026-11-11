@@ -5,10 +5,8 @@ import Foundation
 
 final class DIContainer {
     static let shared = DIContainer()
-    
+
     // MARK: - Stores (Actors for thread safety)
-    lazy var podcastStore: CleanPodcastStoreProtocol = CleanPodcastStore.shared
-    lazy var episodeStore: CleanEpisodeStoreProtocol = CleanEpisodeStore.shared
     @MainActor lazy var progressCacheStore = ProgressCacheStore.shared
     
     // MARK: - Core Infrastructure
@@ -53,20 +51,5 @@ final class DIContainer {
     // MARK: - Download Manager
     lazy var downloadManager = DownloadManager.shared
 
-    // MARK: - Services
-    // Fix circular dependency by creating PodcastService with explicit dependencies
-    lazy var podcastService: PodcastServiceProtocol = {
-        let service = PodcastService(
-            podcastRepository: podcastRepository,
-            episodeRepository: episodeRepository
-        )
-        // Initialize the shared instance for backward compatibility
-        PodcastService.shared = service
-        return service
-    }()
-    
-    // MARK: - ViewModels
-    @MainActor lazy var libraryViewModel = LibraryViewModel.shared
-    
     private init() {}
 } 

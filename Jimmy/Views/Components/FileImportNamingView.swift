@@ -2,16 +2,13 @@ import SwiftUI
 import os
 
 struct FileImportNamingView: View {
-    private let logger = Logger(subsystem: "com.chenkahana.Jimmy", category: "FileImportNamingView")
     @Environment(\.dismiss) private var dismiss
     @State private var fileName: String
     @State private var showName: String = ""
     @State private var selectedShowID: UUID?
     @State private var isCreatingNewShow: Bool = false
     @State private var localShows: [Podcast] = []
-    // Safe access to PodcastService
-    private let podcastService: PodcastService? = PodcastService.shared
-    
+
     let audioURL: URL
     let onImport: (String, String, UUID?) -> Void // filename, showname, existing show ID
     
@@ -100,12 +97,8 @@ struct FileImportNamingView: View {
     }
     
     private func loadLocalShows() {
-        guard let podcastService = podcastService else {
-            logger.warning("PodcastService not available")
-            localShows = []
-            return
-        }
-        localShows = podcastService.loadPodcasts().filter { $0.feedURL.scheme == "local" }
+        localShows = (AppModel.current?.podcasts.map { $0.asLegacyPodcast() } ?? [])
+            .filter { $0.feedURL.scheme == "local" }
     }
     
     private func handleImport() {

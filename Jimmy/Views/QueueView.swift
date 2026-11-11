@@ -362,7 +362,7 @@ struct QueueView: View {
 
     private func loadPodcasts() {
         // Load all podcasts for artwork lookup
-        allPodcasts = PodcastService.shared.loadPodcasts()
+        allPodcasts = (AppModel.current?.podcasts ?? []).map { $0.asLegacyPodcast() }
     }
 
     private func getPodcast(for episode: Episode) -> Podcast? {

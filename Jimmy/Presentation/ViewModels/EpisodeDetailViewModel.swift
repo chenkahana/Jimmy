@@ -20,18 +20,15 @@ class EpisodeDetailViewModel: ObservableObject {
     @Published var isInQueue: Bool = false
     
     // MARK: - Private Properties
-    private let podcastService: PodcastService
     private let cacheService: EpisodeCacheService
     private var cancellables = Set<AnyCancellable>()
 
     // MARK: - Initialization
     init(
         episode: Episode,
-        podcastService: PodcastService = .shared,
         cacheService: EpisodeCacheService = .shared
     ) {
         self.episode = episode
-        self.podcastService = podcastService
         self.cacheService = cacheService
 
         setupBindings()
@@ -96,13 +93,8 @@ class EpisodeDetailViewModel: ObservableObject {
     private func loadPodcast() async {
         isLoading = true
         
-        do {
-            let podcasts = podcastService.loadPodcasts()
-            podcast = podcasts.first { $0.id == episode.podcastID }
-        } catch {
-            errorMessage = "Failed to load podcast: \(error.localizedDescription)"
-        }
-        
+        podcast = AppModel.current?.podcasts.first { $0.id == episode.podcastID }?.asLegacyPodcast()
+
         isLoading = false
     }
     

@@ -22,8 +22,6 @@ class SubscriptionViewModel: ObservableObject {
     // MARK: - Private Properties
     private let subscriptionRepository: SubscriptionRepositoryProtocol
     private let episodeRepository: EpisodeRepositoryProtocol
-    // Shared integration layer for coordinated fetches and persistence.
-    private let worldClassIntegration = WorldClassIntegration.shared
     private var cachedEpisodeHeap: EpisodeMergeHeap?
     private var episodesByPodcast: [UUID: [Episode]] = [:]
     private var cancellables = Set<AnyCancellable>()

@@ -184,7 +184,7 @@ struct PreviewPodcastDetailView: View {
     private let logger = Logger(subsystem: "com.chenkahana.Jimmy", category: "PreviewPodcastDetailView")
     let podcast: Podcast
     let episodes: [Episode]
-    @ObservedObject private var subscriptionStateManager = SubscriptionStateManager.shared
+    @Environment(AppModel.self) private var appModel
     @Environment(\.dismiss) private var dismiss
     @Environment(\.presentationMode) private var presentationMode
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -194,6 +194,7 @@ struct PreviewPodcastDetailView: View {
     @State private var selectedEpisode: EpisodeWithPlaybackState?
     @StateObject private var swipeStateManager = SwipeStateManager.shared
     @State private var subscriptionError: SubscriptionError?
+    @State private var isSubscribing = false
     
     // Filter and sort options
     @State private var filterOption: PodcastDetailViewModel.EpisodeFilter = .all
@@ -308,8 +309,8 @@ struct PreviewPodcastDetailView: View {
                         }
                         
                         // Subscribe button for preview
-                        let isSubscribed = subscriptionStateManager.isSubscribed(to: podcast.feedURL)
-                        let isProcessing = subscriptionStateManager.isProcessing(feedURL: podcast.feedURL)
+                        let isSubscribed = appModel.podcasts.contains { $0.feedURL == podcast.feedURL }
+                        let isProcessing = isSubscribing
                         
                         if isSubscribed {
                             Button(action: { 
@@ -427,15 +428,11 @@ struct PreviewPodcastDetailView: View {
     }
     
     private func subscribeToPodcast() async {
+        isSubscribing = true
+        defer { isSubscribing = false }
         do {
-            // Use centralized subscription state manager
-            try await subscriptionStateManager.subscribe(to: podcast)
+            _ = try await appModel.subscribe(feedURL: podcast.feedURL)
             logger.info("Subscribed to podcast: \(podcast.title)")
-            
-        } catch let error as SubscriptionError {
-            subscriptionError = error
-            logger.error("Failed to subscribe to podcast: \(error)")
-            
         } catch {
             subscriptionError = .unknownError(error.localizedDescription)
             logger.error("Unexpected error subscribing to podcast: \(error)")
@@ -606,7 +603,6 @@ struct PodcastDetailView: View {
     private let logger = Logger(subsystem: "com.chenkahana.Jimmy", category: "PodcastDetailView")
     let podcast: Podcast
     @Environment(AppModel.self) private var appModel
-    @ObservedObject private var subscriptionStateManager = SubscriptionStateManager.shared
     @Environment(\.dismiss) private var dismiss
     @Environment(\.presentationMode) private var presentationMode
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -615,10 +611,11 @@ struct PodcastDetailView: View {
     @State private var showingDescriptionSheet = false
     @State private var selectedEpisode: EpisodeWithPlaybackState? // Add selectedEpisode state for navigation
     @StateObject private var swipeStateManager = SwipeStateManager.shared
-    
+
     // Subscription management
     @State private var showingUnsubscribeAlert = false
     @State private var subscriptionError: SubscriptionError?
+    @State private var isSubscribing = false
     
     // Filter and sort options
     @State private var filterOption: PodcastDetailViewModel.EpisodeFilter = .all
@@ -760,8 +757,8 @@ struct PodcastDetailView: View {
                             sortOrder: sortOrder,
                             onFilterChange: { filterOption = $0 },
                             onSortChange: { sortOrder = $0 },
-                            isSubscribed: subscriptionStateManager.isSubscribed(to: podcast.feedURL),
-                            isProcessingSubscription: subscriptionStateManager.isProcessing(feedURL: podcast.feedURL),
+                            isSubscribed: appModel.podcasts.contains { $0.feedURL == podcast.feedURL },
+                            isProcessingSubscription: isSubscribing,
                             onSubscribe: { Task { await subscribeToPodcast() } },
                             onUnsubscribe: { showingUnsubscribeAlert = true }
                         )
@@ -816,8 +813,8 @@ struct PodcastDetailView: View {
                         }
 
                         // Subscribe/Unsubscribe option
-                        let isSubscribed = subscriptionStateManager.isSubscribed(to: podcast.feedURL)
-                        let isProcessing = subscriptionStateManager.isProcessing(feedURL: podcast.feedURL)
+                        let isSubscribed = appModel.podcasts.contains { $0.feedURL == podcast.feedURL }
+                        let isProcessing = isSubscribing
                         
                         if isSubscribed {
                             Button(action: { showingUnsubscribeAlert = true }) {
@@ -890,8 +887,7 @@ struct PodcastDetailView: View {
             .hidden()
         )
         .onAppear {
-            // Subscription state is now managed by SubscriptionStateManager
-            // No need to manually check subscription status
+            // Subscription state is read directly from `appModel.podcasts` above.
         }
         .onReceive(DIContainer.shared.progressCacheStore.$progressPercentageMap) { _ in
             // Trigger UI refresh when progress updates
@@ -1035,46 +1031,25 @@ struct PodcastDetailView: View {
     
     /// Subscribe to the current podcast
     private func subscribeToPodcast() async {
+        isSubscribing = true
+        defer { isSubscribing = false }
         do {
-            // Use centralized subscription state manager
-            try await subscriptionStateManager.subscribe(to: podcast)
-            
+            _ = try await appModel.subscribe(feedURL: podcast.feedURL)
             logger.info("Successfully subscribed to \(podcast.title)")
-            
-        } catch let error as SubscriptionError {
-            // Handle subscription-specific errors
-            subscriptionError = error
-            logger.error("Failed to subscribe to \(podcast.title): \(error)")
-            
         } catch {
-            // Handle unexpected errors
             subscriptionError = .unknownError(error.localizedDescription)
             logger.error("Unexpected error subscribing to \(podcast.title): \(error)")
         }
     }
-    
+
     /// Unsubscribe from the current podcast
     private func unsubscribeFromPodcast() async {
-        do {
-            // Use centralized subscription state manager
-            try await subscriptionStateManager.unsubscribe(podcastID: podcast.id)
-            
-            logger.info("Successfully unsubscribed from \(podcast.title)")
-            
-            // Dismiss the view after successful unsubscribe
-            await MainActor.run {
-                self.presentationMode.wrappedValue.dismiss()
-            }
-            
-        } catch let error as SubscriptionError {
-            // Handle subscription-specific errors
-            subscriptionError = error
-            logger.error("Failed to unsubscribe from \(podcast.title): \(error)")
-            
-        } catch {
-            // Handle unexpected errors
-            subscriptionError = .unknownError(error.localizedDescription)
-            logger.error("Unexpected error unsubscribing from \(podcast.title): \(error)")
+        await appModel.unsubscribe(podcast.id)
+        logger.info("Successfully unsubscribed from \(podcast.title)")
+
+        // Dismiss the view after unsubscribing
+        await MainActor.run {
+            self.presentationMode.wrappedValue.dismiss()
         }
     }
     

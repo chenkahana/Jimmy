@@ -69,7 +69,7 @@ extension AppModel {
 
     private func podcastTitle(for podcastID: UUID?) -> String? {
         guard let podcastID else { return nil }
-        return PodcastService.shared.loadPodcasts().first { $0.id == podcastID }?.title
+        return podcasts.first { $0.id == podcastID }?.title
     }
 
     /// Records `episode` at the front of `recentlyPlayedEpisodes` (deduplicated, capped at

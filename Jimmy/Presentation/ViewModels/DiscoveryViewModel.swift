@@ -8,14 +8,18 @@ struct DiscoverState: Equatable {
     var errorMessage: String?
 }
 
+/// Thrown by `DiscoveryViewModel.withTimeout(seconds:operation:)` when `operation` doesn't finish
+/// in time. Previously defined on the now-deleted `BackgroundRefreshService` (an unrelated type
+/// that happened to also declare one); this is its only remaining caller.
+private struct TimeoutError: Error {}
+
 /// ViewModel for Discovery functionality following MVVM patterns
 @MainActor
 class DiscoveryViewModel: ObservableObject {
     private static let logger = Logger(subsystem: "com.chenkahana.Jimmy", category: "DiscoveryViewModel")
     static let shared = DiscoveryViewModel(
         discoveryService: .shared,
-        searchService: .shared,
-        subscriptionStateManager: .shared
+        searchService: .shared
     )
     // MARK: - Published Properties
     @Published var searchText: String = ""
@@ -35,21 +39,19 @@ class DiscoveryViewModel: ObservableObject {
     // MARK: - Private Properties
     private let discoveryService: DiscoveryService
     private let searchService: iTunesSearchService
-    private let subscriptionStateManager: SubscriptionStateManager
+    /// Feed URLs with a subscribe in flight, for `isProcessing(_:)`.
+    private var processingFeedURLs: Set<URL> = []
     private var cancellables = Set<AnyCancellable>()
     private var searchTask: Task<Void, Never>?
-    
+
     // MARK: - Initialization
     private init(
         discoveryService: DiscoveryService,
-        searchService: iTunesSearchService,
-        subscriptionStateManager: SubscriptionStateManager
+        searchService: iTunesSearchService
     ) {
         self.discoveryService = discoveryService
         self.searchService = searchService
-        self.subscriptionStateManager = subscriptionStateManager
         setupSearchBinding()
-        setupSubscriptionListener()
     }
     
     deinit {
@@ -67,17 +69,6 @@ class DiscoveryViewModel: ObservableObject {
                 self?.searchTask = Task { [weak self] in
                     await self?.searchPodcasts()
                 }
-            }
-            .store(in: &cancellables)
-    }
-    
-    private func setupSubscriptionListener() {
-        // Listen for subscription state changes from the centralized manager
-        subscriptionStateManager.objectWillChange
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in
-                // This will trigger UI updates when subscription states change
-                self?.objectWillChange.send()
             }
             .store(in: &cancellables)
     }
@@ -122,10 +113,7 @@ class DiscoveryViewModel: ObservableObject {
     func loadDataIfNeeded() async {
         // Only load if we don't have any data
         guard !hasAnyData else { return }
-        
-        // Refresh subscription states from the centralized manager
-        await subscriptionStateManager.refreshSubscriptionStates()
-        
+
         await refreshData()
     }
     
@@ -169,38 +157,33 @@ class DiscoveryViewModel: ObservableObject {
     }
     
     func isSubscribed(_ result: PodcastSearchResult) -> Bool {
-        return subscriptionStateManager.isSubscribed(to: result)
+        AppModel.current?.podcasts.contains { $0.feedURL == result.feedURL } ?? false
     }
-    
+
     func isProcessing(_ result: PodcastSearchResult) -> Bool {
-        return subscriptionStateManager.isProcessing(feedURL: result.feedURL)
+        processingFeedURLs.contains(result.feedURL)
     }
-    
+
     func subscribe(to result: PodcastSearchResult) async {
+        processingFeedURLs.insert(result.feedURL)
+        defer { processingFeedURLs.remove(result.feedURL) }
         do {
-            // Use the centralized subscription state manager
-            try await subscriptionStateManager.subscribe(to: result)
-            
-            subscriptionMessage = "Successfully subscribed to \(result.title)"
+            guard let podcast = try await AppModel.current?.subscribe(feedURL: result.feedURL) else {
+                throw AppModelError.storeNotReady
+            }
+
+            subscriptionMessage = "Successfully subscribed to \(podcast.title)"
             subscriptionError = nil
             showingSubscriptionAlert = true
-            
+
             Self.logger.info("DiscoveryViewModel: Successfully subscribed to \(result.title)")
-            
-        } catch let error as SubscriptionError {
-            // Handle subscription-specific errors
-            subscriptionError = error
-            subscriptionMessage = SubscriptionErrorHandler.handle(error, for: result.title)
-            showingSubscriptionAlert = true
-            
-            Self.logger.error("DiscoveryViewModel: Failed to subscribe to \(result.title): \(error)")
-            
+
         } catch {
             // Handle unexpected errors
             subscriptionError = .unknownError(error.localizedDescription)
             subscriptionMessage = "Failed to subscribe to \(result.title): \(error.localizedDescription)"
             showingSubscriptionAlert = true
-            
+
             Self.logger.error("DiscoveryViewModel: Unexpected error subscribing to \(result.title): \(error)")
         }
     }

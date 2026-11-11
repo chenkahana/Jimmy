@@ -331,9 +331,9 @@ class SubscriptionImportService {
                         Self.logger.info("Resolved to RSS feed: \(rssURL.absoluteString)")
                         
                         do {
-                            let (podcast, _) = try await PodcastService.shared.addPodcast(from: rssURL)
+                            guard let podcast = try await AppModel.current?.subscribe(feedURL: rssURL) else { return nil }
                             Self.logger.info("Successfully added podcast: \(podcast.title)")
-                            return podcast
+                            return podcast.asLegacyPodcast()
                         } catch {
                             Self.logger.error("Failed to add podcast: \(error.localizedDescription)")
                             return nil

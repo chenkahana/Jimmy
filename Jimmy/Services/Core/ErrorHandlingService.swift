@@ -144,7 +144,6 @@ enum ServiceError: LocalizedError {
 // MARK: - Error Context Constants
 extension ErrorHandlingService {
     enum Context {
-        static let podcastService = "PodcastService"
         static let episodeService = "EpisodeService"
         static let networkService = "NetworkService"
         static let databaseService = "DatabaseService"

@@ -126,9 +126,8 @@ struct ListeningStatsView: View {
     }
 
     private func podcastName(for id: String) -> String {
-        let podcasts = PodcastService.shared.loadPodcasts()
         if let uuid = UUID(uuidString: id),
-           let podcast = podcasts.first(where: { $0.id == uuid }) {
+           let podcast = AppModel.current?.podcasts.first(where: { $0.id == uuid }) {
             return podcast.cleanTitle
         }
         return "Unknown Podcast"

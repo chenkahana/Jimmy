@@ -647,11 +647,14 @@ struct ManualImportView: View {
         logger.info("Manual Import: Starting import from URL: \(url.absoluteString)")
         
         do {
-            let (podcast, episodes) = try await PodcastService.shared.addPodcast(from: url)
-            logger.info("Manual Import: Successfully imported \(podcast.title) with \(episodes.count) episodes")
-            
+            guard let podcast = try await AppModel.current?.subscribe(feedURL: url) else {
+                throw AppModelError.storeNotReady
+            }
+            let episodeCount = (try? await AppModel.current?.readyStore?.episodes(podcastID: podcast.id).count) ?? 0
+            logger.info("Manual Import: Successfully imported \(podcast.title) with \(episodeCount) episodes")
+
             await MainActor.run {
-                importMessage = "Successfully imported '\(podcast.title)' with \(episodes.count) episodes"
+                importMessage = "Successfully imported '\(podcast.title)' with \(episodeCount) episodes"
                 isImporting = false
                 showingAlert = true
             }

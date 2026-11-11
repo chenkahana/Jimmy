@@ -1,5 +1,6 @@
 import Foundation
 import GRDB
+import JimmyKit
 import os
 
 /// Episode fetching and streaming service.
@@ -7,34 +8,45 @@ import os
 final class EpisodeService {
     private static let logger = Logger(subsystem: "com.chenkahana.Jimmy", category: "EpisodeService")
     static let shared = EpisodeService()
-    
-    // Shared integration layer for coordinated fetching and caching.
-    private let worldClassIntegration = WorldClassIntegration.shared
-    
+
     // MARK: - Phase 4: Pagination Configuration
     private let defaultTimeout: TimeInterval = 30.0
     private let resourceTimeout: TimeInterval = 120.0
-    
+
     private init() {}
-    
+
     // MARK: - Core Fetching
-    
-    /// Fetch episodes through the shared integration layer.
+
+    /// Fetches `podcastID`'s feed fresh over the network and parses it, through JimmyKit's
+    /// `FeedFetcher`/`FeedParser` — the same path `AppModel.refresh(_:)` uses. Returns the parsed
+    /// episodes directly; nothing here is written to the store (this mirrors today's behavior:
+    /// the result was never persisted by the old `WorldClassIntegration`/`PodcastEngine` path
+    /// either, just cached in memory and handed back to the caller).
     func fetchEpisodes(
         for podcastID: UUID,
         progressHandler: ((Episode, Int) -> Void)? = nil
     ) async throws -> [Episode] {
-        // Get podcast from repository
-        let podcastRepository = DIContainer.shared.podcastRepository
-        guard let podcast = try await podcastRepository.fetchPodcast(id: podcastID, ignoreCache: false) else {
+        guard let feedURL = await AppModel.current?.podcasts.first(where: { $0.id == podcastID })?.feedURL else {
             throw EpisodeServiceError.feedNotFound
         }
-        
-        // Use the shared integration layer for coordinated episode fetching.
-        return try await worldClassIntegration.fetchEpisodes(
-            for: podcast,
-            progressHandler: progressHandler
-        )
+
+        let fetchResult = try await FeedFetcher().fetch(from: feedURL, etag: nil, lastModified: nil)
+        let data: Data
+        switch fetchResult {
+        case .notModified:
+            data = Data()
+        case .fetched(let fetchedData, _, _):
+            data = fetchedData
+        }
+
+        let parsed = try FeedParser.parse(data: data, podcastID: podcastID, feedURL: feedURL)
+        let episodes = parsed.episodes.map { $0.asLegacyEpisode() }
+        if let progressHandler {
+            for (index, episode) in episodes.enumerated() {
+                progressHandler(episode, index + 1)
+            }
+        }
+        return episodes
     }
     
     /// Streams episodes from RSS feed URL using URLSession.bytes + XMLParser

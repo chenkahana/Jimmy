@@ -19,7 +19,6 @@ class PodcastSearchViewModel: ObservableObject, TaskManagedViewModel {
     let taskManager = TaskCancellationManager()
     let errorManager = ErrorStateManager()
     private let retryManager = RetryManager.shared
-    private let subscriptionStateManager: SubscriptionStateManager
 
     enum SearchScope: String, CaseIterable {
         case all = "All"
@@ -37,29 +36,14 @@ class PodcastSearchViewModel: ObservableObject, TaskManagedViewModel {
 
     private var cancellables = Set<AnyCancellable>()
     private let searchService: ITunesSearchServiceProtocol
-    private let podcastService: PodcastServiceProtocol
+    /// Feed URLs with a subscribe in flight, for `isProcessing(_:)`.
+    @Published private var processingFeedURLs: Set<URL> = []
 
-    init(searchService: ITunesSearchServiceProtocol = iTunesSearchService.shared,
-         podcastService: PodcastServiceProtocol = PodcastService.shared,
-         subscriptionStateManager: SubscriptionStateManager = .shared) {
+    init(searchService: ITunesSearchServiceProtocol = iTunesSearchService.shared) {
         self.searchService = searchService
-        self.podcastService = podcastService
-        self.subscriptionStateManager = subscriptionStateManager
         setupSearchDebounce()
-        setupSubscriptionListener()
     }
-    
-    private func setupSubscriptionListener() {
-        // Listen for subscription state changes from the centralized manager
-        subscriptionStateManager.objectWillChange
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in
-                // This will trigger UI updates when subscription states change
-                self?.objectWillChange.send()
-            }
-            .store(in: &cancellables)
-    }
-    
+
     // MARK: - TaskManagedViewModel Protocol
     
     func onViewAppear() {
@@ -175,9 +159,11 @@ class PodcastSearchViewModel: ObservableObject, TaskManagedViewModel {
             do {
                 Self.logger.info("Search URL Import: Starting import from URL: \(urlString)")
                 // Try to add the podcast directly from the URL
-                let (podcast, episodes) = try await self.podcastService.addPodcast(from: URL(string: urlString)!)
-                Self.logger.info("Search URL Import: Successfully imported \(podcast.title) with \(episodes.count) episodes")
-                
+                guard let podcast = try await AppModel.current?.subscribe(feedURL: URL(string: urlString)!) else {
+                    throw AppModelError.storeNotReady
+                }
+                Self.logger.info("Search URL Import: Successfully imported \(podcast.title)")
+
                 await MainActor.run {
                     self.isSearching = false
                     self.subscriptionMessage = "Successfully subscribed to \(podcast.title)"
@@ -200,11 +186,11 @@ class PodcastSearchViewModel: ObservableObject, TaskManagedViewModel {
     }
 
     func isSubscribed(_ result: PodcastSearchResult) -> Bool {
-        return subscriptionStateManager.isSubscribed(to: result)
+        AppModel.current?.podcasts.contains { $0.feedURL == result.feedURL } ?? false
     }
-    
+
     func isProcessing(_ result: PodcastSearchResult) -> Bool {
-        return subscriptionStateManager.isProcessing(feedURL: result.feedURL)
+        processingFeedURLs.contains(result.feedURL)
     }
     
     func getSubscribedPodcasts() async -> [Podcast] {
@@ -217,40 +203,37 @@ class PodcastSearchViewModel: ObservableObject, TaskManagedViewModel {
     }
 
     func subscribe(to result: PodcastSearchResult) async {
+        processingFeedURLs.insert(result.feedURL)
         let subscribeTask = Task.managed(
             id: "subscribe-\(result.feedURL.absoluteString)",
             manager: taskManager
-        ) {
+        ) { [weak self] in
+            defer {
+                Task { @MainActor [weak self] in
+                    self?.processingFeedURLs.remove(result.feedURL)
+                }
+            }
             do {
-                // Use centralized subscription state manager
-                try await self.subscriptionStateManager.subscribe(to: result)
-                
-                await MainActor.run {
-                    self.subscriptionMessage = "Successfully subscribed to \(result.title)"
-                    self.subscriptionError = nil
-                    self.showingSubscriptionAlert = true
+                guard let podcast = try await AppModel.current?.subscribe(feedURL: result.feedURL) else {
+                    throw AppModelError.storeNotReady
                 }
-                
+
+                await MainActor.run {
+                    self?.subscriptionMessage = "Successfully subscribed to \(podcast.title)"
+                    self?.subscriptionError = nil
+                    self?.showingSubscriptionAlert = true
+                }
+
                 Self.logger.info("PodcastSearchViewModel: Successfully subscribed to \(result.title)")
-                
-            } catch let error as SubscriptionError {
-                // Handle subscription-specific errors
-                await MainActor.run {
-                    self.subscriptionError = error
-                    self.subscriptionMessage = SubscriptionErrorHandler.handle(error, for: result.title)
-                    self.showingSubscriptionAlert = true
-                }
-                
-                Self.logger.error("PodcastSearchViewModel: Failed to subscribe to \(result.title): \(error)")
-                
+
             } catch {
                 // Handle unexpected errors
                 await MainActor.run {
-                    self.subscriptionError = .unknownError(error.localizedDescription)
-                    self.subscriptionMessage = "Failed to subscribe to \(result.title): \(error.localizedDescription)"
-                    self.showingSubscriptionAlert = true
+                    self?.subscriptionError = .unknownError(error.localizedDescription)
+                    self?.subscriptionMessage = "Failed to subscribe to \(result.title): \(error.localizedDescription)"
+                    self?.showingSubscriptionAlert = true
                 }
-                
+
                 Self.logger.error("PodcastSearchViewModel: Unexpected error subscribing to \(result.title): \(error)")
             }
         }

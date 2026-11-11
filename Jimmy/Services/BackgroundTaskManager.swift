@@ -20,8 +20,7 @@ class BackgroundTaskManager: ObservableObject {
     }
     
     // MARK: - Properties
-    
-    private let podcastDataManager = PodcastDataManager.shared
+
     private let episodeUpdateService = EpisodeUpdateService.shared
     
     @Published var lastBackgroundRefresh: Date?
@@ -184,27 +183,23 @@ class BackgroundTaskManager: ObservableObject {
         }
     }
     
-    /// Perform library incremental refresh using the shared integration layer.
+    /// Perform library incremental refresh through `AppModel.refreshAll()`.
     private func performLibraryIncrementalRefresh() async -> Bool {
         let startTime = Date()
-        
-        do {
-            // Refresh podcasts through the shared integration layer.
-            _ = try await WorldClassIntegration.shared.fetchPodcasts(forceRefresh: true)
-            
-            // Check if we exceeded time limit (should be much faster with incremental refresh)
-            if Date().timeIntervalSince(startTime) > Config.maxBackgroundTime {
-                return false
-            }
-            
-            return true
-        } catch {
+
+        await AppModel.current?.refreshAll()
+
+        // Check if we exceeded time limit (should be much faster with incremental refresh)
+        if Date().timeIntervalSince(startTime) > Config.maxBackgroundTime {
             return false
         }
+
+        return true
     }
-    
+
     private func refreshPodcastData() async -> Bool {
-        return await podcastDataManager.performBackgroundRefresh()
+        await AppModel.current?.refreshAll()
+        return true
     }
     
     private func refreshEpisodeData() async -> Bool {

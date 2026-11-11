@@ -85,30 +85,24 @@ class SettingsViewModel: ObservableObject {
     
     // MARK: - Private Properties
     private let cacheService: EpisodeCacheService
-    private let podcastService: PodcastService
     private let importService: SubscriptionImportService
     private let feedbackService: FeedbackService
     private let crashPreventionManager: CrashPreventionManager
-    private let podcastRepository: PodcastRepository
     private var cancellables = Set<AnyCancellable>()
     private var isInitializing = true
 
     // MARK: - Initialization
     private init(
         cacheService: EpisodeCacheService = .shared,
-        podcastService: PodcastService = .shared,
         importService: SubscriptionImportService = .shared,
         feedbackService: FeedbackService = .shared,
-        crashPreventionManager: CrashPreventionManager = .shared,
-        podcastRepository: PodcastRepository = .shared
+        crashPreventionManager: CrashPreventionManager = .shared
     ) {
         self.cacheService = cacheService
-        self.podcastService = podcastService
         self.importService = importService
         self.feedbackService = feedbackService
         self.crashPreventionManager = crashPreventionManager
-        self.podcastRepository = podcastRepository
-        
+
         loadInitialData()
         setupSettingsBindings()
     }
@@ -330,13 +324,10 @@ class SettingsViewModel: ObservableObject {
         ImageCache.shared.clearAllCaches()
 
         // Clear episode cache for all podcasts
-        let podcasts = podcastService.loadPodcasts()
+        let podcasts = await AppModel.current?.podcasts ?? []
         for podcast in podcasts {
             await cacheService.clearCache(for: podcast.id)
         }
-
-        // Update LibraryViewModel to reflect cache changes
-        await LibraryViewModel.shared.refreshData()
 
         // Recalculate cache size
         await calculateCacheSize()
@@ -368,23 +359,26 @@ class SettingsViewModel: ObservableObject {
         let parsed = parser.parse(data)
         progressHandler(0.7)
 
-        let existing = podcastService.loadPodcasts()
-        let existingURLs = Set(existing.map { $0.feedURL.absoluteString })
+        let existingURLs = Set((await AppModel.current?.podcasts ?? []).map { $0.feedURL.absoluteString })
         let newPodcasts = parsed.filter { !existingURLs.contains($0.feedURL.absoluteString) }
 
-        if !newPodcasts.isEmpty {
-            let allPodcasts = existing + newPodcasts
-            try await podcastRepository.savePodcasts(allPodcasts)
-            await LibraryViewModel.shared.refreshData()
+        var importedCount = 0
+        await withTaskGroup(of: Bool.self) { group in
+            for podcast in newPodcasts {
+                group.addTask { (try? await AppModel.current?.subscribe(feedURL: podcast.feedURL)) != nil }
+            }
+            for await succeeded in group where succeeded {
+                importedCount += 1
+            }
         }
 
         progressHandler(1.0)
-        return newPodcasts.count
+        return importedCount
     }
-    
+
     func exportSubscriptions(progressHandler: @escaping (Double) -> Void) async throws -> URL {
         progressHandler(0.1)
-        let podcasts = podcastService.loadPodcasts()
+        let podcasts = await AppModel.current?.podcasts ?? []
         progressHandler(0.4)
 
         var lines: [String] = []
@@ -439,7 +433,7 @@ class SettingsViewModel: ObservableObject {
         info["Cache Size"] = self.cacheSize
         
         // Podcast Information
-        let podcasts = podcastService.loadPodcasts()
+        let podcasts = await AppModel.current?.podcasts ?? []
         info["Subscribed Podcasts"] = "\(podcasts.count)"
         
         return info
@@ -480,26 +474,21 @@ class SettingsViewModel: ObservableObject {
         errorMessage = nil
         
         // Get all podcasts to clear their caches
-        let podcasts = podcastService.loadPodcasts()
-        
+        let podcasts = await AppModel.current?.podcasts ?? []
+
         for podcast in podcasts {
             await cacheService.clearCache(for: podcast.id)
         }
-        
-        // Clear all podcasts from storage
-        do {
-            try await podcastRepository.savePodcasts([])
-            Self.logger.info("SettingsViewModel: Successfully cleared all podcasts")
-        } catch {
-            Self.logger.error("SettingsViewModel: Failed to clear podcasts: \(error)")
+
+        // Unsubscribe every podcast
+        for podcast in podcasts {
+            await AppModel.current?.unsubscribe(podcast.id)
         }
-        
-        // Update LibraryViewModel to reflect the changes
-        await LibraryViewModel.shared.refreshData()
-        
+        Self.logger.info("SettingsViewModel: Successfully cleared all podcasts")
+
         // Recalculate cache size
         await calculateCacheSize()
-        
+
         await MainActor.run {
             self.isLoading = false
         }
@@ -596,28 +585,26 @@ class SettingsViewModel: ObservableObject {
                     }
                 } else {
                     // Add podcasts to the user's library
-                    let existingPodcasts = podcastService.loadPodcasts()
-                    let newPodcasts = podcasts.filter { newPodcast in
-                        !existingPodcasts.contains { $0.feedURL == newPodcast.feedURL }
-                    }
-                    
+                    let existingFeedURLs = Set((await AppModel.current?.podcasts ?? []).map { $0.feedURL })
+                    let newPodcasts = podcasts.filter { !existingFeedURLs.contains($0.feedURL) }
+
                     if newPodcasts.isEmpty {
                         await MainActor.run {
                             self.jsonImportMessage = "All podcasts from the JSON file are already in your library"
                             self.showAlert(.jsonImport("All podcasts from the JSON file are already in your library"))
                         }
                     } else {
-                        // Save the new podcasts
-                        let allPodcasts = existingPodcasts + newPodcasts
-                        try await podcastRepository.savePodcasts(allPodcasts)
-                        
-                        // Refresh the library to show new subscriptions
-                        await LibraryViewModel.shared.refreshData()
-                        
-                        await MainActor.run {
-                            self.jsonImportMessage = "Successfully imported \(newPodcasts.count) new podcast(s)"
+                        var importedCount = 0
+                        for podcast in newPodcasts {
+                            if (try? await AppModel.current?.subscribe(feedURL: podcast.feedURL)) != nil {
+                                importedCount += 1
+                            }
                         }
-                        showSuccess("Successfully imported \(newPodcasts.count) new podcast(s)")
+
+                        await MainActor.run {
+                            self.jsonImportMessage = "Successfully imported \(importedCount) new podcast(s)"
+                        }
+                        showSuccess("Successfully imported \(importedCount) new podcast(s)")
                     }
                 }
                 
@@ -698,17 +685,11 @@ class SettingsViewModel: ObservableObject {
         await cacheService.clearAllCache()
         
         // Clear all podcasts from storage
-        do {
-            try await podcastRepository.savePodcasts([])
-            Self.logger.info("SettingsViewModel: Successfully cleared all podcasts")
-        } catch {
-            Self.logger.error("SettingsViewModel: Failed to clear podcasts: \(error)")
+        for podcast in await AppModel.current?.podcasts ?? [] {
+            await AppModel.current?.unsubscribe(podcast.id)
         }
         Self.logger.info("SettingsViewModel: Cleared all podcast subscriptions from database")
-        
-        // Update LibraryViewModel to reflect the changes
-        await LibraryViewModel.shared.refreshData()
-        
+
         // Recalculate cache size
         await calculateCacheSize()
         
