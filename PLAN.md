@@ -86,7 +86,7 @@ At the end, once the screens have moved and the design is settled:
 
 Found already, to settle before going public:
 - `GoogleService-Info.plist` is in 4 commits of history (a Firebase API key; low-risk by design, but public).
-- 161 of 406 commits are authored with the work address `chenk@wix.com`.
+- 161 of 406 commits are authored with a work email address.
 - Old planning folders and progress logs throughout history.
 
 ### 7. Prove it, the Boaz way

@@ -8,18 +8,19 @@ Lanes in the same wave run in parallel, each in its own worktree under `~/.workt
 - [x] 2. Remove tracked clutter (H)
 - [x] 3. Remove Firebase; `os.Logger` + MetricKit (S)
 - [x] 6. Community files, `docs/architecture.md`, `docs/privacy.md` (H)
-- [x] 7. Feed XML and UserDefaults/JSON fixtures (H); real `library.db` from Chen's phone, anonymized
+- [x] 7. Feed XML and UserDefaults/JSON fixtures (H)
+- [ ] 7b. A real `jimmy.db` from Chen's phone, anonymized; run `Store` against it before PR 14
 - [x] 5. XcodeGen `project.yml` + `Makefile`, iOS 27; drop side `Package.swift` (S, after 3)
 - [x] 4. One SHA-pinned `ci.yml`, Dependabot for Actions; delete old workflows and their scripts (H, after 5)
 - [x] 8. Characterization tests: queue order, played/progress, OPML/Apple/Spotify/Takeout (S, after 5)
 
 ## Wave B: JimmyKit and the player
 - [x] 9a. `Packages/JimmyKit` scaffold (Swift 6, MainActor default, GRDB 7) and models (S)
-- [ ] 9b. Store: frozen legacy migrations v1–v17 in today's order, v18–v21, no `fatalError`/`:memory:` (S)
-- [ ] 10. One feed parser and fetcher, bounded refresh (S)
+- [x] 9b. Store: frozen legacy migrations v1–v17 in today's order, v18–v21, no `fatalError`/`:memory:` (S)
+- [x] 10. One feed parser and fetcher, bounded refresh (S)
 - [x] 12. Import parsers moved into JimmyKit (S)
-- [ ] 13. `Playback` (S)
-- [ ] 11. Downloads, background session, relative paths (S, after 9b)
+- [x] 13. `Playback` (S)
+- [x] 11. Downloads, background session, relative paths (S, after 9b)
 
 ## Wave C: screens onto the core (each deletes what it replaces)
 - [ ] 14. `AppModel`, startup error screen with reset (S)

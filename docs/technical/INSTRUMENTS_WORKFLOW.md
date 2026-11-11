@@ -12,7 +12,7 @@ Jimmy now emits signposts for the highest-value interaction paths:
 - `Queue Reorder`
 - `Podcast Detail Open`
 
-These are emitted from [`PerformanceDiagnostics.swift`](/Users/chenk/Jimmy/Jimmy/Utilities/PerformanceDiagnostics.swift) and surfaced locally through the debug overlay when `JIMMY_SHOW_PERF_HUD=1`.
+These are emitted from [`PerformanceDiagnostics.swift`](../../Jimmy/Utilities/PerformanceDiagnostics.swift) and surfaced locally through the debug overlay when `JIMMY_SHOW_PERF_HUD=1`.
 
 ## Target Budgets
 
