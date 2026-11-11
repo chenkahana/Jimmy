@@ -43,6 +43,22 @@ extension JimmyKit.EpisodeListItem {
     }
 }
 
+extension JimmyKit.EpisodeListItem {
+    /// Converts to the old `EpisodeWithPlaybackState`, for screens that still render that model
+    /// (e.g. `EpisodeDetailView`, `SmartPlaylistDetailView`).
+    func asLegacyEpisodeWithPlaybackState() -> Jimmy.EpisodeWithPlaybackState {
+        Jimmy.EpisodeWithPlaybackState(
+            episode: asLegacyEpisode(),
+            playbackState: PlaybackState(
+                episodeID: episode.id,
+                position: progress?.position ?? 0,
+                finished: progress?.isFinished ?? false,
+                updatedAt: Date()
+            )
+        )
+    }
+}
+
 extension Jimmy.Episode {
     /// Converts to the `JimmyKit.Episode` that `Playback.load` needs to play this episode.
     func asPlaybackEpisode() -> JimmyKit.Episode {

@@ -96,25 +96,8 @@ final class LegacyDataDecodingTests: XCTestCase {
         XCTAssertEqual(episode1.publishedDate, Date(timeIntervalSinceReferenceDate: 728215200.0))
     }
 
-    // MARK: - listening_stats.json (ListeningStatsService: JSONDecoder with .iso8601 -> ListeningStats)
-
-    func testListeningStatsDecodesWithISO8601Decoder() throws {
-        let data = try load("listening_stats.json")
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        let stats = try decoder.decode(ListeningStats.self, from: data)
-
-        XCTAssertEqual(stats.totalListeningTime, 45600)
-        XCTAssertEqual(stats.dailyLogs.count, 7)
-        XCTAssertEqual(stats.dailyLogs.first?.dateString, "2024-01-25")
-        XCTAssertEqual(stats.dailyLogs.first?.seconds, 3600)
-        XCTAssertEqual(stats.perPodcast.count, 3)
-        XCTAssertEqual(stats.perPodcast["550e8400-e29b-41d4-a716-446655440001"], 14400)
-        XCTAssertEqual(stats.currentStreakDays, 7)
-        XCTAssertEqual(stats.longestStreakDays, 12)
-        XCTAssertEqual(stats.episodesCompleted, 8)
-
-        let formatter = ISO8601DateFormatter()
-        XCTAssertEqual(stats.lastListenedDate, formatter.date(from: "2024-01-31T20:30:00Z"))
-    }
+    // listening_stats.json's decode shape is pinned by JimmyKit's own
+    // `LegacyImportTests.importsSubscriptionsQueueStatsAndLastPlayedFromFixtures()` now — the
+    // legacy `ListeningStats` model (and the service that decoded it) is gone; JimmyKit's
+    // `v20_legacy_import` migration decodes this fixture directly.
 }

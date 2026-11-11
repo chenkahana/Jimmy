@@ -30,6 +30,11 @@ extension AppModel {
         return try await readyStore.subscribe(feedURL: fetchableURL, parsed: parsed, etag: etag)
     }
 
+    /// Sets whether `podcastID`'s newly-fetched episodes are auto-added to the queue.
+    func setAutoAddToQueue(_ enabled: Bool, podcastID: UUID) async {
+        try? await readyStore?.setAutoAddToQueue(enabled, podcastID: podcastID)
+    }
+
     /// Unsubscribes from `podcastID`: dequeues its episodes first (so the queue's `1...n`
     /// positions stay contiguous around the gap this leaves), then deletes the podcast — which
     /// cascades to its episodes and everything that references them.

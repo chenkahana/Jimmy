@@ -1,4 +1,5 @@
 import Foundation
+import JimmyKit
 
 /// Predefined smart playlists that map to dynamic GRDB queries
 enum SmartPlaylistType: String, CaseIterable, Identifiable, Codable {
@@ -37,6 +38,18 @@ enum SmartPlaylistType: String, CaseIterable, Identifiable, Codable {
         case .downloaded: return "green"
         case .unplayed: return "purple"
         case .starred: return "yellow"
+        }
+    }
+
+    /// The `JimmyKit.PlaylistRule` this UI-only type presents — the two mirror each other case
+    /// for case; `Store.episodes(matching:)`/`episodeCount(matching:)` take the `JimmyKit` one.
+    var rule: PlaylistRule {
+        switch self {
+        case .recentlyAdded: return .recentlyAdded
+        case .inProgress: return .inProgress
+        case .downloaded: return .downloaded
+        case .unplayed: return .unplayed
+        case .starred: return .starred
         }
     }
 }

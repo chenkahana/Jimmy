@@ -19,9 +19,8 @@ struct SmartPlaylistListView: View {
     }
 
     private func loadCounts() async {
-        let service = SmartPlaylistService.shared
         for type in SmartPlaylistType.allCases {
-            counts[type] = (try? await service.episodeCount(for: type)) ?? 0
+            counts[type] = await AppModel.current?.episodeCount(for: type.rule) ?? 0
         }
     }
 }

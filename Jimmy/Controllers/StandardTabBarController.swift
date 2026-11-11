@@ -321,7 +321,7 @@ final class StandardTabBarController: UITabBarController, UITabBarControllerDele
     }
 
     private func setupFileImportObserver() {
-        BulletproofAudioImporter.shared.$pendingURL
+        LocalAudioImporter.shared.$pendingURL
             .receive(on: DispatchQueue.main)
             .compactMap { $0 }
             .sink { [weak self] url in
@@ -331,18 +331,18 @@ final class StandardTabBarController: UITabBarController, UITabBarControllerDele
     }
 
     private func presentImportSheet(for url: URL) {
-        let importView = BulletproofImportView(
+        let importView = LocalAudioImportView(
             audioURL: url,
             onSuccess: { [weak self] _ in
                 self?.dismiss(animated: true) {
-                    BulletproofAudioImporter.shared.pendingURL = nil
+                    LocalAudioImporter.shared.pendingURL = nil
                     self?.chrome.isPresentingModal = false
                     Motion.mediumHaptic()
                 }
             },
             onCancel: { [weak self] in
                 self?.dismiss(animated: true) {
-                    BulletproofAudioImporter.shared.pendingURL = nil
+                    LocalAudioImporter.shared.pendingURL = nil
                     self?.chrome.isPresentingModal = false
                 }
             }
@@ -409,7 +409,7 @@ final class StandardTabBarController: UITabBarController, UITabBarControllerDele
 
 extension StandardTabBarController: UIAdaptivePresentationControllerDelegate {
     func presentationControllerDidDismiss(_ presentationController: UIPresentationController) {
-        BulletproofAudioImporter.shared.pendingURL = nil
+        LocalAudioImporter.shared.pendingURL = nil
         chrome.isPresentingModal = false
     }
 }

@@ -1,9 +1,7 @@
 import SwiftUI
-import os
 
 /// Per-podcast settings for auto-adding new episodes to queue
 struct PodcastQueueSettingsView: View {
-    private let logger = Logger(subsystem: "com.chenkahana.Jimmy", category: "PodcastQueueSettingsView")
     let podcast: Podcast
     @State private var autoAddToQueue: Bool
     @Environment(\.dismiss) private var dismiss
@@ -32,13 +30,7 @@ struct PodcastQueueSettingsView: View {
 
     private func saveAutoAddSetting(_ enabled: Bool) {
         Task {
-            var updatedPodcast = podcast
-            updatedPodcast.autoAddToQueue = enabled
-            do {
-                try await DIContainer.shared.podcastRepository.updatePodcast(updatedPodcast)
-            } catch {
-                logger.error("Failed to update autoAddToQueue: \(error)")
-            }
+            await AppModel.current?.setAutoAddToQueue(enabled, podcastID: podcast.id)
         }
     }
 }

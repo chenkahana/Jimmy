@@ -72,6 +72,29 @@ nonisolated enum Migrations {
             // so `progress` catches up with whatever those legacy columns became since v19 ran.
             try Self.runProgressBackfill(db)
         }
+        migrator.registerMigration("v25_seed_smart_playlists") { db in
+            try Self.seedSmartPlaylists(db)
+        }
+    }
+
+    // MARK: - v25_seed_smart_playlists
+
+    /// The 5 playlists `SmartPlaylistService` used to compute ad hoc, now rows in `playlists` —
+    /// fixed ids so re-running this migration (or opening an older database) never duplicates them.
+    private static func seedSmartPlaylists(_ db: Database) throws {
+        let defaults: [(id: String, name: String, rule: PlaylistRule)] = [
+            ("00000000-0000-0000-0000-000000000001", "Recently Added", .recentlyAdded),
+            ("00000000-0000-0000-0000-000000000002", "In Progress", .inProgress),
+            ("00000000-0000-0000-0000-000000000003", "Downloaded", .downloaded),
+            ("00000000-0000-0000-0000-000000000004", "Unplayed", .unplayed),
+            ("00000000-0000-0000-0000-000000000005", "Starred", .starred),
+        ]
+        for item in defaults {
+            try db.execute(
+                sql: "INSERT OR IGNORE INTO playlists (id, name, rule) VALUES (?, ?, ?)",
+                arguments: [item.id, item.name, item.rule.rawValue]
+            )
+        }
     }
 
     // MARK: - v18_uuid_text

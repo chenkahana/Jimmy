@@ -1,42 +1,37 @@
 import Foundation
-import GRDB
 import JimmyKit
 
-/// Actor that exports/imports all data as versioned JSON for backup and restore
+/// Actor that exports/imports all data as versioned JSON for backup and restore, through
+/// `AppModel`'s `Store` rather than a hand-rolled `DatabaseManager` read/write of the legacy GRDB
+/// models.
 actor BackupService {
     static let shared = BackupService()
 
     // MARK: - Backup Format
 
     struct BackupData: Codable {
-        let version: Int = 1
+        let version: Int = 2
         let createdAt: Date
-        let podcasts: [Podcast]
-        let episodes: [Episode]
-        let playbackStates: [PlaybackState]
-        let bookmarks: [Bookmark]
+        let podcasts: [JimmyKit.Podcast]
+        let episodes: [JimmyKit.Episode]
+        let progress: [JimmyKit.Progress]
+        let bookmarks: [JimmyKit.Bookmark]
         let settings: [String: String]
     }
 
     // MARK: - Export
 
     func exportBackup() async throws -> URL {
-        let podcasts = try await DatabaseManager.shared.readAsync { db in
-            try Podcast.fetchAll(db)
-        }
-        let episodes = try await DatabaseManager.shared.readAsync { db in
-            try Episode.fetchAll(db)
-        }
-        let playbackStates = try await DatabaseManager.shared.readAsync { db in
-            try PlaybackState.fetchAll(db)
-        }
-        let bookmarks = try await DatabaseManager.shared.readAsync { db in
-            try Bookmark.fetchAll(db)
-        }
+        guard let store = await AppModel.current?.readyStore else { throw AppModelError.storeNotReady }
+
+        let podcasts = try await store.podcasts()
+        let episodes = try await store.allEpisodes()
+        let progress = try await store.allProgress()
+        let bookmarks = try await store.allBookmarks()
 
         // Collect relevant UserDefaults settings
         let settingsKeys = ["playbackSpeed", "skipForwardDuration", "skipBackwardDuration",
-                           "darkMode", "episodeSwipeAction", "queueSwipeAction",
+                           "appearanceMode", "episodeSwipeAction", "queueSwipeAction",
                            "autoRestoreLastEpisode", "highContrastMode"]
         var settings: [String: String] = [:]
         for key in settingsKeys {
@@ -49,7 +44,7 @@ actor BackupService {
             createdAt: Date(),
             podcasts: podcasts,
             episodes: episodes,
-            playbackStates: playbackStates,
+            progress: progress,
             bookmarks: bookmarks,
             settings: settings
         )
@@ -69,6 +64,8 @@ actor BackupService {
     // MARK: - Import
 
     func importBackup(from url: URL) async throws -> (podcasts: Int, episodes: Int) {
+        guard let store = await AppModel.current?.readyStore else { throw AppModelError.storeNotReady }
+
         let hasAccess = url.startAccessingSecurityScopedResource()
         defer { if hasAccess { url.stopAccessingSecurityScopedResource() } }
 
@@ -77,33 +74,12 @@ actor BackupService {
         decoder.dateDecodingStrategy = .iso8601
         let backup = try decoder.decode(BackupData.self, from: data)
 
-        // Import podcasts
-        try await DatabaseManager.shared.writeAsync { db in
-            for podcast in backup.podcasts {
-                try podcast.save(db)
-            }
-        }
-
-        // Import episodes
-        try await DatabaseManager.shared.writeAsync { db in
-            for episode in backup.episodes {
-                try episode.save(db)
-            }
-        }
-
-        // Import playback states
-        try await DatabaseManager.shared.writeAsync { db in
-            for state in backup.playbackStates {
-                try state.save(db)
-            }
-        }
-
-        // Import bookmarks
-        try await DatabaseManager.shared.writeAsync { db in
-            for bookmark in backup.bookmarks {
-                try bookmark.save(db)
-            }
-        }
+        try await store.restore(
+            podcasts: backup.podcasts,
+            episodes: backup.episodes,
+            progress: backup.progress,
+            bookmarks: backup.bookmarks
+        )
 
         // Restore settings
         for (key, value) in backup.settings {

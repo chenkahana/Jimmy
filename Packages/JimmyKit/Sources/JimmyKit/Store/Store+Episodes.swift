@@ -32,6 +32,13 @@ nonisolated extension Store {
         } else {
             episodes = try Episode.order(Column("publishedDate").desc).fetchAll(db)
         }
+        return try wrapAsListItems(episodes, db: db)
+    }
+
+    /// Joins `episodes` with their progress, queue membership, and download state — the common
+    /// tail of `fetchEpisodeListItems` above and `Store+Playlists.swift`'s rule-filtered fetches,
+    /// which only differ in which episodes they start from.
+    static func wrapAsListItems(_ episodes: [Episode], db: Database) throws -> [EpisodeListItem] {
         guard !episodes.isEmpty else { return [] }
 
         let episodeIDStrings = episodes.map(\.id.uuidString)

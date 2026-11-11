@@ -85,7 +85,6 @@ class SettingsViewModel: ObservableObject {
     
     // MARK: - Private Properties
     private let cacheService: EpisodeCacheService
-    private let importService: SubscriptionImportService
     private let feedbackService: FeedbackService
     private let crashPreventionManager: CrashPreventionManager
     private var cancellables = Set<AnyCancellable>()
@@ -94,12 +93,10 @@ class SettingsViewModel: ObservableObject {
     // MARK: - Initialization
     private init(
         cacheService: EpisodeCacheService = .shared,
-        importService: SubscriptionImportService = .shared,
         feedbackService: FeedbackService = .shared,
         crashPreventionManager: CrashPreventionManager = .shared
     ) {
         self.cacheService = cacheService
-        self.importService = importService
         self.feedbackService = feedbackService
         self.crashPreventionManager = crashPreventionManager
 
@@ -355,55 +352,21 @@ class SettingsViewModel: ObservableObject {
         let data = try Data(contentsOf: url)
         progressHandler(0.5)
 
-        let parser = OPMLParser()
-        let parsed = parser.parse(data)
-        progressHandler(0.7)
-
-        let existingURLs = Set((await AppModel.current?.podcasts ?? []).map { $0.feedURL.absoluteString })
-        let newPodcasts = parsed.filter { !existingURLs.contains($0.feedURL.absoluteString) }
-
-        var importedCount = 0
-        await withTaskGroup(of: Bool.self) { group in
-            for podcast in newPodcasts {
-                group.addTask { (try? await AppModel.current?.subscribe(feedURL: podcast.feedURL)) != nil }
-            }
-            for await succeeded in group where succeeded {
-                importedCount += 1
-            }
-        }
-
+        let outcome = try await SubscriptionImporter.importSubscriptions(from: data, format: .opml)
         progressHandler(1.0)
-        return importedCount
+        return outcome.importedCount
     }
 
     func exportSubscriptions(progressHandler: @escaping (Double) -> Void) async throws -> URL {
         progressHandler(0.1)
-        let podcasts = await AppModel.current?.podcasts ?? []
-        progressHandler(0.4)
-
-        var lines: [String] = []
-        lines.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
-        lines.append("<opml version=\"2.0\">")
-        lines.append("  <head>")
-        lines.append("    <title>Jimmy Subscriptions</title>")
-        lines.append("  </head>")
-        lines.append("  <body>")
-        for podcast in podcasts {
-            let title = podcast.title
-                .replacingOccurrences(of: "&", with: "&amp;")
-                .replacingOccurrences(of: "\"", with: "&quot;")
-                .replacingOccurrences(of: "<", with: "&lt;")
-                .replacingOccurrences(of: ">", with: "&gt;")
-            let feedURL = podcast.feedURL.absoluteString
-            lines.append("    <outline type=\"rss\" text=\"\(title)\" title=\"\(title)\" xmlUrl=\"\(feedURL)\"/>")
+        let feeds = (await AppModel.current?.podcasts ?? []).map {
+            JimmyKit.ImportedFeed(feedURL: $0.feedURL, title: $0.title)
         }
-        lines.append("  </body>")
-        lines.append("</opml>")
+        progressHandler(0.5)
 
-        progressHandler(0.8)
-        let content = lines.joined(separator: "\n")
+        let data = JimmyKit.OPMLWriter.write(feeds)
         let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent("jimmy_subscriptions.opml")
-        try content.write(to: tempURL, atomically: true, encoding: .utf8)
+        try data.write(to: tempURL, options: .atomic)
         progressHandler(1.0)
         return tempURL
     }
@@ -557,64 +520,19 @@ class SettingsViewModel: ObservableObject {
             await MainActor.run {
                 self.jsonImportMessage = "Parsing JSON data..."
             }
-            
-            // Use the subscription import service to parse and import
-            let importedPodcasts = await withCheckedContinuation { continuation in
-                SubscriptionImportService.shared.importFromJSONFile(
-                    data: data,
-                    progressHandler: { [weak self] message in
-                        Task { @MainActor in
-                            self?.jsonImportMessage = message
-                        }
-                    }
-                ) { podcasts, error in
-                    if let error = error {
-                        continuation.resume(returning: Result<[Podcast], Error>.failure(error))
-                    } else {
-                        continuation.resume(returning: Result<[Podcast], Error>.success(podcasts))
-                    }
-                }
-            }
-            
-            switch importedPodcasts {
-            case .success(let podcasts):
-                if podcasts.isEmpty {
-                    await MainActor.run {
-                        self.jsonImportMessage = "No valid podcasts found in the JSON file"
-                        self.showAlert(.jsonImport("No valid podcasts found in the JSON file"))
-                    }
-                } else {
-                    // Add podcasts to the user's library
-                    let existingFeedURLs = Set((await AppModel.current?.podcasts ?? []).map { $0.feedURL })
-                    let newPodcasts = podcasts.filter { !existingFeedURLs.contains($0.feedURL) }
 
-                    if newPodcasts.isEmpty {
-                        await MainActor.run {
-                            self.jsonImportMessage = "All podcasts from the JSON file are already in your library"
-                            self.showAlert(.jsonImport("All podcasts from the JSON file are already in your library"))
-                        }
-                    } else {
-                        var importedCount = 0
-                        for podcast in newPodcasts {
-                            if (try? await AppModel.current?.subscribe(feedURL: podcast.feedURL)) != nil {
-                                importedCount += 1
-                            }
-                        }
-
-                        await MainActor.run {
-                            self.jsonImportMessage = "Successfully imported \(importedCount) new podcast(s)"
-                        }
-                        showSuccess("Successfully imported \(importedCount) new podcast(s)")
-                    }
-                }
-                
-            case .failure(let error):
+            let outcome = try await SubscriptionImporter.importSubscriptions(from: data, format: .appleBulkJSON)
+            if outcome.importedCount == 0 {
                 await MainActor.run {
-                    self.jsonImportMessage = "Failed to import: \(error.localizedDescription)"
-                    self.showAlert(.jsonImport("Failed to import: \(error.localizedDescription)"))
+                    self.jsonImportMessage = "No new podcasts found in the JSON file"
+                    self.showAlert(.jsonImport("No new podcasts found in the JSON file"))
                 }
+            } else {
+                await MainActor.run {
+                    self.jsonImportMessage = "Successfully imported \(outcome.importedCount) new podcast(s)"
+                }
+                showSuccess("Successfully imported \(outcome.importedCount) new podcast(s)")
             }
-            
         } catch {
             await MainActor.run {
                 self.jsonImportMessage = "Failed to read file: \(error.localizedDescription)"
