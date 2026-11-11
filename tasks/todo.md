@@ -33,7 +33,20 @@ Lanes in the same wave run in parallel, each in its own worktree under `~/.workt
   - `DIContainer` was **kept, not deleted** — shrunk by one dead member (`downloadManager`). Ten `lazy var` members remain, each with real external callers outside this PR's scope: `episodeRepository`/`podcastRepository`/`playbackStateRepository` (QueueView, SubscriptionViewModel, AppDataDocument, SmartPlaylistService, CarPlayManager, PodcastSearchView/PodcastGridComponent/Discover, `ConcreteRSSParser`-backed fetches), plus others used by Settings/Search/CarPlay screens not yet moved onto `AppModel`.
   - `EpisodeUpdateService`, `EpisodeMergeHeap`, `EpisodeCacheService`, `GRDBRepositories.swift`, `ConcreteRSSParser.swift`, and `DownloadManager` were kept — each confirmed via `rg` to have real callers outside PR 18 scope (`DownloadManager` is explicitly deferred to a later PR per `AppModel.swift`'s doc comment).
 - [x] 19. Discover and Search (S)
-- [ ] 20. Settings and Import (S)
+- [x] 20. Settings and Import (S). One `LocalAudioImporter` replaces `BulletproofAudioImporter`/
+  `SharedAudioImporter`/`FileImportCoordinator` — local audio always lands on a fixed "Imported
+  audio" show, an ordinary store-backed podcast, which also fixes #86 (its episodes now show up in
+  `PodcastEpisodeListView` like any other podcast's). One `SubscriptionImporter` replaces
+  `SubscriptionImportService`/`PodcastURLResolver`, parsing with JimmyKit's `Import/` parsers and
+  subscribing through `AppModel.subscribe(feedURL:)`; an Apple/Spotify share link (not a feed)
+  still resolves by title through `iTunesSearchService` — a title-only export row isn't supported
+  yet (noted in `SubscriptionImporter`'s doc comment). Smart playlists and listening stats move
+  onto new `Store` surfaces (`Store+Playlists.swift`, `Store+ListeningStats.swift`); listening-time
+  tracking no longer polls a `Timer`. `AppDataDocument`/`BackupService` move off
+  `DIContainer`/`DatabaseManager` onto `Store` (`Store+Backup.swift`). OPML export uses JimmyKit's
+  `OPMLWriter`. `LegacyProgressMirror`/`LegacyEpisodeStatusMirror`/`DIContainer` are still kept —
+  other readers remain outside this PR's scope (see PR 18's note above; this PR only removed
+  `AppDataDocument` and smart playlists from that list).
 - [x] 21. CarPlay (S)
 - [ ] 23. Apple Watch app (S, parallel lane after 16)
 - [x] 24. AI chat that acts (S, parallel lane after 14)

@@ -5,12 +5,13 @@ import JimmyKit
 /// additionally mirrors every save into the legacy columns (`episodes.playbackPosition`,
 /// `episodes.played`/`.status`, `playback_state.position`/`.finished`).
 ///
-/// PR 18 moved podcast detail, episode rows, and episode detail onto `progress` directly, but
-/// this still can't be deleted: `QueueView`, `SmartPlaylistService`, `AppDataDocument` (iCloud
-/// sync), `SharedDataStore` (widget payload), `EpisodeIDMigrationService`, `CarPlayManager`, and
-/// `ProgressCacheStore`/`SubscriptionViewModel` (via `.episodeStatusUpdated`) all still read these
-/// legacy columns. Delete this — and build `Playback` with a bare `StorePlaybackSource` instead —
-/// once every one of those moves onto `JimmyKit` too.
+/// PR 18 moved podcast detail, episode rows, and episode detail onto `progress` directly, and
+/// PR 20 moved `AppDataDocument` (iCloud sync) and smart playlists off these columns too, but this
+/// still can't be deleted: `QueueView`, `SharedDataStore` (widget payload),
+/// `EpisodeIDMigrationService`, `CarPlayManager`, and `ProgressCacheStore`/`SubscriptionViewModel`
+/// (via `.episodeStatusUpdated`) all still read these legacy columns. Delete this — and build
+/// `Playback` with a bare `StorePlaybackSource` instead — once every one of those moves onto
+/// `JimmyKit` too.
 @MainActor
 struct LegacyProgressMirror: ProgressStore {
     private let inner: StorePlaybackSource

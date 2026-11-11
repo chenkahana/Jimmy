@@ -1,6 +1,7 @@
 import SwiftUI
 import UniformTypeIdentifiers
 import Foundation
+import JimmyKit
 
 struct AppData: Codable {
     let podcasts: [Podcast]
@@ -95,12 +96,13 @@ struct AppDataDocument: FileDocument {
 
     @MainActor
     func exportAppData() async -> AppData {
-        let podcasts = (AppModel.current?.podcasts ?? []).map { $0.asLegacyPodcast() }
-        let episodeRepository = DIContainer.shared.episodeRepository
+        let currentPodcasts = AppModel.current?.podcasts ?? []
+        let podcasts = currentPodcasts.map { $0.asLegacyPodcast() }
+        let store = AppModel.current?.readyStore
         var episodes: [Jimmy.Episode] = []
-        for podcast in podcasts {
-            if let episodesWithState = try? await episodeRepository.fetchEpisodes(for: podcast.id, ignoreCache: false) {
-                episodes.append(contentsOf: episodesWithState.map { $0.episode })
+        for podcast in currentPodcasts {
+            if let fetched = try? await store?.episodes(podcastID: podcast.id) {
+                episodes.append(contentsOf: fetched.map { $0.asLegacyEpisode() })
             }
         }
         let queue = await AppModel.current?.resolveQueueEpisodes() ?? []
@@ -248,15 +250,14 @@ extension AppDataDocument {
         }
 
         // Playback position: higher wins
-        let repository = DIContainer.shared.playbackStateRepository
+        let store = await AppModel.current?.readyStore
         for (episodeIDStr, remotePosition) in remote.playbackPositions {
             guard let episodeID = UUID(uuidString: episodeIDStr) else { continue }
-            if let localState = try? await repository.fetchPlaybackState(for: episodeID) {
-                if remotePosition > localState.position {
-                    var updated = localState
-                    updated.position = remotePosition
-                    updated.updatedAt = Date()
-                    try? await repository.savePlaybackState(updated)
+            if var localProgress = try? await store?.progress(for: episodeID) {
+                if remotePosition > localProgress.position {
+                    localProgress.position = remotePosition
+                    localProgress.updatedAt = Date()
+                    try? await store?.saveProgress(localProgress)
                 }
             }
         }
@@ -264,12 +265,11 @@ extension AppDataDocument {
         // Played: once played anywhere stays played
         for episodeIDStr in remote.playedEpisodeIDs {
             guard let episodeID = UUID(uuidString: episodeIDStr) else { continue }
-            if let localState = try? await repository.fetchPlaybackState(for: episodeID) {
-                if !localState.finished {
-                    var updated = localState
-                    updated.finished = true
-                    updated.updatedAt = Date()
-                    try? await repository.savePlaybackState(updated)
+            if var localProgress = try? await store?.progress(for: episodeID) {
+                if !localProgress.isFinished {
+                    localProgress.isFinished = true
+                    localProgress.updatedAt = Date()
+                    try? await store?.saveProgress(localProgress)
                 }
             }
         }

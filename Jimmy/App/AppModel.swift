@@ -61,8 +61,9 @@ final class AppModel {
 
     // MARK: - Playback side-effect bookkeeping (see AppModel+Playback.swift)
 
-    /// Avoids restarting `ListeningStatsService`'s tracking timer on every unrelated playback
-    /// state change (duration/rate ticks) — only when `isPlaying` itself actually flips.
+    /// Avoids restarting listening-time tracking (see `AppModel+ListeningStats.swift`) on every
+    /// unrelated playback state change (duration/rate ticks) — only when `isPlaying` itself
+    /// actually flips.
     var lastObservedIsPlaying = false
     /// Avoids rewriting `lastPlayingEpisodeID` on every tick — only when the episode changes.
     var lastObservedEpisodeID: UUID?
@@ -72,9 +73,14 @@ final class AppModel {
     /// session, most-recent-first — mirrored to the watch as "Recent" (see
     /// `AppModel+WatchSession.swift`). Not persisted: starts empty each launch.
     var recentlyPlayedEpisodes: [JimmyKit.Episode] = []
+    /// When the episode currently playing started this listening session, for
+    /// `AppModel+ListeningStats.swift` to log elapsed seconds once it pauses/stops — replacing a
+    /// 5-second polling `Timer` the old listening-stats service used for the same purpose.
+    var listeningSessionStartedAt: Date?
+    var listeningSessionPodcastID: UUID?
 
-    /// Old singletons that can't read the environment (episode rows, `ShakeUndoManager`,
-    /// `AppDataDocument`'s iCloud sync, ...) reach the queue and `playback` through this until
+    /// Old singletons that can't read the environment (episode rows, `AppDataDocument`'s iCloud
+    /// sync, ...) reach the queue and `playback` through this until
     /// they're deleted in later PRs. `WatchConnectivityService` and `CarPlayManager` reach it the
     /// same way, permanently — both are session/scene delegates with no SwiftUI environment of
     /// their own to read from. Set once, in `JimmyApp.init()`.
@@ -175,7 +181,13 @@ final class AppModel {
             // A downloaded episode plays from disk no matter how playback reaches it — a direct
             // `AppModel.play`, auto-advance, or the remote "next track" command.
             playback.resolveAudioURL = { episode in
-                DownloadManager.shared.effectiveURL(forEpisodeID: episode.id, remoteURL: episode.audioURL)
+                // A locally imported episode's `audioURL` has no scheme — it's a path relative to
+                // the app container (see `LocalAudioImporter`), not a remote URL to download.
+                if let audioURL = episode.audioURL, audioURL.scheme == nil {
+                    let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
+                    return documentsDirectory?.appendingPathComponent(audioURL.path)
+                }
+                return DownloadManager.shared.effectiveURL(forEpisodeID: episode.id, remoteURL: episode.audioURL)
             }
             let audioSession = AudioSessionController(playback: playback)
             // Activated once, here, rather than reactively the first time `playback.isPlaying`
@@ -247,7 +259,7 @@ extension AppModel {
     /// migration. Keys and paths match what the old app writes today:
     /// `AudioPlayerService.lastPlayingEpisodeID`, `GRDBRepositories`/`PodcastRepository`'s
     /// `"saved_podcasts"`, the old queue's `"episode_queue"`, `FileStorage`'s
-    /// `Documents/AppData/podcasts.json`, and `ListeningStatsService`'s
+    /// `Documents/AppData/podcasts.json`, and the pre-`Store` listening-stats service's
     /// `Documents/listening_stats.json`.
     static func legacyInputFromDisk() -> LegacyInput {
         let defaults = UserDefaults.standard

@@ -120,6 +120,29 @@ nonisolated extension Store {
         }
     }
 
+    /// Sets whether newly-fetched episodes of `podcastID` are auto-added to the queue (see
+    /// `AppModel.refreshAll()`). A no-op if `podcastID` isn't subscribed.
+    public func setAutoAddToQueue(_ enabled: Bool, podcastID: UUID) async throws {
+        try await pool.write { db in
+            try db.execute(
+                sql: "UPDATE podcasts SET autoAddToQueue = ? WHERE id = ?",
+                arguments: [enabled, podcastID.uuidString]
+            )
+        }
+    }
+
+    /// Inserts `episode` under `podcast`, creating `podcast` first if this is its first episode
+    /// (idempotent on id, like `subscribe`). Used for locally imported audio, which has no feed to
+    /// subscribe to — every import after the first lands on the same already-inserted podcast row.
+    public func addLocalEpisode(_ episode: Episode, to podcast: Podcast) async throws {
+        try await pool.write { db in
+            if try Podcast.fetchOne(db, key: podcast.id.uuidString) == nil {
+                try podcast.insert(db)
+            }
+            try episode.insert(db, onConflict: .replace)
+        }
+    }
+
     private static func fetchSortedPodcasts(_ db: Database) throws -> [Podcast] {
         try Podcast.fetchAll(db, sql: """
             SELECT * FROM podcasts

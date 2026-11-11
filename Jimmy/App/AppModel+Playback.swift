@@ -67,6 +67,13 @@ extension AppModel {
     func flushPlaybackForBackground() {
         guard let playback else { return }
         Task { await playback.flush() }
+
+        // Also log the listening session so far, restarting it right away if still playing — a
+        // kill while backgrounded shouldn't lose time played before the kill.
+        if playback.isPlaying {
+            flushListeningSession()
+            startListeningSession(podcastID: playback.currentEpisode?.podcastID)
+        }
     }
 
     func startObservingPlaybackIfReady() {
@@ -113,9 +120,9 @@ extension AppModel {
 
         if playback.isPlaying != lastObservedIsPlaying {
             if playback.isPlaying {
-                ListeningStatsService.shared.startTracking(podcastID: playback.currentEpisode?.podcastID?.uuidString)
+                startListeningSession(podcastID: playback.currentEpisode?.podcastID)
             } else {
-                ListeningStatsService.shared.stopTracking()
+                flushListeningSession()
             }
             lastObservedIsPlaying = playback.isPlaying
         }

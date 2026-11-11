@@ -209,9 +209,7 @@ struct JimmyApp: App {
         ResourceMonitor.shared.startMonitoring()
         
         // NOTE: The following services are now lazy-loaded when first accessed:
-        // - ShakeUndoManager.shared
-        // - SharedAudioImporter.shared
-        // - BulletproofAudioImporter.shared
+        // - LocalAudioImporter.shared
         // - CrashPreventionManager.shared
         // - LoadingStateManager.shared
         // - PodcastEngine.shared
@@ -251,7 +249,7 @@ struct JimmyApp: App {
         // Fallback: handle file imports and legacy subscribe URLs
         Task {
             if url.isFileURL {
-                await BulletproofAudioImporter.shared.handleSharedFile(from: url)
+                await LocalAudioImporter.shared.handleSharedFile(from: url)
             } else if let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
                       let queryItems = components.queryItems,
                       let feedURLString = queryItems.first(where: { $0.name == "url" })?.value,
