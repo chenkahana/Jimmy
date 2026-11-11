@@ -66,12 +66,18 @@ public nonisolated final class Store: Sendable {
 
     // MARK: - Episodes
 
-    public func episodes(podcastID: UUID) async throws -> [Episode] {
+    /// `podcastID`'s episodes, newest-published first. `limit`, when given, caps how many rows
+    /// come back (e.g. CarPlay's podcast-episode list, which only ever shows the latest 50) —
+    /// applied in SQL rather than fetching everything and truncating in Swift.
+    public func episodes(podcastID: UUID, limit: Int? = nil) async throws -> [Episode] {
         try await pool.read { db in
-            try Episode
+            var request = Episode
                 .filter(Column("podcastID") == podcastID.uuidString)
                 .order(Column("publishedDate").desc)
-                .fetchAll(db)
+            if let limit {
+                request = request.limit(limit)
+            }
+            return try request.fetchAll(db)
         }
     }
 

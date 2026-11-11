@@ -49,6 +49,38 @@ struct StoreLibraryTests {
         #expect(allPodcasts.count == 1)
     }
 
+    // MARK: - episodes
+
+    @Test func episodesLimitReturnsOnlyTheNewestNByPublishedDate() async throws {
+        let (store, _) = try makeStore()
+        let feedURL = URL(string: "https://libsyn-example.libsyn.com/feed.xml")!
+        let parsed = try parseFixture("04_libsyn_style_basic.xml", feedURL: feedURL)
+        let podcast = try await store.subscribe(feedURL: feedURL, parsed: parsed)
+
+        // Three more episodes, each a day apart and all well after the fixture's (Jan 2024)
+        // episodes, so "newest" has an unambiguous order.
+        let baseDate = Date(timeIntervalSince1970: 1_800_000_000)
+        let extraEpisodes = (0..<3).map { offset in
+            Episode(
+                podcastID: podcast.id,
+                title: "Extra \(offset)",
+                publishedDate: baseDate.addingTimeInterval(TimeInterval(offset) * 86_400)
+            )
+        }
+        try await store.pool.write { db in
+            for episode in extraEpisodes {
+                try episode.insert(db)
+            }
+        }
+
+        let limited = try await store.episodes(podcastID: podcast.id, limit: 2)
+
+        #expect(limited.count == 2)
+        #expect(limited.map(\.title) == ["Extra 2", "Extra 1"])
+        let unlimited = try await store.episodes(podcastID: podcast.id)
+        #expect(unlimited.count == 5)
+    }
+
     // MARK: - unsubscribe
 
     @Test func unsubscribeDeletesThePodcastAndCascadesToEverythingThatReferencesItsEpisodes() async throws {
