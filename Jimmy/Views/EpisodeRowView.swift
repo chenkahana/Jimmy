@@ -292,7 +292,7 @@ struct EpisodeRowView: View {
     
     private func addToQueueNext() {
         Task {
-            try? await QueueViewModel.shared.addEpisodeToTop(episodeWithState.episode)
+            await AppModel.current?.playNext(episodeWithState.episode.id)
         }
     }
     

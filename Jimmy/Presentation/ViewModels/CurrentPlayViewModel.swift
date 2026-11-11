@@ -176,7 +176,7 @@ class CurrentPlayViewModel: ObservableObject {
     func addToQueue() {
         guard let episode = currentPlayingEpisode else { return }
         Task {
-            try? await QueueViewModel.shared.addEpisode(episode)
+            await AppModel.current?.enqueue(episode.id)
         }
         showingOptionsMenu = false
     }

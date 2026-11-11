@@ -821,7 +821,7 @@ extension EpisodeService {
             // ⚠️ CRITICAL WARNING: DO NOT REMOVE OR MODIFY THIS NOTIFICATION POSTING
             //
             // PURPOSE: Broadcasts episode status changes to all listening views for real-time UI updates
-            // LISTENERS: DatabaseEpisodeListView, LibraryViewModel, QueueViewModel, and other episode views
+            // LISTENERS: DatabaseEpisodeListView, LibraryViewModel, QueueView, and other episode views
             //
             // FLOW: User action → updateEpisodeStatus() → database update → THIS NOTIFICATION → UI updates
             //

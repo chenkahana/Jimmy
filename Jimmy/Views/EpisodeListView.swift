@@ -12,7 +12,6 @@ struct EpisodeListView: View {
     /// Convert EpisodeWithPlaybackState to EpisodeWithStatus for EpisodeCard
     private func convertToEpisodeWithStatus(_ episodeWithState: EpisodeWithPlaybackState) -> EpisodeWithStatus {
         let audioPlayer = AudioPlayerService.shared
-        let queueViewModel = QueueViewModel.shared
         let progressCache = DIContainer.shared.progressCacheStore
         
         // PERFORMANCE FIX: Calculate play progress more efficiently
@@ -39,7 +38,7 @@ struct EpisodeListView: View {
         
         // PERFORMANCE FIX: Cache status calculations to avoid repeated lookups
         let isCurrentlyPlaying = audioPlayer.currentEpisode?.id == episodeWithState.episode.id
-        let isQueued = queueViewModel.episodes.contains { $0.id == episodeWithState.episode.id }
+        let isQueued = AppModel.current?.isQueued(episodeWithState.episode.id) ?? false
         
         let status = EpisodeWithStatus.deriveStatus(
             episode: episodeWithState.episode,
@@ -72,7 +71,7 @@ struct EpisodeListView: View {
                     },
                     onAddToQueue: {
                         Task {
-                            try? await QueueViewModel.shared.addEpisode(episodeWithState.episode)
+                            await AppModel.current?.enqueue(episodeWithState.episode.id)
                         }
                     },
                     onToggleFinished: {

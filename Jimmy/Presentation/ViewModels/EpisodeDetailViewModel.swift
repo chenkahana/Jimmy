@@ -21,23 +21,20 @@ class EpisodeDetailViewModel: ObservableObject {
     private let podcastService: PodcastService
     private let audioPlayerService: AudioPlayerService
     private let cacheService: EpisodeCacheService
-    private let queueService: QueueViewModel
     private var cancellables = Set<AnyCancellable>()
-    
+
     // MARK: - Initialization
     init(
         episode: Episode,
         podcastService: PodcastService = .shared,
         audioPlayerService: AudioPlayerService = .shared,
-        cacheService: EpisodeCacheService = .shared,
-        queueService: QueueViewModel = .shared
+        cacheService: EpisodeCacheService = .shared
     ) {
         self.episode = episode
         self.podcastService = podcastService
         self.audioPlayerService = audioPlayerService
         self.cacheService = cacheService
-        self.queueService = queueService
-        
+
         setupBindings()
         loadInitialData()
     }
@@ -60,14 +57,19 @@ class EpisodeDetailViewModel: ObservableObject {
         .store(in: &cancellables)
         
         // Bind to queue state
-        queueService.$episodes
-            .map { [weak self] episodes in
-                guard let self = self else { return false }
-                return episodes.contains { $0.id == self.episode.id }
-            }
-            .assign(to: \.isInQueue, on: self)
-            .store(in: &cancellables)
-        
+        isInQueue = AppModel.current?.isQueued(episode.id) ?? false
+        Publishers.MergeMany(
+            NotificationCenter.default.publisher(for: .episodeAddedToQueue).map { _ in () }.eraseToAnyPublisher(),
+            NotificationCenter.default.publisher(for: .episodeRemovedFromQueue).map { _ in () }.eraseToAnyPublisher(),
+            NotificationCenter.default.publisher(for: .queueOrderChanged).map { _ in () }.eraseToAnyPublisher()
+        )
+        .receive(on: DispatchQueue.main)
+        .sink { [weak self] _ in
+            guard let self else { return }
+            self.isInQueue = AppModel.current?.isQueued(self.episode.id) ?? false
+        }
+        .store(in: &cancellables)
+
         // Monitor download status
         // Monitor download status manually since $cachedEpisodes doesn't exist
         updateDownloadStatus()
@@ -162,22 +164,13 @@ class EpisodeDetailViewModel: ObservableObject {
     }
     
     func addToQueue() async {
-        do {
-            try await queueService.addEpisode(episode)
-            errorMessage = nil
-        } catch {
-            errorMessage = "Failed to add to queue: \(error.localizedDescription)"
-        }
+        await AppModel.current?.enqueue(episode.id)
+        errorMessage = nil
     }
-    
+
     func removeFromQueue() async {
         guard isInQueue else { return }
-        
-        do {
-            try await queueService.removeEpisode(episode)
-        } catch {
-            errorMessage = "Failed to remove from queue: \(error.localizedDescription)"
-        }
+        await AppModel.current?.dequeue(episode.id)
     }
     
     func toggleQueue() async {

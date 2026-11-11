@@ -116,25 +116,12 @@ class AudioPlayerService: NSObject, ObservableObject {
         if !isRestoration {
             Task.detached(priority: .utility) {
                 EpisodeService.shared.setEpisodePlaying(episode)
-                
-                // CRITICAL FIX: Implement proper "play now" logic according to specifications
-                if startPlaying {
-                    do {
-                        let queuedEpisodes = try await self.playbackStateRepository.fetchQueuedEpisodes()
-                        let isEpisodeInQueue = queuedEpisodes.contains { $0.episode.id == episode.id }
 
-                        if isEpisodeInQueue {
-                            // Episode is already in queue - move it to the top for "Play Now".
-                            Self.logger.debug("Episode already in queue, moving to position 1 for Play Now")
-                            try await self.playbackStateRepository.moveInQueue(episodeID: episode.id, toPosition: 1)
-                        } else {
-                            // Episode is not in queue - add it to the top for "Play Now".
-                            Self.logger.debug("Implementing Play Now: adding episode to position 1")
-                            try await self.playbackStateRepository.addToQueue(episodeID: episode.id, position: 1)
-                        }
-                    } catch {
-                        Self.logger.error("Failed to update queue for Play Now: \(error)")
-                    }
+                // "Play Now": the episode always ends up at position 1, whether it was already
+                // queued (moved) or not (inserted) — `AppModel.enqueue` handles both.
+                if startPlaying {
+                    Self.logger.debug("Implementing Play Now: ensuring episode is at queue position 1")
+                    await AppModel.current?.enqueue(episode.id, at: 1)
                 }
             }
         }
@@ -315,7 +302,7 @@ class AudioPlayerService: NSObject, ObservableObject {
         }
         
         updateNowPlayingInfo()
-        Task { @MainActor in SharedDataStore.shared.updateWidgetData() }
+        Task { @MainActor in await SharedDataStore.shared.updateWidgetData() }
     }
 
     func pause() {
@@ -341,7 +328,7 @@ class AudioPlayerService: NSObject, ObservableObject {
         }
         
         updateNowPlayingInfo()
-        Task { @MainActor in SharedDataStore.shared.updateWidgetData() }
+        Task { @MainActor in await SharedDataStore.shared.updateWidgetData() }
     }
 
     func stop() {
@@ -501,20 +488,7 @@ class AudioPlayerService: NSObject, ObservableObject {
                                 // CRITICAL FIX: Ensure restored episode is at queue position 1
                                 // The currently playing episode should always be at position 1
                                 Self.logger.debug("Ensuring restored episode is at queue position 1")
-                                do {
-                                    let queuedEpisodes = try await self.playbackStateRepository.fetchQueuedEpisodes()
-                                    let isAtPosition1 = queuedEpisodes.first?.episode.id == episodeWithState.episode.id
-                                    
-                                    if !isAtPosition1 {
-                                        // Episode is not at position 1, ensure it's there
-                                        try await self.playbackStateRepository.addToQueue(episodeID: episodeWithState.episode.id, position: 1)
-                                        Self.logger.info("Restored episode added to queue position 1")
-                                    } else {
-                                        Self.logger.info("Restored episode already at queue position 1")
-                                    }
-                                } catch {
-                                    Self.logger.error("Failed to ensure restored episode at queue position 1: \(error)")
-                                }
+                                await AppModel.current?.enqueue(episodeWithState.episode.id, at: 1)
                                 
                                 // CRITICAL FIX: Manually seek to the saved position after loadEpisode completes
                                 // We need to do this because loadEpisode might not get the correct playback state
@@ -566,15 +540,16 @@ class AudioPlayerService: NSObject, ObservableObject {
                 Self.logger.debug("No saved episode ID found in UserDefaults")
             }
             
-            // Fallback: Get the next episode in queue (queuePosition = 1)
-                Self.logger.debug("Trying fallback: fetching next queued episode")
-            if let nextEpisode = try await playbackStateRepository.getNextQueuedEpisode() {
+            // Fallback: Get the next episode in queue (position 1)
+            Self.logger.debug("Trying fallback: fetching next queued episode")
+            if let nextEpisodeID = await AppModel.current?.queue.first?.id,
+               let nextEpisode = try await DIContainer.shared.episodeRepository.fetchEpisode(by: nextEpisodeID) {
                 Self.logger.debug("Found queued episode: \(nextEpisode.episode.title) at \(nextEpisode.playbackState.position)s")
-                
+
                 await MainActor.run {
                     Task {
                         await self.loadEpisode(nextEpisode.episode, startPlaying: false, isRestoration: true)
-                        
+
                         if nextEpisode.playbackState.position > 0 {
                             Self.logger.debug("Seeking to queued episode position: \(nextEpisode.playbackState.position)s")
                             self.seek(to: nextEpisode.playbackState.position)
@@ -1069,24 +1044,16 @@ class AudioPlayerService: NSObject, ObservableObject {
     
     func playNext() {
         Task { @MainActor in
-            // Use the actual QueueViewModel instead of local queue
-            let queueViewModel = QueueViewModel.shared
-            guard !queueViewModel.episodes.isEmpty else {
-                // Queue is empty, stop playback
-                self.pause()
-                return
-            }
-            
-            // Get the next episode from the actual queue
-            guard let nextEpisode = queueViewModel.episodes.first else {
+            guard let nextEpisodeID = AppModel.current?.queue.first?.id,
+                  let nextEpisode = try? await DIContainer.shared.episodeRepository.fetchEpisode(by: nextEpisodeID) else {
                 Self.logger.info("No episodes in queue to play next")
                 self.pause()
                 return
             }
-            
+
             // Remove it from the queue and play it
-            try? await queueViewModel.removeEpisode(nextEpisode)
-            await self.loadEpisode(nextEpisode, startPlaying: true, isRestoration: false)
+            await AppModel.current?.dequeue(nextEpisodeID)
+            await self.loadEpisode(nextEpisode.episode, startPlaying: true, isRestoration: false)
         }
     }
     

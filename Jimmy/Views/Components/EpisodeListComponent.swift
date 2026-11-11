@@ -163,7 +163,7 @@ struct EpisodeRowComponent: View {
     
     private func onPlayNext() {
         Task {
-            try? await QueueViewModel.shared.addEpisodeToTop(episodeWithState.episode)
+            await AppModel.current?.playNext(episodeWithState.episode.id)
         }
     }
     

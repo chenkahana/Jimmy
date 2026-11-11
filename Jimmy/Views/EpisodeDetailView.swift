@@ -421,9 +421,9 @@ struct EpisodeDetailView: View {
     private func toggleQueueStatus() {
         Task {
             if viewModel.isInQueue {
-                try? await QueueViewModel.shared.removeEpisode(episodeWithState.episode)
+                await AppModel.current?.dequeue(episodeWithState.episode.id)
             } else {
-                try? await QueueViewModel.shared.addEpisode(episodeWithState.episode)
+                await AppModel.current?.enqueue(episodeWithState.episode.id)
             }
         }
     }

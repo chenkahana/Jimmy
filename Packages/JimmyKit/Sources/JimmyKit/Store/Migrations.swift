@@ -42,7 +42,8 @@ nonisolated enum Migrations {
             try Self.convertBlobUUIDsToText(db)
         }
         migrator.registerMigration("v19_progress") { db in
-            try Self.runProgressAndQueueBackfill(db)
+            try Self.runProgressBackfill(db)
+            try Self.runQueueBackfill(db)
         }
         migrator.registerMigration("v20_legacy_import") { db in
             try Self.runLegacyImport(db, legacy: legacy)
@@ -56,6 +57,13 @@ nonisolated enum Migrations {
         }
         migrator.registerMigration("v22_downloads") { db in
             try Self.runDownloadsBackfill(db)
+        }
+        migrator.registerMigration("v23_resync_queue") { db in
+            // The old app kept writing `playback_state.queuePosition` after `v19_progress`'s one-time
+            // copy, until this PR moved every queue reader and writer onto `queue`. Rebuild `queue`
+            // from that legacy column once more; from here on `queue` is the only queue.
+            // Progress isn't re-synced here — it stays on the legacy columns until PR 16.
+            try Self.runQueueBackfill(db)
         }
     }
 
@@ -88,7 +96,7 @@ nonisolated enum Migrations {
 
     // MARK: - v19_progress
 
-    private static func runProgressAndQueueBackfill(_ db: Database) throws {
+    private static func runProgressBackfill(_ db: Database) throws {
         try db.create(table: "progress", ifNotExists: true) { t in
             t.column("episodeID", .text).primaryKey()
                 .references("episodes", column: "id", onDelete: .cascade)
@@ -96,11 +104,6 @@ nonisolated enum Migrations {
             t.column("duration", .double)
             t.column("isFinished", .boolean).notNull().defaults(to: false)
             t.column("updatedAt", .datetime).notNull().defaults(sql: "CURRENT_TIMESTAMP")
-        }
-        try db.create(table: "queue", ifNotExists: true) { t in
-            t.column("episodeID", .text).primaryKey()
-                .references("episodes", column: "id", onDelete: .cascade)
-            t.column("position", .integer).notNull().unique()
         }
 
         // progress: finished if playback_state.finished OR episodes.played OR the status
@@ -139,18 +142,35 @@ nonisolated enum Migrations {
                 arguments: [episodeID, position, duration, isFinished, updatedAt]
             )
         }
+    }
 
-        // queue: from playback_state.queuePosition, renumbered 1...n with no gaps, ordered by
-        // the old queuePosition.
+    /// Rebuilds the part of `queue` backed by `playback_state.queuePosition` — the legacy source
+    /// of truth the old app keeps writing to (see `v23_resync_queue`). Only touches rows for
+    /// episodes that have a `playback_state` row at all: it clears those, then reinserts them
+    /// ordered by the current `queuePosition`, appended after whatever's left (renumbered to
+    /// keep `1...n` with no gaps). Rows for episodes with no `playback_state` row — e.g. a
+    /// one-time `v20_legacy_import` from the even older `episode_queue` UserDefaults format —
+    /// aren't this function's concern and are left exactly as they are.
+    private static func runQueueBackfill(_ db: Database) throws {
+        try db.create(table: "queue", ifNotExists: true) { t in
+            t.column("episodeID", .text).primaryKey()
+                .references("episodes", column: "id", onDelete: .cascade)
+            t.column("position", .integer).notNull().unique()
+        }
+
+        try db.execute(sql: "DELETE FROM queue WHERE episodeID IN (SELECT episodeID FROM playback_state)")
+
+        var nextPosition = try Int.fetchOne(db, sql: "SELECT COALESCE(MAX(position), 0) FROM queue") ?? 0
         let queueRows = try Row.fetchAll(
             db,
             sql: "SELECT episodeID FROM playback_state WHERE queuePosition IS NOT NULL ORDER BY queuePosition ASC"
         )
-        for (index, row) in queueRows.enumerated() {
+        for row in queueRows {
             let episodeID: String = row["episodeID"]
+            nextPosition += 1
             try db.execute(
                 sql: "INSERT OR REPLACE INTO queue (episodeID, position) VALUES (?, ?)",
-                arguments: [episodeID, index + 1]
+                arguments: [episodeID, nextPosition]
             )
         }
     }

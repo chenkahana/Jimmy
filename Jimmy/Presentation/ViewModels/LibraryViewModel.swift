@@ -122,7 +122,9 @@ class LibraryViewModel: ObservableObject {
         let episodeStatusChanges = NotificationCenter.default.publisher(for: .episodeStatusUpdated).map { _ in () }
         Publishers.MergeMany(
             episodeStatusChanges.eraseToAnyPublisher(),
-            QueueViewModel.shared.$episodes.map { _ in () }.eraseToAnyPublisher()
+            NotificationCenter.default.publisher(for: .episodeAddedToQueue).map { _ in () }.eraseToAnyPublisher(),
+            NotificationCenter.default.publisher(for: .episodeRemovedFromQueue).map { _ in () }.eraseToAnyPublisher(),
+            NotificationCenter.default.publisher(for: .queueOrderChanged).map { _ in () }.eraseToAnyPublisher()
         )
         .receive(on: DispatchQueue.main)
         .sink { [weak self] _ in

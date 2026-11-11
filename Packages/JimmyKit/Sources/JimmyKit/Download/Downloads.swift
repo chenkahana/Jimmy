@@ -32,6 +32,7 @@ public final class Downloads {
     private var activeTasks: [UUID: URLSessionDownloadTask] = [:]
     private var recordsByEpisode: [UUID: Download] = [:]
     private var backgroundEventsCompletion: (@Sendable () -> Void)?
+    private var pendingWrite: Task<Void, Never>?
 
     private var downloadsDirectory: URL {
         baseDirectory.appendingPathComponent("Downloads", isDirectory: true)
@@ -62,7 +63,9 @@ public final class Downloads {
         )
         session = URLSession(configuration: sessionConfiguration, delegate: delegate, delegateQueue: nil)
 
-        Task { [weak self] in await self?.reconcileAtLaunch() }
+        // The first entry in the write queue, so every later save or delete waits until the
+        // records on disk have been read and reconciled.
+        pendingWrite = Task { [weak self] in await self?.reconcileAtLaunch() }
     }
 
     // MARK: - Public API
@@ -88,7 +91,7 @@ public final class Downloads {
         )
         recordsByEpisode[episode.id] = record
         task.resume()
-        Task { try? await store.saveDownload(record) }
+        write { [store] in try? await store.saveDownload(record) }
     }
 
     /// Cancels an in-flight download and forgets it (no file was ever completed, so there's
@@ -98,7 +101,7 @@ public final class Downloads {
         progress.removeValue(forKey: episodeID)
         states.removeValue(forKey: episodeID)
         recordsByEpisode.removeValue(forKey: episodeID)
-        Task { try? await store.deleteDownload(episodeID) }
+        write { [store] in try? await store.deleteDownload(episodeID) }
     }
 
     /// Removes a downloaded (or in-flight) episode's file and record.
@@ -110,7 +113,7 @@ public final class Downloads {
         progress.removeValue(forKey: episodeID)
         states.removeValue(forKey: episodeID)
         recordsByEpisode.removeValue(forKey: episodeID)
-        Task { try? await store.deleteDownload(episodeID) }
+        write { [store] in try? await store.deleteDownload(episodeID) }
     }
 
     /// The on-disk location of `episodeID`'s downloaded file, resolved against `baseDirectory`,
@@ -129,6 +132,22 @@ public final class Downloads {
         backgroundEventsCompletion = completion
     }
 
+    /// Runs store writes one after another, in call order. Unordered writes let a fast download's
+    /// earlier `.downloading` save land after its `.done` one, or a cancel's delete come before
+    /// the save it was meant to undo.
+    private func write(_ operation: @escaping @MainActor () async -> Void) {
+        let previous = pendingWrite
+        pendingWrite = Task {
+            await previous?.value
+            await operation()
+        }
+    }
+
+    /// Internal, for tests: waits for every store write queued so far.
+    func pendingWritesFinished() async {
+        await pendingWrite?.value
+    }
+
     // MARK: - Delegate callbacks (already hopped to the main actor)
 
     private func handleFinished(_ finished: DownloadSessionDelegate.FinishedDownload) async {
@@ -143,11 +162,13 @@ public final class Downloads {
             updatedAt: Date()
         )
         recordsByEpisode[finished.episodeID] = record
-        try? await store.saveDownload(record)
+        write { [store] in try? await store.saveDownload(record) }
     }
 
     private func handleFailed(_ episodeID: UUID) async {
-        activeTasks.removeValue(forKey: episodeID)
+        // A task that `cancel` or `delete` already dropped reports a cancellation error here; that
+        // isn't a failure, and recording one would bring back the record the user just removed.
+        guard activeTasks.removeValue(forKey: episodeID) != nil else { return }
         states[episodeID] = .failed
         var record = recordsByEpisode[episodeID] ?? Download(
             episodeID: episodeID,
@@ -158,7 +179,7 @@ public final class Downloads {
         record.state = .failed
         record.updatedAt = Date()
         recordsByEpisode[episodeID] = record
-        try? await store.saveDownload(record)
+        write { [store] in try? await store.saveDownload(record) }
     }
 
     /// Internal (not `private`) so tests can simulate `urlSessionDidFinishEvents` firing,
@@ -183,7 +204,8 @@ public final class Downloads {
         for task in tasksNow {
             guard let episodeID = task.taskDescription.flatMap(UUID.init(uuidString:)) else { continue }
             runningIDs.insert(episodeID)
-            if let downloadTask = task as? URLSessionDownloadTask {
+            // `allTasks()` is a snapshot from before the await: skip a task cancelled since then.
+            if let downloadTask = task as? URLSessionDownloadTask, downloadTask.state == .running {
                 activeTasks[episodeID] = downloadTask
             }
         }

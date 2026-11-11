@@ -141,7 +141,7 @@ struct DatabaseEpisodeListView: View {
                     },
                     onAddToQueue: {
                         Task {
-                            try await QueueViewModel.shared.addEpisode(episode)
+                            await AppModel.current?.enqueue(episode.id)
                         }
                     },
                     onToggleFinished: {
@@ -154,7 +154,7 @@ struct DatabaseEpisodeListView: View {
                     episode: episode,
                     onAddToQueue: {
                         Task {
-                            try await QueueViewModel.shared.addEpisode(episode)
+                            await AppModel.current?.enqueue(episode.id)
                         }
                     },
                     onMarkAsPlayed: {
@@ -164,7 +164,7 @@ struct DatabaseEpisodeListView: View {
                     },
                     onPlayNext: {
                         Task {
-                            try await QueueViewModel.shared.addEpisodeToTop(episode)
+                            await AppModel.current?.playNext(episode.id)
                         }
                     },
                     onShare: {
@@ -242,24 +242,24 @@ struct DatabaseEpisodeListView: View {
             playProgress = progressCache.getProgressPercentage(for: episode.id)
            // print("🔍 DatabaseEpisodeListView: Using cached progress: \(playProgress * 100)%")
             
-            // CRITICAL FIX: Check queue status from QueueViewModel directly for real-time updates
-            isQueued = QueueViewModel.shared.episodes.contains { $0.id == episode.id }
-           // print("🔍 DatabaseEpisodeListView: Queue status from QueueViewModel: \(isQueued)")
+            // CRITICAL FIX: Check queue status from AppModel directly for real-time updates
+            isQueued = AppModel.current?.isQueued(episode.id) ?? false
+           // print("🔍 DatabaseEpisodeListView: Queue status from AppModel: \(isQueued)")
         } else if let cachedState = episodePlaybackStates[episode.id] {
             // Priority 2: Database cached state
             playProgress = episode.duration != nil && episode.duration! > 0 
                 ? cachedState.position / episode.duration! 
                 : 0.0
-            // CRITICAL FIX: Check queue status from QueueViewModel directly for real-time updates
-            isQueued = QueueViewModel.shared.episodes.contains { $0.id == episode.id }
+            // CRITICAL FIX: Check queue status from AppModel directly for real-time updates
+            isQueued = AppModel.current?.isQueued(episode.id) ?? false
            // print("🔍 DatabaseEpisodeListView: Using database cached state: \(playProgress * 100)%, queue: \(isQueued)")
         } else {
             // Priority 3: Fallback to episode's stored position
             playProgress = episode.duration != nil && episode.duration! > 0 
                 ? episode.playbackPosition / episode.duration! 
                 : 0.0
-            // CRITICAL FIX: Check queue status from QueueViewModel directly for real-time updates
-            isQueued = QueueViewModel.shared.episodes.contains { $0.id == episode.id }
+            // CRITICAL FIX: Check queue status from AppModel directly for real-time updates
+            isQueued = AppModel.current?.isQueued(episode.id) ?? false
            // print("🔍 DatabaseEpisodeListView: Using fallback position: \(playProgress * 100)%, queue: \(isQueued)")
             
             // Load playback state asynchronously

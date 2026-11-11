@@ -171,7 +171,7 @@ struct StreamingEpisodeListView: View {
                             },
                             onAddToQueue: {
                                 Task {
-                                    try? await QueueViewModel.shared.addEpisode(episodeWithState.episode)
+                                    await AppModel.current?.enqueue(episodeWithState.episode.id)
                                 }
                             },
                             onToggleFinished: {
@@ -262,7 +262,7 @@ struct StreamingEpisodeListView: View {
                     },
                     onAddToQueue: {
                         Task {
-                            try? await QueueViewModel.shared.addEpisode(episodeWithState.episode)
+                            await AppModel.current?.enqueue(episodeWithState.episode.id)
                         }
                     },
                     onToggleFinished: {
@@ -352,16 +352,15 @@ struct StreamingEpisodeListView: View {
     /// Convert EpisodeWithPlaybackState to EpisodeWithStatus for EpisodeCard
     private func convertToEpisodeWithStatus(_ episodeWithState: EpisodeWithPlaybackState) -> EpisodeWithStatus {
         let audioPlayer = AudioPlayerService.shared
-        let queueViewModel = QueueViewModel.shared
-        
+
         // Calculate play progress
-        let playProgress = episodeWithState.episode.duration != nil && episodeWithState.episode.duration! > 0 
-            ? episodeWithState.episode.playbackPosition / episodeWithState.episode.duration! 
+        let playProgress = episodeWithState.episode.duration != nil && episodeWithState.episode.duration! > 0
+            ? episodeWithState.episode.playbackPosition / episodeWithState.episode.duration!
             : 0.0
-        
+
         // Determine status using the derivation rules
         let isCurrentlyPlaying = audioPlayer.currentEpisode?.id == episodeWithState.episode.id
-        let isQueued = queueViewModel.episodes.contains { $0.id == episodeWithState.episode.id }
+        let isQueued = AppModel.current?.isQueued(episodeWithState.episode.id) ?? false
         
         let status = EpisodeWithStatus.deriveStatus(
             episode: episodeWithState.episode,

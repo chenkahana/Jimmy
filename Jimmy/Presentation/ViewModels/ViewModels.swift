@@ -12,7 +12,6 @@ class ViewModelsRegistry {
     // Core ViewModels (Singletons)
     let libraryViewModel = LibraryViewModel.shared
     let discoveryViewModel = DiscoveryViewModel.shared
-    let queueViewModel = QueueViewModel.shared
     let audioPlayerViewModel = AudioPlayerViewModel.shared
     let settingsViewModel = SettingsViewModel.shared
     

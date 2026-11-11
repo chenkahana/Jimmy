@@ -48,6 +48,7 @@ struct DownloadsTests {
 
         downloads.download(episode)
         await waitUntil { downloads.states[episode.id] == .done }
+        await downloads.pendingWritesFinished()
 
         #expect(downloads.states[episode.id] == .done)
         #expect(downloads.progress[episode.id] == 1)
@@ -72,6 +73,7 @@ struct DownloadsTests {
 
         downloads.download(episode)
         await waitUntil { downloads.states[episode.id] == .failed }
+        await downloads.pendingWritesFinished()
 
         #expect(downloads.states[episode.id] == .failed)
         let record = await store.record(for: episode.id)
@@ -92,7 +94,7 @@ struct DownloadsTests {
 
         #expect(downloads.states[episode.id] == nil)
         #expect(downloads.progress[episode.id] == nil)
-        await waitUntil { await store.record(for: episode.id) == nil }
+        await downloads.pendingWritesFinished()
         let record = await store.record(for: episode.id)
         #expect(record == nil)
 
@@ -119,7 +121,7 @@ struct DownloadsTests {
         let fileURL = baseDirectory.appendingPathComponent("Downloads/\(episode.id.uuidString).mp3")
         #expect(!FileManager.default.fileExists(atPath: fileURL.path))
 
-        await waitUntil { await store.record(for: episode.id) == nil }
+        await downloads.pendingWritesFinished()
         let record = await store.record(for: episode.id)
         #expect(record == nil)
     }

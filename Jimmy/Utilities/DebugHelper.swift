@@ -54,11 +54,11 @@ class DebugHelper {
     @MainActor
     func printAppState() {
         let podcasts = PodcastService.shared.loadPodcasts()
-        let queue = QueueViewModel.shared.queuedEpisodes
-        
+        let queueCount = AppModel.current?.queue.count ?? 0
+
         Self.logger.debug("=== Jimmy App State ===")
         Self.logger.debug("Podcasts: \(podcasts.count)")
-        Self.logger.debug("Queue episodes: \(queue.count)")
+        Self.logger.debug("Queue episodes: \(queueCount)")
         let darkModeValue = UserDefaults.standard.bool(forKey: "darkMode")
         Self.logger.debug("Settings: darkMode = \(darkModeValue)")
         Self.logger.debug("========================")

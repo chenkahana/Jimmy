@@ -86,7 +86,7 @@ struct PaginatedEpisodeListView: View {
                         },
                         onAddToQueue: {
                             Task {
-                                try? await QueueViewModel.shared.addEpisode(episodeWithState.episode)
+                                await AppModel.current?.enqueue(episodeWithState.episode.id)
                             }
                         },
                         onToggleFinished: {
@@ -208,17 +208,16 @@ struct PaginatedEpisodeListView: View {
     /// Convert EpisodeWithPlaybackState to EpisodeWithStatus for EpisodeCard
     private func convertToEpisodeWithStatus(_ episodeWithState: EpisodeWithPlaybackState) -> EpisodeWithStatus {
         let audioPlayer = AudioPlayerService.shared
-        let queueViewModel = QueueViewModel.shared
         let progressCache = DIContainer.shared.progressCacheStore
-        
+
         // Calculate play progress - use real-time cache first, then fallback
         let playProgress: Double
-        
+
         // CRITICAL FIX: Update progress cache with episode duration FIRST
         if episodeWithState.episode.duration != nil && episodeWithState.episode.duration! > 0 {
             progressCache.updateProgressPercentage(for: episodeWithState.episode.id, duration: episodeWithState.episode.duration!)
         }
-        
+
         // CRITICAL FIX: Check if episode exists in cache (including 0% progress)
         // Don't use > 0 check because 0% is valid progress
         if progressCache.hasProgress(for: episodeWithState.episode.id) {
@@ -226,15 +225,15 @@ struct PaginatedEpisodeListView: View {
             playProgress = progressCache.getProgressPercentage(for: episodeWithState.episode.id)
         } else {
             // Episode not in cache - fallback to episode's stored position
-            playProgress = episodeWithState.episode.duration != nil && episodeWithState.episode.duration! > 0 
-                ? episodeWithState.episode.playbackPosition / episodeWithState.episode.duration! 
+            playProgress = episodeWithState.episode.duration != nil && episodeWithState.episode.duration! > 0
+                ? episodeWithState.episode.playbackPosition / episodeWithState.episode.duration!
                 : 0.0
         }
-        
+
         // Determine status using the derivation rules
         let isCurrentlyPlaying = audioPlayer.currentEpisode?.id == episodeWithState.episode.id
-        let isQueued = queueViewModel.episodes.contains { $0.id == episodeWithState.episode.id }
-        
+        let isQueued = AppModel.current?.isQueued(episodeWithState.episode.id) ?? false
+
         let status = EpisodeWithStatus.deriveStatus(
             episode: episodeWithState.episode,
             playProgress: playProgress,

@@ -130,32 +130,9 @@ protocol PlaybackStateRepositoryProtocol {
     
     /// Mark an episode as finished (for swipe actions)
     func markFinished(episodeID: UUID) async throws
-    
-    /// Get episodes in queue order (queuePosition 1, 2, 3, etc.)
-    func fetchQueuedEpisodes() async throws -> [EpisodeWithPlaybackState]
-    
-    /// Add episode to queue at specific position (1 = first)
-    func addToQueue(episodeID: UUID, position: Int) async throws
-    
-    /// Remove episode from queue and reorder remaining episodes
-    func removeFromQueue(episodeID: UUID) async throws
-    
-    /// Move episode to specific queue position and reorder others
-    func moveInQueue(episodeID: UUID, toPosition: Int) async throws
-    
-    /// Get the next episode in queue (queuePosition = 1)
-    func getNextQueuedEpisode() async throws -> EpisodeWithPlaybackState?
-    
-    /// Get the maximum queue position.
-    func getMaxQueuePosition() async throws -> Int?
-    
+
     /// Fetch all playback states (for progress cache pre-loading)
     func fetchAllPlaybackStates() async throws -> [PlaybackState]
-
-    /// Reorder the entire queue to match the given episode ID order.
-    /// Position 1 = first episode, position 2 = second, etc.
-    /// Episodes not in the list are removed from the queue.
-    func reorderQueue(episodeIDs: [UUID]) async throws
 }
 
 /// Protocol for the RSS parser.
@@ -227,9 +204,7 @@ enum RepositoryError: Error, LocalizedError {
     case networkUnavailable
     case cacheCorrupted
     case staleData
-    case episodeAlreadyInQueue
-    case invalidOperation
-    
+
     var errorDescription: String? {
         switch self {
         case .notFound:
@@ -242,10 +217,6 @@ enum RepositoryError: Error, LocalizedError {
             return "Cache data corrupted"
         case .staleData:
             return "Data is stale"
-        case .episodeAlreadyInQueue:
-            return "Episode is already in the queue"
-        case .invalidOperation:
-            return "Invalid queue operation"
         }
     }
 }
