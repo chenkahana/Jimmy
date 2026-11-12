@@ -1,6 +1,7 @@
 import Foundation
 import os
-import BackgroundTasks
+@preconcurrency import BackgroundTasks // BGTask isn't annotated Sendable, but expirationHandler runs off the main actor and must capture it.
+import Synchronization
 import UIKit
 
 /// Manages background tasks for podcast refresh operations
@@ -44,12 +45,13 @@ class BackgroundTaskManager: ObservableObject {
         }
         
         // Register background app refresh
-        BGTaskScheduler.shared.register(forTaskWithIdentifier: Config.backgroundRefreshIdentifier, using: nil) { task in
+        // `.main`: the handlers call into this main-actor class.
+        BGTaskScheduler.shared.register(forTaskWithIdentifier: Config.backgroundRefreshIdentifier, using: .main) { task in
             self.handleBackgroundRefresh(task: task as! BGAppRefreshTask)
         }
         
         // Register library incremental refresh for LibrarySorter
-        BGTaskScheduler.shared.register(forTaskWithIdentifier: Config.libraryIncrementalRefreshIdentifier, using: nil) { task in
+        BGTaskScheduler.shared.register(forTaskWithIdentifier: Config.libraryIncrementalRefreshIdentifier, using: .main) { task in
             self.handleLibraryIncrementalRefresh(task: task as! BGAppRefreshTask)
         }
         
@@ -109,7 +111,8 @@ class BackgroundTaskManager: ObservableObject {
         let budgetTracker = BackgroundBudgetTracker(maxTime: Config.maxBackgroundTime)
         
         // Set expiration handler
-        task.expirationHandler = { [budgetTracker] in
+        // The scheduler calls this on its own queue, so it must not be main-actor isolated.
+        task.expirationHandler = { @Sendable [budgetTracker] in
             budgetTracker.markExpired()
             task.setTaskCompleted(success: false)
         }
@@ -163,7 +166,7 @@ class BackgroundTaskManager: ObservableObject {
         scheduleLibraryIncrementalRefresh()
         
         // Set expiration handler
-        task.expirationHandler = {
+        task.expirationHandler = { @Sendable in
             task.setTaskCompleted(success: false)
         }
         
@@ -228,12 +231,11 @@ class BackgroundTaskManager: ObservableObject {
 
 /// Tracks remaining background execution time budget
 /// iOS gives limited time for background tasks - this helps prioritize operations
-final class BackgroundBudgetTracker: @unchecked Sendable {
+nonisolated final class BackgroundBudgetTracker: Sendable {
     private static let logger = Logger(subsystem: "com.chenkahana.Jimmy", category: "BackgroundBudgetTracker")
     private let startTime: Date
     private let maxTime: TimeInterval
-    private var isExpired: Bool = false
-    private let lock = NSLock()
+    private let isExpired = Mutex(false)
 
     /// Reserve some time for cleanup operations
     private let reservedTime: TimeInterval = 2.0
@@ -255,9 +257,7 @@ final class BackgroundBudgetTracker: @unchecked Sendable {
     
     /// Whether there's still budget available for operations
     var hasRemainingBudget: Bool {
-        lock.lock()
-        defer { lock.unlock() }
-        return !isExpired && remainingTime > 0
+        !isExpired.withLock { $0 } && remainingTime > 0
     }
     
     /// Percentage of budget used (0.0 to 1.0)
@@ -267,9 +267,7 @@ final class BackgroundBudgetTracker: @unchecked Sendable {
     
     /// Mark the budget as expired (called when iOS signals expiration)
     func markExpired() {
-        lock.lock()
-        defer { lock.unlock() }
-        isExpired = true
+        isExpired.withLock { $0 = true }
         let elapsedFormatted = String(format: "%.1f", elapsedTime)
         Self.logger.warning("Background budget expired by iOS after \(elapsedFormatted)s")
     }
@@ -281,7 +279,7 @@ final class BackgroundBudgetTracker: @unchecked Sendable {
     
     /// Get a description of current budget status
     var statusDescription: String {
-        if isExpired {
+        if isExpired.withLock({ $0 }) {
             return "Expired (iOS terminated)"
         } else if hasRemainingBudget {
             return "Active - \(String(format: "%.1f", remainingTime))s remaining"

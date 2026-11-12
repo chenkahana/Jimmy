@@ -65,14 +65,12 @@ class CurrentPlayViewModel: ObservableObject {
         startObservingPlayback()
     }
 
-    deinit {
-        cancellables.removeAll()
-    }
-
     // MARK: - Private Methods
     private func setupBindings() {
         // Listen for audio route changes
+        // AVAudioSession posts route changes on a background thread.
         NotificationCenter.default.publisher(for: AVAudioSession.routeChangeNotification)
+            .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
                 self?.updateCurrentAudioRoute()
                 self?.updateCurrentOutputDevice()

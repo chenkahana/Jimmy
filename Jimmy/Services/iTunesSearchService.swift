@@ -210,7 +210,7 @@ struct iTunesPodcastResult: Codable {
     let genres: [String]?
 }
 
-struct PodcastSearchResult: Identifiable, Codable {
+nonisolated struct PodcastSearchResult: Identifiable, Codable, Sendable {
     let id: Int
     let title: String
     let author: String

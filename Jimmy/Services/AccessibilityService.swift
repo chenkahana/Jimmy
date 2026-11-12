@@ -20,10 +20,8 @@ final class AccessibilityService: ObservableObject {
         updateAccessibilitySettings()
     }
     
-    deinit {
-        Task { @MainActor in
-            removeNotificationObservers()
-        }
+    isolated deinit {
+        removeNotificationObservers()
     }
     
     // MARK: - Public Methods

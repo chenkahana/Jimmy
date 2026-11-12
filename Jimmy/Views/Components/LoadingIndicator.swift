@@ -105,8 +105,11 @@ struct DotsLoadingIndicator: View {
     
     private func startAnimation() {
         Timer.scheduledTimer(withTimeInterval: 0.4, repeats: true) { _ in
-            withAnimation(.motionGentle) { // spring animation refactored
-                animatingDot = (animatingDot + 1) % 3
+            // Scheduled from `onAppear`, so it fires on the main run loop.
+            MainActor.assumeIsolated {
+                withAnimation(.motionGentle) { // spring animation refactored
+                    animatingDot = (animatingDot + 1) % 3
+                }
             }
         }
     }

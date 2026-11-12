@@ -2,7 +2,7 @@ import FoundationModels
 
 /// A plain, testable mirror of `SystemLanguageModel.Availability` — so view-model/view logic and
 /// tests don't need to construct a real `SystemLanguageModel` to exercise the unavailable state.
-enum AssistantAvailability: Equatable {
+nonisolated enum AssistantAvailability: Equatable {
     case available
     case unavailable(reason: String)
 
@@ -21,7 +21,7 @@ enum AssistantAvailability: Equatable {
     }
 }
 
-private extension SystemLanguageModel.Availability.UnavailableReason {
+private nonisolated extension SystemLanguageModel.Availability.UnavailableReason {
     var assistantDescription: String {
         switch self {
         case .deviceNotEligible:

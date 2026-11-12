@@ -13,7 +13,9 @@ packages:
     path: Packages/JimmyKit
 settings:
   base:
-    SWIFT_VERSION: "5.0"
+    SWIFT_VERSION: "6.0"
+    SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
+    SWIFT_APPROACHABLE_CONCURRENCY: YES
     DEVELOPMENT_TEAM: DPF8459C2J
     CODE_SIGN_STYLE: Automatic
     MARKETING_VERSION: "7.2"
@@ -71,6 +73,8 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.chenkahana.JimmyTests
+        # XCTestCase's initializers and setUp/tearDown are nonisolated, so test classes can't default to MainActor.
+        SWIFT_DEFAULT_ACTOR_ISOLATION: nonisolated
         GENERATE_INFOPLIST_FILE: YES
         BUNDLE_LOADER: "$(TEST_HOST)"
         TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Jimmy.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Jimmy"

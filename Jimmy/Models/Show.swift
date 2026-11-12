@@ -8,7 +8,7 @@ struct Show: Codable, Equatable, FetchableRecord, PersistableRecord {
     var language: String
     var updatedAt: Date
 
-    static var databaseTableName: String = "shows"
+    static let databaseTableName: String = "shows"
 
     enum Columns: String, ColumnExpression {
         case feedURL, showDescription, author, language, updatedAt

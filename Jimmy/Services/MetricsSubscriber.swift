@@ -2,8 +2,9 @@ import Foundation
 import MetricKit
 
 /// Subscribes to MetricKit diagnostic and performance payloads so crashes/hangs
-/// surface via Xcode Organizer while still giving us a lightweight local log.
-final class MetricsSubscriber: NSObject, MXMetricManagerSubscriber {
+/// surface via Xcode Organizer while still giving us a lightweight local log. `nonisolated`:
+/// MetricKit calls `didReceive` off the main thread.
+nonisolated final class MetricsSubscriber: NSObject, MXMetricManagerSubscriber, Sendable {
     static let shared = MetricsSubscriber()
 
     private override init() {

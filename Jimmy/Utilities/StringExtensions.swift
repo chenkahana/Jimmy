@@ -1,6 +1,6 @@
 import Foundation
 
-extension String {
+nonisolated extension String {
     /// Removes HTML tags and entities from episode descriptions
     var cleanedEpisodeDescription: String {
         return self.cleanedDescription

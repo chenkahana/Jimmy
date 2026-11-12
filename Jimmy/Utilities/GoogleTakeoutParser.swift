@@ -1,6 +1,6 @@
 import Foundation
 
-struct GoogleTakeoutParser {
+nonisolated struct GoogleTakeoutParser {
     struct GoogleFeed: Codable {
         let title: String
         let feedUrl: String

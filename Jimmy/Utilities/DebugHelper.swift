@@ -3,7 +3,7 @@ import os
 import UserNotifications
 
 class DebugHelper {
-    private static let logger = Logger(subsystem: "com.chenkahana.Jimmy", category: "DebugHelper")
+    private nonisolated static let logger = Logger(subsystem: "com.chenkahana.Jimmy", category: "DebugHelper")
     static let shared = DebugHelper()
     
     private init() {}

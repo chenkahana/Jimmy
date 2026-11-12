@@ -5,7 +5,7 @@ import Foundation
 /// no single seed crowds out the others, skipping anything already subscribed to and anything
 /// already picked by an earlier seed. Pure and synchronous — the network call itself
 /// (`SuggestionsActions.searchPodcastsForSuggestions`) happens before this runs.
-enum NewShowsRanker {
+nonisolated enum NewShowsRanker {
     static func rank(
         resultsBySeed: [[SuggestedShowResult]],
         subscribedFeedURLs: Set<URL>,

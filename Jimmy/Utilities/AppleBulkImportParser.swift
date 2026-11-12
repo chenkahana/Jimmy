@@ -1,6 +1,6 @@
 import Foundation
 
-struct AppleBulkImportParser {
+nonisolated struct AppleBulkImportParser {
     struct ExportedPodcast: Codable {
         let title: String
         let feedURL: String

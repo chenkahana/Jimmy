@@ -1,7 +1,7 @@
 import Foundation
 import GRDB
 
-public struct Podcast: Identifiable, Codable, Equatable, FetchableRecord, PersistableRecord {
+public nonisolated struct Podcast: Identifiable, Codable, Equatable, Sendable, FetchableRecord, PersistableRecord {
     public var id: UUID = UUID()
     public var title: String
     public var cleanTitle: String // Processed title with duplicates removed
@@ -15,7 +15,7 @@ public struct Podcast: Identifiable, Codable, Equatable, FetchableRecord, Persis
     public var etag: String?
     public var lastFetched: Date?
     
-    public static var databaseTableName: String = "podcasts"
+    public static let databaseTableName: String = "podcasts"
     
     public enum Columns: String, ColumnExpression {
         case id, title, cleanTitle, author, description, feedURL, artworkURL

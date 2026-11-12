@@ -50,7 +50,7 @@ struct AssistantPodcastResult: Sendable, Equatable {
 /// episodes, preferring an episode whose own title contains the query, then falling back to the
 /// newest episode of a podcast whose name contains it. Pure and synchronous so it's trivially
 /// testable without touching `AssistantActions`.
-enum AssistantEpisodeMatcher {
+nonisolated enum AssistantEpisodeMatcher {
     static func bestMatch(
         for query: String,
         episodes: [JimmyKit.Episode],

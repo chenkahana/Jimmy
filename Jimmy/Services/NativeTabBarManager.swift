@@ -23,7 +23,8 @@ class NativeTabBarManager: ObservableObject {
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            self?.configureNativeAppearance()
+            // Delivered on `.main`, per the `queue:` argument.
+            MainActor.assumeIsolated { self?.configureNativeAppearance() }
         }
         
         // Observe increase contrast changes
@@ -32,7 +33,8 @@ class NativeTabBarManager: ObservableObject {
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            self?.configureNativeAppearance()
+            // Delivered on `.main`, per the `queue:` argument.
+            MainActor.assumeIsolated { self?.configureNativeAppearance() }
         }
     }
     

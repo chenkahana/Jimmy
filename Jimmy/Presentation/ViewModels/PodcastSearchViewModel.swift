@@ -6,7 +6,7 @@ import JimmyKit
 /// Phase 6: Enhanced with error handling and task management
 @MainActor
 class PodcastSearchViewModel: ObservableObject, TaskManagedViewModel {
-    private static let logger = Logger(subsystem: "com.chenkahana.Jimmy", category: "PodcastSearchViewModel")
+    private nonisolated static let logger = Logger(subsystem: "com.chenkahana.Jimmy", category: "PodcastSearchViewModel")
     @Published var searchText: String = ""
     @Published var searchScope: SearchScope = .all
     @Published var searchResults: [PodcastSearchResult] = []
@@ -204,7 +204,7 @@ class PodcastSearchViewModel: ObservableObject, TaskManagedViewModel {
         let subscribeTask = Task.managed(
             id: "subscribe-\(result.feedURL.absoluteString)",
             manager: taskManager
-        ) { [weak self] in
+        ) { @MainActor [weak self] in
             defer {
                 Task { @MainActor [weak self] in
                     self?.processingFeedURLs.remove(result.feedURL)
@@ -270,10 +270,5 @@ class PodcastSearchViewModel: ObservableObject, TaskManagedViewModel {
             genre: result.genre,
             trackCount: result.trackCount
         )
-    }
-
-    deinit {
-        cancellables.forEach { $0.cancel() }
-        cancellables.removeAll()
     }
 }

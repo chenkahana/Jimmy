@@ -106,6 +106,20 @@ Lanes in the same wave run in parallel, each in its own worktree under `~/.workt
     removal. DI/`Domain`/`Data`/Swift 6 mode are still lane A's to do.
   - `make build` and `make test SIM="Jimmy Lane 5"` both green after the sweep.
   - Combined: with `DIContainer`/`GRDBRepositories` gone, `MemoryCacheStore`/`MemoryCache`/`ShowMetadata` had no callers left and were deleted too, so `Domain/` and `Data/` are both gone.
+  - Swift 6 step: the app and watch targets now build in Swift 6 language mode with MainActor as the
+    default isolation plus Approachable Concurrency (`project.yml` base settings), matching JimmyKit.
+    The test target is Swift 6 too but keeps `nonisolated` default isolation (XCTestCase's inits and
+    `setUp`/`tearDown` are nonisolated); test classes that touch main-actor code are `@MainActor`.
+    Pure value types and parsers are `nonisolated`; real background work (cache size walk, artwork
+    colour sampling, image download/decode) is `@concurrent`; callbacks that arrive off the main thread
+    (WCSession delegate, BGTask expiration, MPMediaItemArtwork's request handler, audio route-change
+    notifications) are nonisolated, `@Sendable`, or hop to main; the BGTask launch handlers now run on
+    `.main`. No `Task.detached` is left. Deleted as dead (zero callers): `BackgroundTaskCoordinator`,
+    `DataFetchCoordinator`, `NetworkDiagnosticService`, `NetworkManager`, `KeyboardNavigationService`,
+    `LoggingService`/`ErrorHandlingService`, `BlockingCallAuditor`, `FileStorage.saveAsync`/`loadAsync`.
+    Left: `@preconcurrency import` of `WatchConnectivity` and `BackgroundTasks` (Apple types not
+    annotated Sendable, commented), and the pre-existing `fatalError` in `FileStorage.init` (no
+    documents directory) and `StandardTabBarController.init(coder:)`.
 - [ ] 26. Demo library + screenshots + README (H script, S seeding)
 - [ ] 27. `docs/qa.md` and QA rounds (H)
 - [ ] 28. Release guide, v8.0 tag (H)

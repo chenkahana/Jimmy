@@ -164,7 +164,7 @@ final class UnifiedNetworkService: ObservableObject {
 
 // MARK: - Supporting Types
 
-enum CachePolicy {
+nonisolated enum CachePolicy {
     case returnCacheDataElseLoad
     case returnCacheDataDontLoad
     case reloadIgnoringLocalCacheData

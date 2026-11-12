@@ -13,7 +13,7 @@ struct EpisodeWithPlaybackState: Identifiable, Codable, Equatable {
 }
 
 /// Episode status enumeration for the unified Episode Card (renamed to avoid conflicts)
-enum EpisodeCardStatus: Int, Codable, CaseIterable {
+nonisolated enum EpisodeCardStatus: Int, Codable, CaseIterable {
     case none = 0
     case played = 1
     case queued = 2
@@ -21,7 +21,7 @@ enum EpisodeCardStatus: Int, Codable, CaseIterable {
 }
 
 /// Data contract for the unified Episode Card component
-struct EpisodeWithStatus: Equatable, Identifiable {
+nonisolated struct EpisodeWithStatus: Equatable, Identifiable {
     let id: UUID          // Episode ID
     let title: String
     let podcastTitle: String
