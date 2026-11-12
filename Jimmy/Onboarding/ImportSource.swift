@@ -40,8 +40,8 @@ enum ImportSource: String, CaseIterable, Identifiable, Hashable {
     var summary: String {
         switch self {
         case .applePodcasts:
-            "Apple Podcasts has no export. A shortcut can copy the link to every show you follow, "
-                + "and Jimmy adds them from the clipboard."
+            "Apple Podcasts has no export, so Jimmy brings a shortcut that reads the shows you follow "
+                + "and hands them back here."
         case .spotify where SpotifyConfig.isConfigured:
             "Sign in once and Jimmy adds your saved shows, then puts your saved episodes in the Queue "
                 + "where you left off."
@@ -64,11 +64,9 @@ enum ImportSource: String, CaseIterable, Identifiable, Hashable {
         switch self {
         case .applePodcasts:
             [
-                "Open Shortcuts and tap + to make a new shortcut.",
-                "Add Get Podcasts from Library.",
-                "Add Get Details of Podcasts and set it to Store URL.",
-                "Add Copy to Clipboard, then tap Done.",
-                "Run the shortcut, come back to Jimmy and tap Paste."
+                "Tap Add Shortcut, choose Shortcuts, then tap Add Shortcut.",
+                "Tap Move Podcasts to Jimmy and allow it to use Podcasts.",
+                "Jimmy opens and adds every show you follow."
             ]
         case .spotify:
             [
@@ -123,7 +121,7 @@ enum ImportSource: String, CaseIterable, Identifiable, Hashable {
     /// Where the steps start: the app, Shortcuts for Apple Podcasts, Overcast's website.
     var startURL: URL? {
         switch self {
-        case .applePodcasts: URL(string: "shortcuts://")
+        case .applePodcasts: ApplePodcastsShortcut.runURL
         case .overcast: URL(string: "https://overcast.fm/account")
         default: scheme.flatMap { URL(string: "\($0)://") }
         }
@@ -131,7 +129,7 @@ enum ImportSource: String, CaseIterable, Identifiable, Hashable {
 
     var startTitle: String {
         switch self {
-        case .applePodcasts: "Open Shortcuts"
+        case .applePodcasts: "Run Shortcut Again"
         case .overcast: "Open overcast.fm"
         default: "Open \(name)"
         }
@@ -149,5 +147,23 @@ enum ImportSource: String, CaseIterable, Identifiable, Hashable {
     static func ordered() -> (installed: [ImportSource], others: [ImportSource]) {
         let installed = allCases.filter(\.isInstalled)
         return (installed, allCases.filter { !installed.contains($0) })
+    }
+}
+
+/// "Move Podcasts to Jimmy": Get Podcasts from Library, then each show's Store ID, opened as
+/// `jimmy://import?text=…`. Built and signed by `Tools/shortcut/build.sh`.
+enum ApplePodcastsShortcut {
+    static let name = "Move Podcasts to Jimmy"
+
+    /// The signed shortcut in the app bundle, shared into Shortcuts.
+    static var fileURL: URL? {
+        Bundle.main.url(forResource: name, withExtension: "shortcut")
+    }
+
+    /// Runs it once it's been added.
+    static var runURL: URL? {
+        var components = URLComponents(string: "shortcuts://run-shortcut")
+        components?.queryItems = [URLQueryItem(name: "name", value: name)]
+        return components?.url
     }
 }

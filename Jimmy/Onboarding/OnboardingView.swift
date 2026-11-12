@@ -74,6 +74,7 @@ struct OnboardingView: View {
             importPendingFiles()
         }
         .onChange(of: onboarding.pendingFiles) { importPendingFiles() }
+        .onChange(of: onboarding.pendingText) { importPendingFiles() }
         // A file shared while an import was running waits for it to finish.
         .onChange(of: onboarding.session.isRunning) { importPendingFiles() }
     }
@@ -96,10 +97,15 @@ struct OnboardingView: View {
 
     /// Files shared to Jimmy, whether the flow was already open or opened for them.
     private func importPendingFiles() {
-        guard !onboarding.pendingFiles.isEmpty, !onboarding.session.isRunning else { return }
-        let files = onboarding.pendingFiles
-        onboarding.pendingFiles = []
-        startImport(files: files)
+        guard !onboarding.session.isRunning else { return }
+        if let text = onboarding.pendingText {
+            onboarding.pendingText = nil
+            start { session, model in await session.run(pastedText: text, model: model) }
+        } else if !onboarding.pendingFiles.isEmpty {
+            let files = onboarding.pendingFiles
+            onboarding.pendingFiles = []
+            startImport(files: files)
+        }
     }
 
     private func startImport(files: [URL]) {
@@ -200,8 +206,14 @@ struct ImportSourceView: View {
             if let startURL = source.startURL, source.isInstalled || source == .overcast || source == .applePodcasts {
                 Section {
                     Button(source.startTitle) { openURL(startURL) }
+                } footer: {
+                    if source == .applePodcasts {
+                        Text("Shows with a private feed aren't in the Apple Podcasts directory, "
+                            + "so the shortcut can't bring them.")
+                    }
                 }
             }
+
         }
         .navigationTitle(source.name)
         .navigationBarTitleDisplayMode(.inline)
@@ -223,13 +235,13 @@ struct ImportSourceView: View {
     @ViewBuilder
     private var primaryAction: some View {
         Group {
-            if source == .applePodcasts {
-                PasteButton(payloadType: String.self) { strings in
-                    let text = strings.joined(separator: "\n")
-                    onStart { session, model in await session.run(pastedText: text, model: model) }
+            if source == .applePodcasts, let shortcut = ApplePodcastsShortcut.fileURL {
+                ShareLink(item: shortcut, preview: SharePreview(ApplePodcastsShortcut.name)) {
+                    Text("Add Shortcut")
                 }
-                .labelStyle(.titleAndIcon)
-                .buttonBorderShape(.capsule)
+                .buttonStyle(.glassProminent)
+            } else if source == .applePodcasts {
+                pasteButton
             } else if source == .spotify, SpotifyConfig.isConfigured {
                 Button("Choose Files") { isChoosingFile = true }
                     .buttonStyle(.glass)
@@ -242,6 +254,16 @@ struct ImportSourceView: View {
         .frame(maxWidth: .infinity)
         .padding(.horizontal, JimmyDesign.Spacing.lg)
         .padding(.bottom, JimmyDesign.Spacing.sm)
+    }
+
+    /// For show links copied from Apple Podcasts (Share > Copy Link) or anywhere else.
+    private var pasteButton: some View {
+        PasteButton(payloadType: String.self) { strings in
+            let text = strings.joined(separator: "\n")
+            onStart { session, model in await session.run(pastedText: text, model: model) }
+        }
+        .labelStyle(.titleAndIcon)
+        .buttonBorderShape(.capsule)
     }
 
     private func signInWithSpotify() async {

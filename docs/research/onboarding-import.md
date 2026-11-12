@@ -188,7 +188,7 @@ This is what `Jimmy/Onboarding/` builds. Screenshots in light and dark are in `d
 **Principles taken from the research**
 - No sign-up wall and no permission prompt at launch. The first screen is the import itself, and **Skip** is always in the toolbar.
 - One primary action per screen. If a source app is installed, it is "Import from Overcast". If none is, it is "Choose an Export File", and Jimmy works out the format itself (`ImportFile.kind(of:)`: OPML, Spotify data download, Google Takeout, Apple bulk JSON, or plain text with links).
-- Each source gets the shortest path it allows: a sign-in where an API exists (Spotify, when a client ID is configured), a file with exact steps where it doesn't, and the clipboard for Apple Podcasts.
+- Each source gets the shortest path it allows: a sign-in where an API exists (Spotify, when a client ID is configured), a file with exact steps where it doesn't, and Jimmy's own shortcut for Apple Podcasts.
 - The import is visible while it runs. Rows appear at once, and each show's artwork fills in as its feed arrives. Six shows are added at a time.
 - At the end, Jimmy says what came over and opens the Queue if anything was in progress, otherwise the Library.
 
@@ -220,7 +220,7 @@ This is what `Jimmy/Onboarding/` builds. Screenshots in light and dark are in `d
 |---|---|---|
 | Overcast | Steps to overcast.fm/account, All Data, then Choose File (or share the file to Jimmy) | Shows, played episodes, progress. In-progress episodes go to the Queue. |
 | Spotify | Sign In with Spotify (PKCE) when `SPOTIFY_CLIENT_ID` is set; otherwise the data-download steps and Choose Files (several files at once) | Saved shows, matched by name. Saved episodes go to the Queue with their resume point. Streaming history adds progress; under a minute is ignored. |
-| Apple Podcasts | Steps for a four-action shortcut that copies each show's Store URL, then the system Paste button (no clipboard prompt) | Shows, resolved through the iTunes Lookup API by Apple ID. |
+| Apple Podcasts | **Add Shortcut** shares Jimmy's bundled, signed "Move Podcasts to Jimmy" shortcut into Shortcuts. One tap runs it: Get Podcasts from Library, then each show's Store ID, then `jimmy://import?text=…`, and Jimmy imports | Shows, resolved through the iTunes Lookup API by Apple ID. |
 | Pocket Casts, Castro, others | Steps to export OPML, then Choose File (or share the file to Jimmy) | Shows. |
 | Start fresh | Browse Top Shows opens Discover | Nothing to import. |
 
@@ -235,8 +235,21 @@ This is what `Jimmy/Onboarding/` builds. Screenshots in light and dark are in `d
 - Sharing an `.opml` file to Jimmy (from Overcast, Files or Mail) opens the flow and starts the import.
 - `-resetOnboarding` shows it again. `-skipOnboarding` hides it. `-demoLibrary` hides it unless `-resetOnboarding` is also passed.
 
+**Apple Podcasts in about four taps**
+1. In Jimmy, tap Add Shortcut and choose Shortcuts in the share sheet.
+2. Tap Add Shortcut.
+3. Tap Move Podcasts to Jimmy, then allow it to use Podcasts.
+4. Jimmy opens, and every followed show arrives.
+
+- `Tools/shortcut/make_shortcut.py` writes the shortcut, using the action identifiers found in this Mac's system cache: `is.workflow.actions.getpodcastsfromlibrary`, `properties.podcastshow` (Store ID), `text.combine`, `urlencode` and `openurl`.
+- `Tools/shortcut/build.sh` signs it with `shortcuts sign --mode anyone` into `Jimmy/Resources/`. Signed files can be shared from an app without an iCloud link (iOS 15+).
+- The payload goes through a URL rather than x-callback, because iOS 26.5 broke x-callback result return.
+- "Run Shortcut Again" opens `shortcuts://run-shortcut?name=…`.
+- Not verified: the simulator has neither Podcasts nor Shortcuts, so the shortcut needs a first run on a device. It can't carry played state or progress: no Shortcuts property exposes them.
+
+**Rejected: the Apple Podcasts website.** Since August 2024, podcasts.apple.com shows a signed-in user's Library, Up Next and progress, through `amp-api.podcasts.apple.com` with a media user token. That is the only path to Apple history. It would mean asking for an Apple ID sign-in inside a Jimmy web view and calling an undocumented Apple API. That looks like phishing, is likely to fail App Review, and breaks whenever Apple changes the site.
+
 **Next steps, not built**
-- A hosted iCloud shortcut link for Apple Podcasts, which would make it two taps: Add Shortcut, then Run. This needs Chen to publish the shortcut.
-- A `jimmy://import` App Intent, so the shortcut can hand Jimmy the list without the clipboard.
+- An iCloud link for the same shortcut, which would skip the share sheet. Chen can publish it from a device.
 - Spotify Extended Quota, needed before sign-in can work for the public.
 - Reading the privacy.apple.com Podcasts files, once their exact file names are confirmed from a real download.
