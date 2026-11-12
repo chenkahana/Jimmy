@@ -134,7 +134,7 @@ slop check in `docs/design.md`.
 - [ ] S1. Shell: SwiftUI `TabView`, Search tab, mini player as `tabViewBottomAccessory`, Settings out of the tab bar (S)
 - [ ] S2. Queue: plain `List`, native reorder and swipe actions (S)
 - [ ] S3. Now Playing: artwork backdrop, glass transport, one bottom panel for speed, sleep and chapters (S)
-- [ ] S4. Library: artwork grid, `.searchable`, no overview card (S)
+- [x] S4. Library: artwork grid, `.searchable`, no overview card (S)
 - [ ] S5. Podcast and Episode: artwork band header, New York show notes (S)
 - [ ] S6. Search and Discover: recent searches, Top Shows, categories (S)
 - [ ] S7. Settings: `Form` (S)

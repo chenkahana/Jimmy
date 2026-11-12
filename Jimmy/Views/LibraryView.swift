@@ -6,33 +6,23 @@ struct LibraryView: View {
     private let logger = Logger(subsystem: "com.chenkahana.Jimmy", category: "LibraryView")
     @Environment(AppModel.self) private var appModel
     @Environment(ShellStore.self) private var shell
-    @State private var toastMessage: String = ""
-    @State private var showToast: Bool = false
     @AppStorage("libraryViewMode") private var viewMode: LibraryViewMode = .shows
 
     @State private var searchText: String = ""
-    @State private var isEditMode: Bool = false
     @State private var isAddingSamplePodcasts = false
 
     @State private var allEpisodeItems: [JimmyKit.EpisodeListItem] = []
+    @State private var newEpisodeCounts: [UUID: Int] = [:]
     @State private var isLoadingEpisodes = false
     @State private var episodesObservationTask: Task<Void, Never>?
 
     @State private var selectedDestination: LibraryNavigationDestination?
     @Namespace private var libraryNamespace
 
-    // Unsubscribe confirmation
-    @State private var podcastToUnsubscribe: Podcast?
-    @State private var showUnsubscribeAlert = false
+    @State private var podcastToUnsubscribe: JimmyKit.Podcast?
 
-    // Grid layout state
-    @State private var gridColumns: [GridItem] = [
-        GridItem(.flexible(), spacing: JimmyDesign.Spacing.sm),
-        GridItem(.flexible(), spacing: JimmyDesign.Spacing.sm),
-        GridItem(.flexible(), spacing: JimmyDesign.Spacing.sm)
-    ]
-    @State private var layoutReady = false
-    @State private var gridInitialized = false
+    /// Narrowest a grid cell gets; three across on iPhone, fewer as text grows.
+    @ScaledMetric(relativeTo: .subheadline) private var minimumCellWidth: CGFloat = 100
 
     enum LibraryViewMode: String, CaseIterable {
         case shows = "Shows"
@@ -40,118 +30,72 @@ struct LibraryView: View {
     }
 
     var body: some View {
-        ZStack {
-            JimmyScreenBackground()
-
-            VStack(spacing: 0) {
-                if showsLibraryChrome {
-                    searchBar
-                    viewModeToggle
-                }
-
+        mainContentView
+            .navigationTitle("Library")
+            .navigationBarTitleDisplayMode(.large)
+            .searchable(
+                text: $searchText,
+                placement: .navigationBarDrawer(displayMode: .always),
+                prompt: viewMode == .shows ? "Search Shows" : "Search Episodes"
+            )
+            .toolbar {
                 if isLoadingEpisodes {
-                    streamingProgressBanner
-                }
-
-                if !appModel.lastRefreshErrors.isEmpty {
-                    refreshErrorsBanner
-                }
-
-                mainContentView
-            }
-        }
-        .navigationTitle("Library")
-        .navigationBarTitleDisplayMode(.large)
-        .onAppear {
-            if !gridInitialized {
-                initializeGridLayout()
-            }
-            if !jimmyKitPodcasts.isEmpty {
-                Task { await validateAndPreloadArtwork() }
-            }
-        }
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button(action: { isEditMode.toggle() }) {
-                    Text(isEditMode ? "Done" : "Edit")
-                        .font(.system(.body, weight: .medium))
-                        .foregroundColor(.accentColor)
-                }
-            }
-
-            ToolbarItem(placement: .navigationBarLeading) {
-                #if DEBUG
-                if isEditMode {
-                    Menu {
-                        Button("Delete All", role: .destructive) {
-                            Task { await deleteAllPodcasts() }
-                        }
-                    } label: {
-                        Image(systemName: "ellipsis.circle")
-                            .foregroundColor(.red)
+                    ToolbarItem(placement: .topBarTrailing) {
+                        ProgressView()
+                            .accessibilityLabel("Loading episodes")
                     }
                 }
-                #endif
             }
-        }
-        .onAppear {
-            startObservingEpisodesIfNeeded()
-            Task {
-                await handlePendingContentRouteIfNeeded()
-                await validateAndPreloadArtwork()
-            }
-        }
-        .onChange(of: shell.pendingContentRoute?.id) { _, _ in
-            Task { await handlePendingContentRouteIfNeeded() }
-        }
-        .onChange(of: shell.tabSelectionEventID) { _, _ in
-            guard shell.selectedTab == .library, shell.pendingContentRoute == nil else { return }
-            selectedDestination = nil
-        }
-        .refreshable {
-            await refreshLibrary()
-        }
-        .navigationDestination(item: $selectedDestination) { destination in
-            switch destination {
-            case .podcast(let podcastID, let cachedPodcast, let sourceID):
-                ResolvedPodcastDetailView(
-                    podcastID: podcastID,
-                    cachedPodcast: cachedPodcast,
-                    sourceID: sourceID,
-                    namespace: libraryNamespace
-                )
-            case .episode(let episodeID, let cachedEpisode, let sourceID):
-                ResolvedEpisodeDetailView(
-                    episodeID: episodeID,
-                    cachedEpisode: cachedEpisode,
-                    sourceID: sourceID,
-                    namespace: libraryNamespace
-                )
-            }
-        }
-        .alert("Unsubscribe from \(podcastToUnsubscribe?.title ?? "Podcast")?", isPresented: $showUnsubscribeAlert) {
-            Button("Cancel", role: .cancel) {
-                podcastToUnsubscribe = nil
-            }
-            Button("Unsubscribe", role: .destructive) {
-                if let podcast = podcastToUnsubscribe {
-                    Task { await unsubscribe(podcast) }
-                }
-                podcastToUnsubscribe = nil
-            }
-        } message: {
-            Text("This will remove the podcast from your library and delete all downloaded episodes.")
-        }
-        .overlay(
-            VStack {
-                Spacer()
-                if showToast {
-                    toastView
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                        .animation(.motionTransition, value: showToast)
+            .onAppear {
+                startObservingEpisodesIfNeeded()
+                Task {
+                    await handlePendingContentRouteIfNeeded()
+                    await validateAndPreloadArtwork()
                 }
             }
-        )
+            .onChange(of: shell.pendingContentRoute?.id) { _, _ in
+                Task { await handlePendingContentRouteIfNeeded() }
+            }
+            .onChange(of: shell.tabSelectionEventID) { _, _ in
+                guard shell.selectedTab == .library, shell.pendingContentRoute == nil else { return }
+                selectedDestination = nil
+            }
+            .onChange(of: jimmyKitPodcasts) { _, podcasts in
+                newEpisodeCounts = LibraryShowCell.newEpisodeCounts(episodes: allEpisodeItems, podcasts: podcasts)
+            }
+            .navigationDestination(item: $selectedDestination) { destination in
+                switch destination {
+                case .podcast(let podcastID, let cachedPodcast, let sourceID):
+                    ResolvedPodcastDetailView(
+                        podcastID: podcastID,
+                        cachedPodcast: cachedPodcast,
+                        sourceID: sourceID,
+                        namespace: libraryNamespace
+                    )
+                case .episode(let episodeID, let cachedEpisode, let sourceID):
+                    ResolvedEpisodeDetailView(
+                        episodeID: episodeID,
+                        cachedEpisode: cachedEpisode,
+                        sourceID: sourceID,
+                        namespace: libraryNamespace
+                    )
+                }
+            }
+            .alert(
+                "Unsubscribe from \(podcastToUnsubscribe?.title ?? "Show")?",
+                isPresented: Binding(
+                    get: { podcastToUnsubscribe != nil },
+                    set: { if !$0 { podcastToUnsubscribe = nil } }
+                ),
+                presenting: podcastToUnsubscribe
+            ) { podcast in
+                Button("Cancel", role: .cancel) {}
+                Button("Unsubscribe", role: .destructive) {
+                    Task { await unsubscribe(podcast.id) }
+                }
+            } message: { _ in
+                Text("This will remove the podcast from your library and delete all downloaded episodes.")
+            }
     }
 
     // MARK: - Data
@@ -168,33 +112,38 @@ struct LibraryView: View {
         allEpisodeItems.map { $0.asLegacyEpisode() }
     }
 
-    private var filteredPodcasts: [Podcast] {
-        let podcasts = jimmyKitPodcasts.map { $0.asLegacyPodcast() }
-        guard !searchText.isEmpty else { return podcasts }
-        return podcasts.filter {
+    private var filteredPodcasts: [JimmyKit.Podcast] {
+        guard !searchText.isEmpty else { return jimmyKitPodcasts }
+        return jimmyKitPodcasts.filter {
             $0.title.localizedCaseInsensitiveContains(searchText) ||
             $0.author.localizedCaseInsensitiveContains(searchText)
         }
     }
 
-    private func unsubscribe(_ podcast: Podcast) async {
-        await appModel.unsubscribe(podcast.id)
-        await MainActor.run {
-            allEpisodeItems.removeAll { $0.episode.podcastID == podcast.id }
-            toastMessage = "Unsubscribed"
-            showToast = true
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                showToast = false
-            }
+    /// The 100 most recent episodes, narrowed by the search text (episode or show title).
+    private var recentEpisodeItems: [JimmyKit.EpisodeListItem] {
+        guard !searchText.isEmpty else { return Array(allEpisodeItems.prefix(100)) }
+        let matchingShowIDs = Set(filteredPodcasts.map(\.id))
+        let matches = allEpisodeItems.filter { item in
+            item.episode.title.localizedCaseInsensitiveContains(searchText) ||
+            item.episode.podcastID.map(matchingShowIDs.contains) == true
         }
+        return Array(matches.prefix(100))
     }
 
+    private func unsubscribe(_ podcastID: UUID) async {
+        await appModel.unsubscribe(podcastID)
+        allEpisodeItems.removeAll { $0.episode.podcastID == podcastID }
+    }
+
+    #if DEBUG
     private func deleteAllPodcasts() async {
         for podcast in jimmyKitPodcasts {
             await appModel.unsubscribe(podcast.id)
         }
-        await MainActor.run { allEpisodeItems = [] }
+        allEpisodeItems = []
     }
+    #endif
 
     private func refreshLibrary() async {
         // `apply`'s writes land in the store, which `episodesObservationTask` is already
@@ -203,8 +152,8 @@ struct LibraryView: View {
     }
 
     /// Subscribes once to every episode across the whole library (joined with progress, queue
-    /// membership, and download state), for the "Episodes" view mode — re-emitted live as any of
-    /// that changes, straight from `AppModel`'s `Store`.
+    /// membership, and download state), for the "Episodes" view mode and the grid's new-episode
+    /// counts — re-emitted live as any of that changes, straight from `AppModel`'s `Store`.
     private func startObservingEpisodesIfNeeded() {
         guard episodesObservationTask == nil else { return }
         guard let stream = appModel.observeEpisodes(podcastID: nil) else { return }
@@ -214,6 +163,7 @@ struct LibraryView: View {
             do {
                 for try await items in stream {
                     allEpisodeItems = items
+                    newEpisodeCounts = LibraryShowCell.newEpisodeCounts(episodes: items, podcasts: jimmyKitPodcasts)
                     isLoadingEpisodes = false
                 }
             } catch {
@@ -223,298 +173,168 @@ struct LibraryView: View {
         }
     }
 
-    // MARK: - Toast View
+    // MARK: - Chrome
 
-    private var toastView: some View {
-        HStack {
-            Text(toastMessage)
-                .font(.body)
-                .fontWeight(.medium)
-                .foregroundColor(.white)
-
-            Spacer()
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color.black.opacity(0.8))
-                .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
-        )
-        .padding(.horizontal, 16)
-        .tabBarBottomPadding()
-    }
-
-    // MARK: - Streaming Progress Banner
-
-    private var showsLibraryChrome: Bool {
-        isLoadingEpisodes || !jimmyKitPodcasts.isEmpty || !allEpisodes.isEmpty
-    }
-
-    private var streamingProgressBanner: some View {
-        JimmyCard(padding: JimmyDesign.Spacing.md) {
-            HStack {
-                ProgressView()
-                    .scaleEffect(0.8)
-
-                Text("Loading Episodes")
-                    .font(JimmyDesign.Typography.caption)
-                    .fontWeight(.medium)
-
-                Spacer()
-
-                Text("\(allEpisodes.count)")
-                    .font(JimmyDesign.Typography.caption)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.accentColor)
+    /// The first row under the large title. In the navigation bar's center it would replace the
+    /// large title and push the search field away.
+    private var viewModePicker: some View {
+        Picker("View", selection: $viewMode) {
+            ForEach(LibraryViewMode.allCases, id: \.self) { mode in
+                Text(mode.rawValue).tag(mode)
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.bottom, 8)
-        .animation(.motionGentle, value: isLoadingEpisodes)
+        .pickerStyle(.segmented)
     }
 
-    private var refreshErrorsBanner: some View {
-        JimmyCard(padding: JimmyDesign.Spacing.md) {
-            HStack {
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .foregroundColor(.orange)
-                Text("Couldn't refresh \(appModel.lastRefreshErrors.count) show\(appModel.lastRefreshErrors.count == 1 ? "" : "s")")
-                    .font(JimmyDesign.Typography.caption)
-                    .foregroundColor(.secondary)
-                Spacer()
+    private var refreshErrorsRow: some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text("Couldn't refresh ^[\(appModel.lastRefreshErrors.count) show](inflect: true).")
+                .foregroundStyle(.secondary)
+            Spacer(minLength: JimmyDesign.Spacing.sm)
+            Button("Try Again") {
+                Task { await refreshLibrary() }
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.bottom, 8)
+        .font(.footnote)
     }
 
-    // MARK: - Search Bar
-
-    private var searchBar: some View {
-        LibrarySearchComponent(searchText: $searchText, placeholder: "Search podcasts, episodes, creators")
-            .padding(.horizontal, 16)
-            .padding(.top, 8)
-    }
-
-    // MARK: - View Mode Toggle
-
-    private var viewModeToggle: some View {
-        JimmyCard(padding: JimmyDesign.Spacing.sm) {
-            Picker("View Mode", selection: $viewMode) {
-                ForEach(LibraryViewMode.allCases, id: \.self) { mode in
-                    Text(mode.rawValue).tag(mode)
-                }
-            }
-            .pickerStyle(.segmented)
-            .accessibilityLabel("Library view mode")
-            .accessibilityHint("Select between Shows grid and Episodes list")
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-    }
-
-    // MARK: - Content View
-
-    @ViewBuilder
-    private var contentView: some View {
-        switch viewMode {
-        case .shows: showsGridView
-        case .episodes: episodesListView
-        }
-    }
-
-    // MARK: - Shows Grid View
-
-    private var showsGridView: some View {
-        GeometryReader { geometry in
-            ScrollView {
-                LazyVGrid(columns: gridColumns, spacing: 16) {
-                    ForEach(filteredPodcasts, id: \.id) { podcast in
-                        ZStack {
-                            Button {
-                                let sourceID = "library-show-\(podcast.id.uuidString)"
-                                selectedDestination = .podcast(id: podcast.id, cachedPodcast: podcast, sourceID: sourceID)
-                            } label: {
-                                OptimizedPodcastCard(podcast: podcast, isEditMode: false, onUnsubscribe: {})
-                                    .matchedTransitionSource(id: "library-show-\(podcast.id.uuidString)", in: libraryNamespace)
-                            }
-                            .disabled(isEditMode)
-                            .buttonStyle(.plain)
-
-                            if isEditMode {
-                                VStack {
-                                    HStack {
-                                        Spacer()
-                                        Button(action: {
-                                            podcastToUnsubscribe = podcast
-                                            showUnsubscribeAlert = true
-                                        }) {
-                                            Image(systemName: "xmark.circle.fill")
-                                                .font(.system(size: 24, weight: .medium))
-                                                .foregroundColor(.white)
-                                                .background(Circle().fill(Color.red).frame(width: 24, height: 24))
-                                                .shadow(color: .black.opacity(0.3), radius: 2, x: 0, y: 1)
-                                        }
-                                        .buttonStyle(PlainButtonStyle())
-                                        .accessibilityLabel("Unsubscribe from \(podcast.title)")
-                                        .accessibilityHint("Double tap to remove this podcast from your library")
-                                        .offset(x: 8, y: -8)
-                                    }
-                                    Spacer()
-                                }
-                            }
-                        }
-                        .scaleEffect(isEditMode ? 0.95 : 1.0)
-                        .animation(.motionGentle, value: isEditMode)
-                        .transition(.asymmetric(
-                            insertion: .scale(scale: 0.8).combined(with: .opacity),
-                            removal: .opacity
-                        ))
-                        .animation(.spring(response: 0.6, dampingFraction: 0.8), value: filteredPodcasts.count)
-                    }
-                }
-                .padding(.horizontal, 16)
-                .padding(.top, 8)
-                .tabBarBottomPadding()
-            }
-            .refreshable { await refreshLibrary() }
-            .scrollContentBackground(.hidden)
-            .onAppear {
-                updateGridColumns(width: geometry.size.width)
-                layoutReady = true
-            }
-            .onChange(of: Int(geometry.size.width / 10)) { _, _ in
-                if layoutReady { updateGridColumns(width: geometry.size.width) }
-            }
-        }
-    }
-
-    private func updateGridColumns(width: CGFloat) {
-        let minItemWidth: CGFloat = 164
-        let spacing: CGFloat = 12
-        let horizontalPadding: CGFloat = 32
-        let availableWidth = width - horizontalPadding
-        let count = max(3, Int((availableWidth + spacing) / (minItemWidth + spacing)))
-        gridColumns = Array(repeating: GridItem(.flexible(), spacing: spacing), count: count)
-        gridInitialized = true
-    }
-
-    private func initializeGridLayout() {
-        let screenWidth = UIScreen.main.bounds.width
-        updateGridColumns(width: screenWidth)
-        layoutReady = true
-    }
-
-    // MARK: - Episodes List View
-
-    private var episodesListView: some View {
-        ScrollView {
-            LazyVStack(spacing: 8) {
-                if !allEpisodes.isEmpty || isLoadingEpisodes {
-                    episodesSectionHeader
-                }
-
-                if recentEpisodesWithStatus.isEmpty && !isLoadingEpisodes {
-                    VStack(spacing: 16) {
-                        Image(systemName: "waveform.slash")
-                            .font(.system(size: 48))
-                            .foregroundColor(.secondary)
-                        Text("No Episodes Available")
-                            .font(.headline)
-                            .foregroundColor(.secondary)
-                        Text("Episodes will appear here as they load from your subscribed podcasts.")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, 32)
-                    }
-                    .padding(.vertical, 60)
-                } else {
-                    Section {
-                        ForEach(recentEpisodesWithStatus, id: \.id) { episodeWithStatus in
-                            EpisodeCard(
-                                episode: episodeWithStatus,
-                                onTap: {
-                                    let episode = allEpisodes.first { $0.id == episodeWithStatus.id }
-                                    if let episode {
-                                        let sourceID = "library-episode-\(episode.id.uuidString)"
-                                        let episodeWithState = EpisodeWithPlaybackState(
-                                            episode: episode,
-                                            playbackState: PlaybackState(episodeID: episode.id, position: 0, finished: false, updatedAt: Date())
-                                        )
-                                        selectedDestination = .episode(id: episode.id, cachedEpisode: episodeWithState, sourceID: sourceID)
-                                    }
-                                },
-                                onPlay: {
-                                    Task {
-                                        if let episode = allEpisodes.first(where: { $0.id == episodeWithStatus.id }) {
-                                            await playEpisode(episode)
-                                        }
-                                    }
-                                },
-                                onAddToQueue: {
-                                    if let episode = allEpisodes.first(where: { $0.id == episodeWithStatus.id }) {
-                                        addToQueue(episode)
-                                    }
-                                },
-                                onToggleFinished: {
-                                    if let episode = allEpisodes.first(where: { $0.id == episodeWithStatus.id }) {
-                                        toggleFinished(episode)
-                                    }
-                                }
-                            )
-                            .matchedTransitionSource(id: "library-episode-\(episodeWithStatus.id.uuidString)", in: libraryNamespace)
-                        }
-                    }
-                }
-
-                if isLoadingEpisodes {
-                    HStack {
-                        ProgressView().scaleEffect(0.8)
-                        Text("Loading more episodes...")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                    .padding(.vertical, 8)
-                }
-            }
-            .padding(.horizontal, 16)
-            .padding(.top, 8)
-            .tabBarBottomPadding()
-        }
-        .scrollContentBackground(.hidden)
-    }
-
-    private var episodesSectionHeader: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Recent Episodes")
-                    .font(.headline)
-                    .fontWeight(.semibold)
-                Text("\(allEpisodes.count) episodes")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-            Spacer()
-            if isLoadingEpisodes {
-                ProgressView().scaleEffect(0.8)
-            }
-        }
-        .padding(.horizontal, 4)
-        .padding(.bottom, 8)
-    }
-
-    // MARK: - Computed Properties
+    // MARK: - Content
 
     @ViewBuilder
     private var mainContentView: some View {
-        if isLoadingEpisodes && jimmyKitPodcasts.isEmpty && allEpisodes.isEmpty {
-            loadingView
-        } else if jimmyKitPodcasts.isEmpty {
-            emptyStateView
+        if jimmyKitPodcasts.isEmpty {
+            if isLoadingEpisodes {
+                ProgressView()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                emptyStateView
+            }
         } else {
-            contentView
+            ScrollView {
+                VStack(alignment: .leading, spacing: JimmyDesign.Spacing.lg) {
+                    viewModePicker
+
+                    if !appModel.lastRefreshErrors.isEmpty {
+                        refreshErrorsRow
+                    }
+
+                    switch viewMode {
+                    case .shows: showsGrid
+                    case .episodes: episodesList
+                    }
+                }
+                .padding(.horizontal, JimmyDesign.Spacing.lg)
+                .padding(.top, JimmyDesign.Spacing.sm)
+                .tabBarBottomPadding()
+            }
+            .refreshable { await refreshLibrary() }
+            .overlay { contentUnavailableOverlay }
+        }
+    }
+
+    @ViewBuilder
+    private var contentUnavailableOverlay: some View {
+        switch viewMode {
+        case .shows:
+            if filteredPodcasts.isEmpty {
+                ContentUnavailableView.search(text: searchText)
+            }
+        case .episodes:
+            if recentEpisodeItems.isEmpty && !isLoadingEpisodes {
+                if searchText.isEmpty {
+                    ContentUnavailableView(
+                        "No Episodes",
+                        systemImage: "waveform",
+                        description: Text("Episodes from the shows you follow appear here.")
+                    )
+                } else {
+                    ContentUnavailableView.search(text: searchText)
+                }
+            }
+        }
+    }
+
+    // MARK: - Shows Grid
+
+    private var showsGrid: some View {
+        LazyVGrid(
+            columns: [GridItem(.adaptive(minimum: minimumCellWidth), spacing: JimmyDesign.Spacing.md, alignment: .top)],
+            alignment: .leading,
+            spacing: JimmyDesign.Spacing.xl
+        ) {
+            ForEach(filteredPodcasts) { podcast in
+                let sourceID = "library-show-\(podcast.id.uuidString)"
+                Button {
+                    selectedDestination = .podcast(id: podcast.id, cachedPodcast: podcast.asLegacyPodcast(), sourceID: sourceID)
+                } label: {
+                    LibraryShowCell(
+                        podcast: podcast,
+                        newEpisodeCount: newEpisodeCounts[podcast.id] ?? 0,
+                        transitionID: sourceID,
+                        namespace: libraryNamespace
+                    )
+                }
+                .buttonStyle(.plain)
+                .contextMenu {
+                    Button("Unsubscribe", systemImage: "minus.circle", role: .destructive) {
+                        podcastToUnsubscribe = podcast
+                    }
+                    #if DEBUG
+                    Button("Unsubscribe from All", systemImage: "trash", role: .destructive) {
+                        Task { await deleteAllPodcasts() }
+                    }
+                    #endif
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityAction(named: "Unsubscribe") {
+                    podcastToUnsubscribe = podcast
+                }
+            }
+        }
+    }
+
+}
+
+// MARK: - Episodes List
+
+extension LibraryView {
+
+    private var episodesList: some View {
+        LazyVStack(spacing: JimmyDesign.Spacing.sm) {
+            ForEach(recentEpisodesWithStatus, id: \.id) { episodeWithStatus in
+                EpisodeCard(
+                    episode: episodeWithStatus,
+                    onTap: {
+                        let episode = allEpisodes.first { $0.id == episodeWithStatus.id }
+                        if let episode {
+                            let sourceID = "library-episode-\(episode.id.uuidString)"
+                            let episodeWithState = EpisodeWithPlaybackState(
+                                episode: episode,
+                                playbackState: PlaybackState(episodeID: episode.id, position: 0, finished: false, updatedAt: Date())
+                            )
+                            selectedDestination = .episode(id: episode.id, cachedEpisode: episodeWithState, sourceID: sourceID)
+                        }
+                    },
+                    onPlay: {
+                        Task {
+                            if let episode = allEpisodes.first(where: { $0.id == episodeWithStatus.id }) {
+                                await playEpisode(episode)
+                            }
+                        }
+                    },
+                    onAddToQueue: {
+                        if let episode = allEpisodes.first(where: { $0.id == episodeWithStatus.id }) {
+                            addToQueue(episode)
+                        }
+                    },
+                    onToggleFinished: {
+                        if let episode = allEpisodes.first(where: { $0.id == episodeWithStatus.id }) {
+                            toggleFinished(episode)
+                        }
+                    }
+                )
+                .matchedTransitionSource(id: "library-episode-\(episodeWithStatus.id.uuidString)", in: libraryNamespace)
+            }
         }
     }
 
@@ -533,10 +353,9 @@ struct LibraryView: View {
     }
 
     private var recentEpisodesWithStatus: [EpisodeWithStatus] {
-        let recentItems = Array(allEpisodeItems.prefix(100))
         let playback = appModel.playback
 
-        return recentItems.map { item in
+        return recentEpisodeItems.map { item in
             let episode = item.asLegacyEpisode()
             let podcast = jimmyKitPodcasts.first { $0.id == episode.podcastID }
             let podcastTitle = podcast?.title ?? "Unknown Podcast"
@@ -568,40 +387,7 @@ struct LibraryView: View {
         }
     }
 
-    // MARK: - Loading View
-
-    private var loadingView: some View {
-        ScrollView {
-            LazyVStack(spacing: 16) {
-                VStack(spacing: 8) {
-                    Text("Loading Library...")
-                        .font(.headline)
-                        .foregroundColor(.secondary)
-                }
-                .padding(.top, 20)
-
-                if viewMode == .shows {
-                    LazyVGrid(columns: gridColumns, spacing: JimmyDesign.Spacing.sm) {
-                        ForEach(0..<9, id: \.self) { _ in
-                            LiquidSkeletonView(style: .libraryGrid)
-                        }
-                    }
-                    .padding(.horizontal, 16)
-                } else {
-                    LazyVStack(spacing: 12) {
-                        ForEach(0..<8, id: \.self) { _ in
-                            LiquidSkeletonView(style: .episodeRow)
-                        }
-                    }
-                }
-            }
-            .tabBarSpacing()
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.clear)
-    }
-
-    // MARK: - Empty State View
+    // MARK: - Empty State
 
     private var emptyStateView: some View {
         EmptyStateView(
