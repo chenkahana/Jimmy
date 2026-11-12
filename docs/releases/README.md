@@ -1,107 +1,68 @@
-# Release Guide
+# Release guide
 
-This guide covers the process for releasing a new version of Jimmy to the App Store.
+How to ship a new version of Jimmy to the App Store.
 
-## Before a Release
+## 1. Before a release
 
-1. **Complete the QA checklist.** Open `docs/qa.md` and run through the full checklist on a real device and a simulator. Record the results in the QA Rounds Log table. Zero P1 and P2 issues are required before release.
+- Run the checklist in [`docs/qa.md`](../qa.md) on a real device and record the round in its log. No P1 or P2 issue may be open.
+- Run these locally, all green:
 
-2. **Verify local builds and tests pass.**
-   ```bash
-   make build
-   make test SIM="iPhone 17 Pro"
-   make kit
-   ```
+  ```bash
+  make build
+  make test SIM="<an iOS 27 simulator>"
+  make kit
+  ```
 
-3. **Verify CI is green on `main`.** All pull requests must merge through `main` with a passing `build` check.
+- CI (`.github/workflows/ci.yml`) must be green on `main`.
 
-## Bump the Version
+## 2. Bump the version
 
-1. **Edit `project.yml`.** Update both `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION` to the new version number (e.g., from `7.2` to `7.3`). XcodeGen will regenerate the project with the new version.
+1. In `project.yml`, set `MARKETING_VERSION` to the new version (for example `8.0`). Raise `CURRENT_PROJECT_VERSION` as well: App Store Connect rejects an upload whose build number it has already seen. XcodeGen regenerates the project on the next `make build`.
+2. In `CHANGELOG.md`, rename `## [Unreleased]` to `## [8.0] - YYYY-MM-DD`, and add a fresh, empty `## [Unreleased]` above it.
+3. Open a pull request with both changes. `main` is protected: changes land only through a PR, squash-merged, with the `build` check green.
 
-2. **Update `CHANGELOG.md`.** Move the `[Unreleased]` section into a new `[X.Y] - YYYY-MM-DD` section with today's date. For example:
-   ```markdown
-   ## [7.3] - 2024-11-12
+## 3. Archive and upload
 
-   ### Added
-   - Feature one.
-   - Feature two.
+1. Build the signed archive:
 
-   ### Changed
-   - Change one.
-
-   ### Removed
-   - Removed item.
-
-   ## [Unreleased]
-
-   (nothing yet)
-   ```
-
-3. **Add a release guide note** (if not already present). Under `## [Unreleased]` in `CHANGELOG.md`, add:
-   ```markdown
-   ### Added
-   - Release guide in `docs/releases/README.md`.
-   ```
-
-4. **Open a pull request.** Commit the version bump and changelog changes. The PR must pass the `build` check; main is protected and requires PR merge with squash-merge.
-
-5. **Merge the PR.** Once the build passes and you approve, merge with squash-merge (GitHub's default on main).
-
-## Archive and Upload
-
-1. **Create the release archive.**
    ```bash
    make archive
    ```
-   This creates a signed release archive at `build/archives/Jimmy.xcarchive`.
 
-2. **Upload to App Store Connect.** Open Xcode's Organizer:
-   - Menu: Window → Organizer
-   - Select Jimmy
-   - Click the archive you just created
-   - Click "Distribute App"
-   - Follow the wizard to upload to App Store Connect
+   It lands at `build/archives/Jimmy.xcarchive`.
+2. Upload it by hand: Xcode → Window → Organizer → select the archive → Distribute App → App Store Connect.
+3. In App Store Connect, add the build to an internal TestFlight group and check on a real device:
+   - The library opens with your subscriptions intact.
+   - An episode plays, pauses and resumes where it stopped.
+   - CarPlay shows the queue and plays.
+   - The Watch app shows Now Playing and controls the phone.
+4. Submit the build for review in App Store Connect. This is manual.
 
-3. **TestFlight check.** Once uploaded, create an external TestFlight build in App Store Connect. Test on at least one real device to verify:
-   - Library opens and displays subscribed podcasts
-   - Playback works (tap an episode, play audio)
-   - CarPlay works (if available)
-   - Apple Watch app works (if available)
+## 4. Tag and publish the release
 
-## Tag
+After the version PR merges, tag its squash commit on `main`:
 
-1. **After the release PR merges,** note the merge commit hash.
+```bash
+git tag -a v8.0 -m "Jimmy 8.0" <merge-commit>
+git push origin v8.0
+```
 
-2. **Create the git tag.**
-   ```bash
-   git tag -a vX.Y -m "Jimmy X.Y" <merge-commit-hash>
-   git push origin vX.Y
-   ```
+Then create the GitHub release from that version's `CHANGELOG.md` section:
 
-3. **Create the GitHub release.** Extract the release notes from the CHANGELOG section and create a GitHub release:
-   ```bash
-   gh release create vX.Y --notes "Your release notes here"
-   ```
-   Or use the GitHub web interface.
+```bash
+gh release create v8.0 --title "Jimmy 8.0" --notes-file <file with the changelog section>
+```
 
-## Screenshots
+## 5. Screenshots
 
-If the UI changed significantly, update the screenshot gallery:
+When the UI changed, refresh the README screenshots:
+
 ```bash
 make screenshots
 ```
 
-This seeds the app with demo data, launches on an available iOS 27 simulator, and captures light and dark mode screenshots of all main screens (Queue, Library, Discover, Settings, Podcast Detail, Now Playing) into `docs/screenshots/`.
+It seeds the `-demoLibrary` demo data on an iOS 27 simulator. It captures Queue, Library, Discover, Settings, a podcast page and Now Playing, in light and dark, into `docs/screenshots/`. Commit the results with the release PR.
 
-Screenshots are committed to the repository for documentation.
+## History
 
-## Release History
-
-This folder also contains older release notes:
-
-- [v1.md](./v1.md) — Jimmy Version 1
-- [v2.md](./v2.md) — Jimmy Version 2
-- [RELEASE_NOTES_v2.md](./RELEASE_NOTES_v2.md) — Version 2 release notes
-
-These are preserved for historical reference.
+Older release notes stay here for reference: [v1](v1.md), [v2](v2.md), [v2 release notes](RELEASE_NOTES_v2.md).
