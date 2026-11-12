@@ -18,19 +18,23 @@ private struct DiscoverSubscribeButton: View {
         Button {
             if !isSubscribed && !isProcessing { onSubscribe() }
         } label: {
-            if !redactionReasons.isEmpty {
-                // A loading placeholder row has nothing to subscribe to.
-                Color.clear
-            } else if isProcessing {
-                ProgressView()
-            } else {
-                Image(systemName: isSubscribed ? "checkmark.circle.fill" : "plus.circle")
-                    .font(.title2)
-                    .foregroundStyle(isSubscribed ? Color.secondary : Color.accentColor)
+            Group {
+                if !redactionReasons.isEmpty {
+                    // A loading placeholder row has nothing to subscribe to.
+                    Color.clear.frame(width: 28, height: 28)
+                } else if isProcessing {
+                    ProgressView()
+                } else {
+                    Image(systemName: isSubscribed ? "checkmark.circle.fill" : "plus.circle")
+                        .font(.title2)
+                        .foregroundStyle(isSubscribed ? Color.secondary : Color.accentColor)
+                }
             }
+            // Inside the label so the whole 44 pt square is the button, not just the glyph.
+            .frame(minWidth: 44, minHeight: 44)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .frame(minWidth: 44, minHeight: 44)
         .disabled(isSubscribed || isProcessing)
         .accessibilityLabel(isSubscribed ? "Subscribed to \(title)" : "Subscribe to \(title)")
     }
@@ -84,19 +88,22 @@ private struct DiscoverRow<Leading: View, Titles: View, Trailing: View>: View {
 private struct DiscoverRowTitles: View {
     let title: String
     let subtitle: String
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
+        // At accessibility sizes the titles have the full row width, so they wrap instead of truncating.
+        let isAccessibilitySize = dynamicTypeSize.isAccessibilitySize
         VStack(alignment: .leading, spacing: 2) {
             Text(title)
                 .font(.body.weight(.semibold))
                 .foregroundStyle(.primary)
-                .lineLimit(2)
+                .lineLimit(isAccessibilitySize ? nil : 2)
                 .multilineTextAlignment(.leading)
 
             Text(subtitle)
                 .font(.footnote)
                 .foregroundStyle(.secondary)
-                .lineLimit(1)
+                .lineLimit(isAccessibilitySize ? nil : 1)
         }
     }
 }
@@ -106,6 +113,7 @@ struct DiscoverTopShowRow: View {
     let index: Int
     let result: PodcastSearchResult
     let isSubscribed: Bool
+    let isProcessing: Bool
     let onSubscribe: () -> Void
 
     var body: some View {
@@ -124,7 +132,12 @@ struct DiscoverTopShowRow: View {
         } titles: {
             DiscoverRowTitles(title: result.title, subtitle: result.author)
         } trailing: {
-            DiscoverSubscribeButton(title: result.title, isSubscribed: isSubscribed, onSubscribe: onSubscribe)
+            DiscoverSubscribeButton(
+                title: result.title,
+                isSubscribed: isSubscribed,
+                isProcessing: isProcessing,
+                onSubscribe: onSubscribe
+            )
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(
