@@ -111,7 +111,7 @@ xcrun simctl appinfo booted com.chenkahana.Jimmy
 ## Key Conventions
 
 - **Concurrency:** Swift async/await throughout. All UI code annotated with `@MainActor`. Background work uses `Task.detached(priority: .background)`.
-- **UI:** 100% SwiftUI for views. UIKit used only for `StandardTabBarController` (tab bar) and CarPlay controllers.
+- **UI:** 100% SwiftUI for views. UIKit used only for CarPlay controllers.
 - **File naming:** `*Service.swift` for services, `*ViewModel.swift` for view models, `*View.swift` for views.
 - **SwiftLint:** Enforced via `.swiftlint.yml` with strict opt-in rules including `force_unwrapping`, `force_try`, and `implicitly_unwrapped_optional`. Avoid force unwraps and force tries.
 

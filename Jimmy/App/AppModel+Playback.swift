@@ -7,9 +7,8 @@ import UIKit
 /// (title/show/artwork/elapsed/duration/rate), listening stats, the widget's and watch's copies of
 /// what's playing, and `lastPlayingEpisodeID` for restore-on-launch. (The audio session itself is
 /// activated once, at launch — see `AppModel.open`.) All of it is driven from one
-/// `withObservationTracking` loop on `playback`'s observable state — the same pattern
-/// `StandardTabBarController` already uses for shell/chrome state, since `Playback` is `@Observable`,
-/// not an `ObservableObject` Combine can subscribe to.
+/// `withObservationTracking` loop on `playback`'s observable state, since `Playback` is
+/// `@Observable`, not an `ObservableObject` Combine can subscribe to.
 extension AppModel {
     /// Loads `episode` into `Playback` (which resolves a downloaded local file over its remote URL
     /// itself — see `playback.resolveAudioURL`), and moves it to queue position 1 — the same

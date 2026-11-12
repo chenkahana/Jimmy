@@ -40,7 +40,7 @@ final class LocalAudioImporter: ObservableObject {
     private static let supportedExtensions: Set<String> = ["mp3", "m4a", "wav", "aac", "flac", "ogg"]
 
     /// Set when a shared/opened file is waiting on the user to name it (presented by
-    /// `StandardTabBarController`'s `LocalAudioImportView` sheet).
+    /// `AppShell`'s `LocalAudioImportView` sheet).
     @Published var pendingURL: URL?
     @Published var isImporting = false
 

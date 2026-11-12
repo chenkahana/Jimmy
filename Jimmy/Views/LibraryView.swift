@@ -45,6 +45,9 @@ struct LibraryView: View {
                             .accessibilityLabel("Loading episodes")
                     }
                 }
+                ToolbarItem(placement: .topBarTrailing) {
+                    ShellMenu()
+                }
             }
             .onAppear {
                 startObservingEpisodesIfNeeded()

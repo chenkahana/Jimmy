@@ -1,96 +1,83 @@
-//
-//  NativeMiniPlayerView.swift
-//  Jimmy
-//
-//  Compact floating mini player anchored above the tab bar.
-//
-
+import JimmyKit
 import SwiftUI
 
+/// The tab bar's bottom accessory. Inline: art, title, play. Expanded adds time left and skip
+/// forward. Tapping the art or title opens Now Playing.
 struct NativeMiniPlayerView: View {
     @Environment(AppModel.self) private var appModel
-    @State private var podcast: Podcast?
+    @Environment(\.tabViewBottomAccessoryPlacement) private var placement
 
     let onTap: () -> Void
 
     var body: some View {
-        if let episode = appModel.playback?.currentEpisode?.asLegacyEpisode() {
+        if let playback = appModel.playback, let episode = playback.currentEpisode {
+            let isExpanded = placement == .expanded
             HStack(spacing: JimmyDesign.Spacing.md) {
                 Button(action: onTap) {
                     HStack(spacing: JimmyDesign.Spacing.md) {
-                        artworkView(for: episode)
-                        metadataView(for: episode)
+                        artwork(episode.artworkURL ?? showArtworkURL(for: episode), side: isExpanded ? 36 : 28)
+                        VStack(alignment: .leading, spacing: 0) {
+                            Text(episode.title)
+                                .font(.subheadline.weight(.semibold))
+                                .lineLimit(1)
+                            if isExpanded, let timeLeft = timeLeft(playback) {
+                                Text(timeLeft)
+                                    .font(.caption)
+                                    .monospacedDigit()
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .accessibilityHint("Opens Now Playing")
 
-                Button(action: {
-                    Task { await appModel.playback?.togglePlayPause() }
-                    Motion.lightHaptic()
-                }) {
-                    Image(systemName: (appModel.playback?.isPlaying ?? false) ? "pause.fill" : "play.fill")
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(.primary)
-                        .frame(width: 40, height: 40)
-                        .background(.thinMaterial, in: Circle())
+                Button {
+                    Task { await playback.togglePlayPause() }
+                } label: {
+                    Image(systemName: playback.isPlaying ? "pause.fill" : "play.fill")
+                        .font(.title3)
                 }
-                .buttonStyle(.plain)
+                .accessibilityLabel(playback.isPlaying ? "Pause" : "Play")
+
+                if isExpanded {
+                    Button {
+                        Task { await playback.skipForward() }
+                    } label: {
+                        Image(systemName: "goforward.\(Int(playback.skipForwardInterval))")
+                            .font(.title3)
+                    }
+                    .accessibilityLabel("Skip Forward")
+                }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .buttonStyle(.plain)
             .padding(.horizontal, JimmyDesign.Spacing.lg)
-            .padding(.vertical, JimmyDesign.Spacing.sm + 2)
-            .background(backgroundCard)
-            .padding(.horizontal, JimmyDesign.Spacing.sm)
-            .padding(.top, JimmyDesign.Spacing.xs)
-            .padding(.bottom, JimmyDesign.Spacing.xs)
-            .transition(.move(edge: .bottom).combined(with: .opacity))
-            .task(id: episode.id) {
-                await loadPodcast(for: episode)
-            }
             .popoverTip(MiniPlayerTip(), arrowEdge: .bottom)
         }
     }
 
-    private func artworkView(for episode: Episode) -> some View {
-        BulletproofAsyncImage(url: episode.artworkURL ?? podcast?.artworkURL) { image in
+    private func artwork(_ url: URL?, side: CGFloat) -> some View {
+        BulletproofAsyncImage(url: url) { image in
             image
                 .resizable()
-                .aspectRatio(contentMode: .fill)
+                .scaledToFill()
         } placeholder: {
-            RoundedRectangle(cornerRadius: JimmyDesign.Radius.md, style: .continuous)
-                .fill(Color.gray.opacity(0.22))
+            Color(.secondarySystemFill)
         }
-        .frame(width: 44, height: 44)
-        .clipShape(RoundedRectangle(cornerRadius: JimmyDesign.Radius.md, style: .continuous))
+        .frame(width: side, height: side)
+        .clipShape(RoundedRectangle(cornerRadius: side * 0.18, style: .continuous))
+        .accessibilityHidden(true)
     }
 
-    private func metadataView(for episode: Episode) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(episode.title)
-                .font(JimmyDesign.Typography.title.weight(.semibold))
-                .foregroundStyle(.primary)
-                .lineLimit(1)
-                .layoutPriority(1)
-
-            Text(podcast?.title ?? "Now Playing")
-                .font(JimmyDesign.Typography.body)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
+    private func showArtworkURL(for episode: JimmyKit.Episode) -> URL? {
+        appModel.podcasts.first { $0.id == episode.podcastID }?.artworkURL
     }
 
-    private var backgroundCard: some View {
-        RoundedRectangle(cornerRadius: JimmyDesign.Radius.lg, style: .continuous)
-            .fill(.regularMaterial)
-    }
-
-    private func loadPodcast(for episode: Episode) async {
-        guard let podcastID = episode.podcastID else {
-            return
-        }
-
-        podcast = appModel.podcasts.first { $0.id == podcastID }?.asLegacyPodcast()
+    /// "38 min left", once the length is known.
+    private func timeLeft(_ playback: JimmyKit.Playback) -> String? {
+        guard let duration = playback.duration, duration > 0 else { return nil }
+        return "\(QueueTimeFormat.duration(max(duration - playback.position, 0))) left"
     }
 }
