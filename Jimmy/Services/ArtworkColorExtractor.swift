@@ -40,6 +40,11 @@ final class ArtworkColorExtractor: ObservableObject {
         }
     }
 
+    /// The artwork's most common color, without changing the shared colors Now Playing shows.
+    static func dominantColor(of url: URL) async -> Color? {
+        await extractColorsFromImage(url: url)?.dominant
+    }
+
     private func applyColors(_ colors: CachedColors, forKey key: String) {
         if cache.count >= maxCacheSize {
             cache.removeValue(forKey: cache.keys.first ?? "")
