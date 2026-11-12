@@ -1,4 +1,5 @@
 import SwiftUI
+import JimmyKit
 
 struct EpisodeDetailView: View {
     let episodeWithState: EpisodeWithPlaybackState
@@ -261,7 +262,26 @@ struct EpisodeDetailView: View {
                     .foregroundColor(.primary)
                 }
                 .buttonStyle(.plain)
-                
+
+                // Download button
+                Button(action: downloadButtonTapped) {
+                    Image(systemName: downloadButtonIcon)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(viewModel.downloadState == .done ? .green : .primary)
+                        .frame(width: 44, height: 44)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(.regularMaterial)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .stroke(.white.opacity(0.2), lineWidth: 1)
+                                )
+                                .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
+                        )
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(downloadButtonAccessibilityLabel)
+
                 // Share button
                 Button(action: { copyApplePodcastsURL() }) {
                     Image(systemName: "square.and.arrow.up")
@@ -496,7 +516,34 @@ struct EpisodeDetailView: View {
             }
         }
     }
-    
+
+    private func downloadButtonTapped() {
+        switch viewModel.downloadState {
+        case .queued, .downloading:
+            viewModel.cancelDownload()
+        case .done:
+            viewModel.deleteDownload()
+        case .failed, nil:
+            viewModel.downloadEpisode()
+        }
+    }
+
+    private var downloadButtonIcon: String {
+        switch viewModel.downloadState {
+        case .queued, .downloading: return "arrow.down.circle.fill"
+        case .done: return "checkmark.circle.fill"
+        case .failed, nil: return "arrow.down.circle"
+        }
+    }
+
+    private var downloadButtonAccessibilityLabel: String {
+        switch viewModel.downloadState {
+        case .queued, .downloading: return "Cancel download"
+        case .done: return "Remove download"
+        case .failed, nil: return "Download episode"
+        }
+    }
+
     private func formatTime(_ seconds: Double) -> String {
         let hours = Int(seconds) / 3600
         let minutes = (Int(seconds) % 3600) / 60

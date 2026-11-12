@@ -31,7 +31,11 @@ public final class Downloads {
 
     private var activeTasks: [UUID: URLSessionDownloadTask] = [:]
     private var recordsByEpisode: [UUID: Download] = [:]
-    private var backgroundEventsCompletion: (@Sendable () -> Void)?
+    // Stored and called on `MainActor` only (this class's default isolation): not `@Sendable`,
+    // so `UIApplicationDelegate.application(_:handleEventsForBackgroundURLSession:completionHandler:)`
+    // (itself `@MainActor`, and not `@Sendable`-annotated by UIKit) can hand its completion
+    // handler straight through without a crossing-isolation conversion.
+    private var backgroundEventsCompletion: (() -> Void)?
     private var pendingWrite: Task<Void, Never>?
 
     private var downloadsDirectory: URL {
@@ -127,7 +131,7 @@ public final class Downloads {
     /// Stores `completion` to be called once the background session's queued delegate callbacks
     /// have all been delivered — wire this up from
     /// `UIApplicationDelegate.application(_:handleEventsForBackgroundURLSession:completionHandler:)`.
-    public func handleBackgroundEvents(identifier: String, completion: @escaping @Sendable () -> Void) {
+    public func handleBackgroundEvents(identifier: String, completion: @escaping () -> Void) {
         guard identifier == Self.sessionIdentifier else { return }
         backgroundEventsCompletion = completion
     }

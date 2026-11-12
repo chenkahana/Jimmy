@@ -275,6 +275,7 @@ struct QueueView: View {
             isCurrentlyPlaying: isCurrentlyPlaying,
             isEditMode: editMode == .active,
             isProminent: isProminent,
+            downloadState: appModel.downloadState(for: episode.id),
             onTap: {
                 if editMode == .inactive {
                     let episodeWithState = EpisodeWithPlaybackState(
@@ -316,6 +317,15 @@ struct QueueView: View {
                         await appModel.markPlayed(episode.id)
                     }
                 }
+            },
+            onDownload: {
+                appModel.download(episode.asPlaybackEpisode())
+            },
+            onCancelDownload: {
+                appModel.cancelDownload(episode.id)
+            },
+            onDeleteDownload: {
+                appModel.deleteDownload(episode.id)
             }
         )
         .matchedTransitionSource(id: sourceID, in: queueNamespace)

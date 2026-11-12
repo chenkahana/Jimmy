@@ -5,7 +5,6 @@ import AVFoundation
 import Observation
 
 struct PlaybackViewState: Equatable {
-    var isDownloading = false
     var currentAudioRoute = ""
     var currentOutputDevice: AudioOutputDevice = .speaker
     var showingEpisodeDetails = false
@@ -18,11 +17,6 @@ class CurrentPlayViewModel: ObservableObject {
     static let shared = CurrentPlayViewModel()
     
     // MARK: - Published Properties
-    @Published var isDownloading = false {
-        didSet {
-            state.isDownloading = isDownloading
-        }
-    }
     @Published var currentAudioRoute = "" {
         didSet {
             state.currentAudioRoute = currentAudioRoute
@@ -128,14 +122,26 @@ class CurrentPlayViewModel: ObservableObject {
         AppModel.current?.podcasts.first { $0.id == episode.podcastID }?.asLegacyPodcast()
     }
     
-    func downloadEpisode(_ episode: Episode) async {
-        isDownloading = true
-        defer { isDownloading = false }
-        
-        await withCheckedContinuation { continuation in
-            // This method is no longer used in the new implementation
-            continuation.resume()
-        }
+    /// `episode`'s download lifecycle state, `nil` if nothing has ever started downloading it.
+    func downloadState(for episode: Episode) -> JimmyKit.DownloadState? {
+        AppModel.current?.downloadState(for: episode.id)
+    }
+
+    /// `episode`'s download progress (0...1), `nil` while it isn't downloading.
+    func downloadProgress(for episode: Episode) -> Double? {
+        AppModel.current?.downloads?.progress[episode.id]
+    }
+
+    func downloadEpisode(_ episode: Episode) {
+        AppModel.current?.download(episode.asPlaybackEpisode())
+    }
+
+    func cancelDownload(_ episode: Episode) {
+        AppModel.current?.cancelDownload(episode.id)
+    }
+
+    func deleteDownload(_ episode: Episode) {
+        AppModel.current?.deleteDownload(episode.id)
     }
     
     func playPauseCurrentEpisode() {

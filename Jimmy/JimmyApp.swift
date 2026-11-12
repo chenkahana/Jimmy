@@ -12,11 +12,29 @@ struct ServiceTimeoutError: Error {
     }
 }
 
+/// Forwards the background `URLSession` continuation UIKit hands the app (e.g. after it was
+/// killed while a background download was still running) to `Downloads`, so its queued
+/// `URLSessionDownloadDelegate` callbacks get delivered and the finished download gets saved.
+final class JimmyAppDelegate: NSObject, UIApplicationDelegate {
+    func application(
+        _ application: UIApplication,
+        handleEventsForBackgroundURLSession identifier: String,
+        completionHandler: @escaping () -> Void
+    ) {
+        guard let downloads = AppModel.current?.downloads else {
+            completionHandler()
+            return
+        }
+        downloads.handleBackgroundEvents(identifier: identifier, completion: completionHandler)
+    }
+}
+
 /// Main app entry point with optimized initialization
 @main
 struct JimmyApp: App {
     // MARK: - App State
     // MARK: - App State
+    @UIApplicationDelegateAdaptor(JimmyAppDelegate.self) private var appDelegate
     @Environment(\.scenePhase) private var scenePhase
     @State private var appModel: AppModel
     private let showsPerformanceHUD = ProcessInfo.processInfo.environment["JIMMY_SHOW_PERF_HUD"] == "1"

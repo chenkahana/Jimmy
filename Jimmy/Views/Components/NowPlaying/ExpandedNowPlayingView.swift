@@ -7,6 +7,7 @@
 
 import SwiftUI
 import AVKit
+import JimmyKit
 
 struct ExpandedNowPlayingView: View {
     @StateObject private var viewModel = CurrentPlayViewModel.shared
@@ -327,33 +328,43 @@ struct ExpandedNowPlayingView: View {
         .frame(maxWidth: .infinity)
     }
 
-    private var isCurrentEpisodeDownloaded: Bool {
-        guard let localURL = viewModel.currentPlayingEpisode?.localFileURL else { return false }
-        return FileManager.default.fileExists(atPath: localURL.path)
+    private var currentEpisodeDownloadState: JimmyKit.DownloadState? {
+        guard let episode = viewModel.currentPlayingEpisode else { return nil }
+        return viewModel.downloadState(for: episode)
     }
 
     private var secondaryControlsCard: some View {
         JimmyCard {
             HStack(spacing: JimmyDesign.Spacing.xl) {
                 Button(action: {
-                    if let episode = viewModel.currentPlayingEpisode {
-                        Task {
-                            await viewModel.downloadEpisode(episode)
-                        }
+                    guard let episode = viewModel.currentPlayingEpisode else { return }
+                    switch currentEpisodeDownloadState {
+                    case .queued, .downloading:
+                        viewModel.cancelDownload(episode)
+                    case .done:
+                        viewModel.deleteDownload(episode)
+                    case .failed, nil:
+                        viewModel.downloadEpisode(episode)
                     }
                 }) {
-                    Image(systemName: viewModel.isDownloading ? "arrow.down.circle.fill" :
-                        isCurrentEpisodeDownloaded ? "checkmark.circle.fill" : "arrow.down.circle")
-                        .font(.title3)
-                        .foregroundColor(isCurrentEpisodeDownloaded ? .green : .primary)
-                        .contentTransition(.symbolEffect(.replace.downUp))
+                    Image(systemName: {
+                        switch currentEpisodeDownloadState {
+                        case .queued, .downloading: return "arrow.down.circle.fill"
+                        case .done: return "checkmark.circle.fill"
+                        case .failed, nil: return "arrow.down.circle"
+                        }
+                    }())
+                    .font(.title3)
+                    .foregroundColor(currentEpisodeDownloadState == .done ? .green : .primary)
+                    .contentTransition(.symbolEffect(.replace.downUp))
                 }
                 .buttonStyle(.plain)
-                .disabled(viewModel.isDownloading || isCurrentEpisodeDownloaded)
                 .accessibilityLabel({
-                    if viewModel.isDownloading { return "Downloading" }
-                    if isCurrentEpisodeDownloaded { return "Downloaded" }
-                    return "Download episode"
+                    switch currentEpisodeDownloadState {
+                    case .queued, .downloading: return "Cancel download"
+                    case .done: return "Remove download"
+                    case .failed, nil: return "Download episode"
+                    }
                 }())
 
                 Button(action: { showingSleepTimer = true }) {

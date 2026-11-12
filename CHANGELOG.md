@@ -6,6 +6,10 @@ All notable changes to Jimmy are recorded here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- Download buttons on Now Playing, episode detail, and episode rows now download the episode.
+
 ### Removed
 
 - Firebase analytics and crash reporting SDK.

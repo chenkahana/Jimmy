@@ -1,4 +1,5 @@
 import SwiftUI
+import JimmyKit
 
 /// Queue-specific episode card with drag reordering and queue-specific swipe actions
 struct QueueEpisodeCard: View {
@@ -6,6 +7,7 @@ struct QueueEpisodeCard: View {
     let isCurrentlyPlaying: Bool
     let isEditMode: Bool
     var isProminent: Bool = false
+    var downloadState: JimmyKit.DownloadState? = nil
 
     // Actions
     let onTap: () -> Void
@@ -14,20 +16,26 @@ struct QueueEpisodeCard: View {
     let onMoveToTop: () -> Void
     let onMoveToBottom: () -> Void
     let onToggleFinished: () -> Void
-    
+    var onDownload: () -> Void = {}
+    var onCancelDownload: () -> Void = {}
+    var onDeleteDownload: () -> Void = {}
+
     // Gesture state
     @State private var swipeOffset: CGFloat = 0
     @State private var isPressed = false
     @State private var isDraggingHorizontally: Bool = false
     @StateObject private var swipeStateManager = SwipeStateManager.shared
-    
+
     private var showingActions: Bool {
         swipeStateManager.isShowingActions(for: episode.id)
     }
-    
+
     // Constants
     private let swipeThreshold: CGFloat = 60
     private let actionWidth: CGFloat = 55
+    /// Revealed swipe offset for the three action buttons (download/cancel/delete, move to last,
+    /// remove) at `actionWidth` each, with `HStack`'s 8pt spacing between them.
+    private var revealedOffset: CGFloat { -(actionWidth * 3 + 16) }
     
     var body: some View {
         ZStack {
@@ -176,7 +184,7 @@ struct QueueEpisodeCard: View {
         HStack(spacing: 8) {
             // Move to Last
             QueueSwipeActionButton(
-                icon: "arrow.down.to.line", 
+                icon: "arrow.down.to.line",
                 title: "Last",
                 width: actionWidth,
                 color: .green,
@@ -185,7 +193,9 @@ struct QueueEpisodeCard: View {
                     resetSwipe()
                 }
             )
-            
+
+            downloadSwipeActionButton
+
             // Remove from Queue
             QueueSwipeActionButton(
                 icon: "trash.fill",
@@ -199,6 +209,45 @@ struct QueueEpisodeCard: View {
             )
         }
         .opacity(showingActions ? 1.0 : 0.0)
+    }
+
+    @ViewBuilder
+    private var downloadSwipeActionButton: some View {
+        switch downloadState {
+        case nil, .failed:
+            QueueSwipeActionButton(
+                icon: "arrow.down.circle.fill",
+                title: "Download",
+                width: actionWidth,
+                color: .blue,
+                action: {
+                    onDownload()
+                    resetSwipe()
+                }
+            )
+        case .queued, .downloading:
+            QueueSwipeActionButton(
+                icon: "xmark.circle.fill",
+                title: "Cancel",
+                width: actionWidth,
+                color: .orange,
+                action: {
+                    onCancelDownload()
+                    resetSwipe()
+                }
+            )
+        case .done:
+            QueueSwipeActionButton(
+                icon: "trash.fill",
+                title: "Delete",
+                width: actionWidth,
+                color: .red,
+                action: {
+                    onDeleteDownload()
+                    resetSwipe()
+                }
+            )
+        }
     }
     
     private var swipeGesture: some Gesture {
@@ -216,7 +265,7 @@ struct QueueEpisodeCard: View {
                 }
 
                 if translation.width < 0 && !isEditMode {
-                    swipeOffset = max(-120, translation.width)
+                    swipeOffset = max(revealedOffset, translation.width)
                     if abs(swipeOffset) > 30 && !showingActions {
                         swipeStateManager.closeAllSwipeActions()
                         swipeStateManager.setShowingActions(for: episode.id)
@@ -229,7 +278,7 @@ struct QueueEpisodeCard: View {
                 if isDraggingHorizontally && translation < -swipeThreshold && !isEditMode {
                     // Show actions
                     swipeStateManager.closeAllSwipeActions()
-                    swipeOffset = -120
+                    swipeOffset = revealedOffset
                     swipeStateManager.setShowingActions(for: episode.id)
                 } else {
                     // Reset
