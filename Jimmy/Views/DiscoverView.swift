@@ -7,10 +7,8 @@ struct DiscoverView: View {
     @Namespace private var discoverNamespace
     @State private var selectedDestination: DiscoverNavigationDestination?
     @State private var detailOpenToken: InteractionLatencyTracker.Token?
-    /// The last few submitted queries, newest first, one per line.
+    /// `RecentSearches.storage`: the last few submitted queries, newest first, one per line.
     @AppStorage("discoverRecentSearches") private var recentSearchesStorage = ""
-    /// The query the last finished search ran, so "No Results" never shows for text still being typed.
-    @State private var completedQuery: String?
 
     private var query: String {
         shell.discoverSearchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -46,11 +44,6 @@ struct DiscoverView: View {
                     viewModel.searchText = newQuery
                 }
             }
-            .onChange(of: viewModel.isSearching) { _, isSearching in
-                if !isSearching {
-                    completedQuery = viewModel.searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-                }
-            }
             .onChange(of: shell.isDiscoverSearchFocused) { _, newValue in
                 isSearchFieldFocused = newValue
             }
@@ -64,12 +57,12 @@ struct DiscoverView: View {
             }
             // The checkmark confirms a subscribe; only a failure interrupts.
             .alert("Couldn’t Subscribe", isPresented: Binding(
-                get: { viewModel.showingSubscriptionAlert && viewModel.subscriptionError != nil },
-                set: { viewModel.showingSubscriptionAlert = $0 }
+                get: { viewModel.subscribeFailure != nil },
+                set: { if !$0 { viewModel.subscribeFailure = nil } }
             )) {
                 Button("OK", role: .cancel) { }
             } message: {
-                Text(viewModel.subscriptionMessage)
+                Text(viewModel.subscribeFailure ?? "")
             }
             .navigationDestination(item: $selectedDestination) { destination in
                 switch destination {
@@ -87,7 +80,7 @@ struct DiscoverView: View {
     private var content: some View {
         if !query.isEmpty {
             searchResults
-        } else if viewModel.errorMessage != nil, !viewModel.hasAnyData, !viewModel.isLoading {
+        } else if viewModel.charts.isEmpty && !viewModel.isLoading {
             ContentUnavailableView {
                 Label("Couldn’t Load Top Shows", systemImage: "wifi.exclamationmark")
             } description: {
@@ -106,56 +99,52 @@ struct DiscoverView: View {
     // MARK: - Landing
 
     private var landing: some View {
-        List {
-            if !recentSearches.isEmpty {
+        let subscribedFeedURLs = viewModel.subscribedFeedURLs()
+        return List {
+            if !recentSearches.queries.isEmpty {
                 Section {
-                    ForEach(recentSearches, id: \.self) { recent in
+                    ForEach(recentSearches.queries, id: \.self) { recent in
                         Button(recent) {
                             runSearch(recent)
                         }
                         .foregroundStyle(.primary)
                     }
                     .onDelete { offsets in
-                        var searches = recentSearches
-                        searches.remove(atOffsets: offsets)
-                        recentSearchesStorage = searches.joined(separator: "\n")
+                        updateRecentSearches { $0.remove(atOffsets: offsets) }
                     }
                 } header: {
-                    HStack {
-                        Text("Recent Searches")
-                        Spacer()
-                        Button("Clear") {
-                            recentSearchesStorage = ""
-                        }
-                        .font(.body)
-                        .accessibilityLabel("Clear Recent Searches")
-                    }
+                    recentSearchesHeader
                 }
             }
 
             Section("Top Shows") {
                 if viewModel.charts.isEmpty {
+                    // Reached only while loading; an empty chart that isn't loading shows the error instead.
                     ForEach(1...8, id: \.self) { rank in
                         DiscoverTopShowRow(
                             index: rank,
                             result: .placeholder(id: rank),
                             isSubscribed: false,
+                            isProcessing: false,
                             onSubscribe: {}
                         )
                         .redacted(reason: .placeholder)
                         .allowsHitTesting(false)
                         .accessibilityElement(children: .ignore)
-                        .accessibilityLabel("Loading")
+                        .accessibilityLabel("Loading Top Shows")
+                        .accessibilityHidden(rank != 1)
                     }
                 } else {
                     ForEach(Array(viewModel.charts.enumerated()), id: \.element.id) { index, result in
+                        let isSubscribed = subscribedFeedURLs.contains(result.feedURL)
                         Button {
                             openPodcast(result, sourceID: "discover-charts-\(result.id)")
                         } label: {
                             DiscoverTopShowRow(
                                 index: index + 1,
                                 result: result,
-                                isSubscribed: viewModel.isSubscribed(result),
+                                isSubscribed: isSubscribed,
+                                isProcessing: viewModel.isProcessing(result),
                                 onSubscribe: {
                                     Task { await viewModel.subscribe(to: result) }
                                 }
@@ -164,7 +153,7 @@ struct DiscoverView: View {
                         }
                         .buttonStyle(.plain)
                         .accessibilityActions {
-                            if !viewModel.isSubscribed(result) {
+                            if !isSubscribed {
                                 Button("Subscribe") { Task { await viewModel.subscribe(to: result) } }
                             }
                         }
@@ -179,11 +168,48 @@ struct DiscoverView: View {
         }
     }
 
+    private var recentSearchesHeader: some View {
+        let clear = Button("Clear") {
+            updateRecentSearches { $0.clear() }
+        }
+        .font(.body)
+        .foregroundStyle(.secondary)
+        .frame(minHeight: 44)
+        .contentShape(Rectangle())
+        .accessibilityLabel("Clear Recent Searches")
+
+        // Side by side when it fits; at large text sizes Clear moves under the title instead of truncating it.
+        return ViewThatFits(in: .horizontal) {
+            HStack {
+                Text("Recent Searches")
+                Spacer()
+                clear
+            }
+            VStack(alignment: .leading, spacing: 0) {
+                Text("Recent Searches")
+                clear
+            }
+        }
+    }
+
     // MARK: - Search Results
 
     @ViewBuilder
     private var searchResults: some View {
-        if viewModel.searchResults.isEmpty && !viewModel.isSearching && completedQuery == query {
+        let hasFinished = !viewModel.isSearching && viewModel.lastCompletedQuery == query
+        let subscribedFeedURLs = viewModel.subscribedFeedURLs()
+        if hasFinished, viewModel.searchErrorMessage != nil {
+            ContentUnavailableView {
+                Label("Couldn’t Search", systemImage: "wifi.exclamationmark")
+            } description: {
+                Text("Check your connection and try again.")
+            } actions: {
+                Button("Try Again") {
+                    Task { await viewModel.searchPodcasts() }
+                }
+                .buttonStyle(.glassProminent)
+            }
+        } else if hasFinished, viewModel.searchResults.isEmpty {
             ContentUnavailableView.search(text: query)
         } else {
             List {
@@ -199,16 +225,18 @@ struct DiscoverView: View {
                         .allowsHitTesting(false)
                         .accessibilityElement(children: .ignore)
                         .accessibilityLabel("Searching")
+                        .accessibilityHidden(id != 1)
                     }
                 } else {
                     ForEach(viewModel.searchResults) { result in
+                        let isSubscribed = subscribedFeedURLs.contains(result.feedURL)
                         Button {
                             rememberSearch(query)
                             openPodcast(result, sourceID: "discover-search-\(result.id)")
                         } label: {
                             DiscoverSearchResultRow(
                                 result: result,
-                                isSubscribed: viewModel.isSubscribed(result),
+                                isSubscribed: isSubscribed,
                                 isProcessing: viewModel.isProcessing(result),
                                 onSubscribe: {
                                     Task { await viewModel.subscribe(to: result) }
@@ -218,7 +246,7 @@ struct DiscoverView: View {
                         }
                         .buttonStyle(.plain)
                         .accessibilityActions {
-                            if !viewModel.isSubscribed(result) {
+                            if !isSubscribed {
                                 Button("Subscribe") { Task { await viewModel.subscribe(to: result) } }
                             }
                         }
@@ -241,18 +269,18 @@ struct DiscoverView: View {
 // MARK: - Recent Searches
 
 extension DiscoverView {
-    private static let recentSearchLimit = 8
+    private var recentSearches: RecentSearches {
+        RecentSearches(storage: recentSearchesStorage)
+    }
 
-    private var recentSearches: [String] {
-        recentSearchesStorage.split(separator: "\n").map(String.init)
+    private func updateRecentSearches(_ change: (inout RecentSearches) -> Void) {
+        var searches = recentSearches
+        change(&searches)
+        recentSearchesStorage = searches.storage
     }
 
     private func rememberSearch(_ query: String) {
-        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
-        var searches = recentSearches.filter { $0.caseInsensitiveCompare(trimmed) != .orderedSame }
-        searches.insert(trimmed, at: 0)
-        recentSearchesStorage = searches.prefix(Self.recentSearchLimit).joined(separator: "\n")
+        updateRecentSearches { $0.add(query) }
     }
 
     private func runSearch(_ query: String) {

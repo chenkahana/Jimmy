@@ -264,21 +264,4 @@ extension View {
             )
         )
     }
-    
-    /// Context menu for TrendingEpisode (discover view)
-    func trendingEpisodeContextMenu(
-        episode: TrendingEpisode,
-        onSubscribe: @escaping () -> Void,
-        onShare: @escaping () -> Void
-    ) -> some View {
-        self.contextMenu {
-            Button(action: onSubscribe) {
-                Label("Subscribe to Podcast", systemImage: "plus.circle")
-            }
-            
-            Button(action: onShare) {
-                Label("Share", systemImage: "square.and.arrow.up")
-            }
-        }
-    }
-} 
+}
