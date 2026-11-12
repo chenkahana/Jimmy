@@ -1,13 +1,4 @@
 import SwiftUI
-import TipKit
-
-// MARK: - Cache Data Structure (kept for backward compatibility)
-struct DiscoveryCacheData: Codable {
-    let trending: [TrendingEpisode]
-    let featured: [PodcastSearchResult]
-    let charts: [PodcastSearchResult]
-    let timestamp: Date
-}
 
 struct DiscoverView: View {
     @StateObject private var viewModel = DiscoveryViewModel.shared
@@ -16,426 +7,267 @@ struct DiscoverView: View {
     @Namespace private var discoverNamespace
     @State private var selectedDestination: DiscoverNavigationDestination?
     @State private var detailOpenToken: InteractionLatencyTracker.Token?
+    /// The last few submitted queries, newest first, one per line.
+    @AppStorage("discoverRecentSearches") private var recentSearchesStorage = ""
+    /// The query the last finished search ran, so "No Results" never shows for text still being typed.
+    @State private var completedQuery: String?
+
+    private var query: String {
+        shell.discoverSearchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
 
     var body: some View {
-        ZStack {
-            JimmyScreenBackground()
-
-            VStack(spacing: 0) {
-                if !shell.discoverSearchQuery.isEmpty || !viewModel.searchText.isEmpty {
-                    searchResultsSection
-                } else if viewModel.isLoading && !viewModel.hasAnyData {
-                    loadingView
-                } else if let errorMessage = viewModel.errorMessage, !viewModel.hasAnyData {
-                    // Error state with retry
-                    VStack(spacing: 20) {
-                        Image(systemName: "exclamationmark.triangle")
-                            .font(.system(size: 48))
-                            .foregroundColor(.orange)
-                        
-                        Text("Failed to Load Content")
-                            .font(.headline)
-                            .foregroundColor(.primary)
-                        
-                        Text(errorMessage)
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, 40)
-                        
-                        Button("Retry") {
-                            Task {
-                                await viewModel.refreshData()
-                            }
+        content
+            .navigationTitle("Discover")
+            .navigationBarTitleDisplayMode(.large)
+            .searchable(
+                text: Binding(
+                    get: { shell.discoverSearchQuery },
+                    set: { newValue in
+                        shell.updateDiscoverSearch(query: newValue)
+                        viewModel.searchText = newValue
+                    }
+                ),
+                isPresented: Binding(
+                    get: { shell.isDiscoverSearchFocused },
+                    set: { newValue in
+                        shell.setDiscoverSearchFocused(newValue)
+                        isSearchFieldFocused = newValue
+                    }
+                ),
+                prompt: "Shows"
+            )
+            .onSubmit(of: .search) {
+                rememberSearch(query)
+            }
+            .focused($isSearchFieldFocused)
+            .onChange(of: shell.discoverSearchQuery) { _, newQuery in
+                if viewModel.searchText != newQuery {
+                    viewModel.searchText = newQuery
+                }
+            }
+            .onChange(of: viewModel.isSearching) { _, isSearching in
+                if !isSearching {
+                    completedQuery = viewModel.searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+                }
+            }
+            .onChange(of: shell.isDiscoverSearchFocused) { _, newValue in
+                isSearchFieldFocused = newValue
+            }
+            .onAppear {
+                if viewModel.searchText != shell.discoverSearchQuery {
+                    viewModel.searchText = shell.discoverSearchQuery
+                }
+            }
+            .task {
+                await viewModel.loadDataIfNeeded()
+            }
+            // The checkmark confirms a subscribe; only a failure interrupts.
+            .alert("Couldn’t Subscribe", isPresented: Binding(
+                get: { viewModel.showingSubscriptionAlert && viewModel.subscriptionError != nil },
+                set: { viewModel.showingSubscriptionAlert = $0 }
+            )) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text(viewModel.subscriptionMessage)
+            }
+            .navigationDestination(item: $selectedDestination) { destination in
+                switch destination {
+                case .podcast(let result, let sourceID):
+                    AsyncPodcastDetailView(searchResult: result)
+                        .navigationTransition(.zoom(sourceID: sourceID, in: discoverNamespace))
+                        .task {
+                            finishDetailOpenMeasurement()
                         }
-                        .buttonStyle(.bordered)
-                        .controlSize(.large)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.top, 100)
-                } else {
-                    ScrollView {
-                        LazyVStack(spacing: 32) {
-                            heroFeaturedSection
-                            
-                            trendingSection
-                            
-                            chartsSection
-                        }
-                        .padding(.vertical, 20)
-                        .tabBarSpacing()
-                    }
-                    .refreshable {
-                        await viewModel.refreshData()
-                    }
                 }
             }
-        }
-        .navigationTitle("Discover")
-        .navigationBarTitleDisplayMode(.large)
-        .searchable(
-            text: Binding(
-                get: { shell.discoverSearchQuery },
-                set: { newValue in
-                    shell.updateDiscoverSearch(query: newValue)
-                    viewModel.searchText = newValue
-                }
-            ),
-            isPresented: Binding(
-                get: { shell.isDiscoverSearchFocused },
-                set: { newValue in
-                    shell.setDiscoverSearchFocused(newValue)
-                    isSearchFieldFocused = newValue
-                }
-            ),
-            prompt: "Search for podcasts"
-        )
-        .focused($isSearchFieldFocused)
-        .onChange(of: shell.discoverSearchQuery) { _, newQuery in
-            if viewModel.searchText != newQuery {
-                viewModel.searchText = newQuery
-            }
-        }
-        .onChange(of: shell.isDiscoverSearchFocused) { _, newValue in
-            isSearchFieldFocused = newValue
-        }
-        .onAppear {
-            if viewModel.searchText != shell.discoverSearchQuery {
-                viewModel.searchText = shell.discoverSearchQuery
-            }
-            Task { [weak viewModel] in
-                await viewModel?.loadDataIfNeeded()
-            }
-        }
-        .alert("Subscription", isPresented: $viewModel.showingSubscriptionAlert) {
-            Button("OK", role: .cancel) { }
-        } message: {
-            Text(viewModel.subscriptionMessage)
-        }
-        .navigationDestination(item: $selectedDestination) { destination in
-            switch destination {
-            case .podcast(let result, let sourceID):
-                AsyncPodcastDetailView(searchResult: result)
-                    .navigationTransition(.zoom(sourceID: sourceID, in: discoverNamespace))
-                    .task {
-                        finishDetailOpenMeasurement()
-                    }
-            case .trending(let episode, let sourceID):
-                TrendingEpisodeDetailView(episode: episode)
-                    .navigationTransition(.zoom(sourceID: sourceID, in: discoverNamespace))
-                    .task {
-                        finishDetailOpenMeasurement()
-                    }
-            }
-        }
     }
-    
-    private var searchResultsSection: some View {
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: 20) {
-                JimmySectionHeader(
-                    "Results",
-                    subtitle: viewModel.isSearching
-                    ? "Searching…"
-                    : "\(viewModel.searchResults.count) shows"
-                )
-                .padding(.horizontal, 20)
-                .padding(.top, 20)
-                
-                if viewModel.isSearching {
-                    LazyVStack(spacing: 12) {
-                        ForEach(0..<6, id: \.self) { _ in
-                            LiquidSkeletonView(style: .searchResult)
-                        }
-                    }
-                    .padding(.horizontal, 20)
-                } else if viewModel.searchResults.isEmpty {
-                    VStack(spacing: 16) {
-                        Image(systemName: "magnifyingglass.circle")
-                            .font(.system(size: 48))
-                            .foregroundColor(.gray)
-                        
-                        Text("No podcasts found")
-                            .font(.headline)
-                            .foregroundColor(.primary)
-                        
-                        Text("Try searching with different keywords")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 40)
-                } else {
-                    LazyVStack(spacing: 12) {
-                        ForEach(viewModel.searchResults) { result in
-                            Button {
-                                openPodcast(result, sourceID: "discover-search-\(result.id)")
-                            } label: {
-                                DiscoverSearchResultRow(
-                                    result: result,
-                                    isSubscribed: viewModel.isSubscribed(result),
-                                    isProcessing: viewModel.isProcessing(result),
-                                    onSubscribe: {
-                                        Task {
-                                            await viewModel.subscribe(to: result)
-                                        }
-                                    }
-                                )
-                                .matchedTransitionSource(id: "discover-search-\(result.id)", in: discoverNamespace)
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityActions {
-                                if !viewModel.isSubscribed(result) {
-                                    Button("Subscribe") { Task { await viewModel.subscribe(to: result) } }
-                                }
-                            }
-                            .padding(.horizontal, 20)
-                        }
-                    }
-                    .tabBarBottomPadding()
+
+    @ViewBuilder
+    private var content: some View {
+        if !query.isEmpty {
+            searchResults
+        } else if viewModel.errorMessage != nil, !viewModel.hasAnyData, !viewModel.isLoading {
+            ContentUnavailableView {
+                Label("Couldn’t Load Top Shows", systemImage: "wifi.exclamationmark")
+            } description: {
+                Text("Check your connection and try again.")
+            } actions: {
+                Button("Try Again") {
+                    Task { await viewModel.refreshData() }
                 }
+                .buttonStyle(.glassProminent)
             }
+        } else {
+            landing
         }
     }
 
-    private var loadingView: some View {
-        ScrollView {
-            LazyVStack(spacing: 32) {
-                // Featured section skeleton
-                VStack(alignment: .leading, spacing: 20) {
+    // MARK: - Landing
+
+    private var landing: some View {
+        List {
+            if !recentSearches.isEmpty {
+                Section {
+                    ForEach(recentSearches, id: \.self) { recent in
+                        Button(recent) {
+                            runSearch(recent)
+                        }
+                        .foregroundStyle(.primary)
+                    }
+                    .onDelete { offsets in
+                        var searches = recentSearches
+                        searches.remove(atOffsets: offsets)
+                        recentSearchesStorage = searches.joined(separator: "\n")
+                    }
+                } header: {
                     HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(Color.gray.opacity(0.3))
-                                .frame(width: 120, height: 32)
-                            
-                            RoundedRectangle(cornerRadius: 4)
-                                .fill(Color.gray.opacity(0.2))
-                                .frame(width: 200, height: 16)
-                        }
+                        Text("Recent Searches")
                         Spacer()
-                    }
-                    .padding(.horizontal, 20)
-                    
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 20) {
-                            ForEach(0..<3, id: \.self) { _ in
-                                LiquidSkeletonView(style: .podcastCard)
-                            }
+                        Button("Clear") {
+                            recentSearchesStorage = ""
                         }
-                        .padding(.horizontal, 20)
-                    }
-                }
-                
-                // Trending section skeleton
-                VStack(alignment: .leading, spacing: 20) {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(Color.gray.opacity(0.3))
-                                .frame(width: 160, height: 28)
-                            
-                            RoundedRectangle(cornerRadius: 4)
-                                .fill(Color.gray.opacity(0.2))
-                                .frame(width: 180, height: 16)
-                        }
-                        Spacer()
-                    }
-                    .padding(.horizontal, 20)
-                    
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 16) {
-                            ForEach(0..<3, id: \.self) { _ in
-                                LiquidSkeletonView(style: .libraryGrid)
-                            }
-                        }
-                        .padding(.horizontal, 20)
-                    }
-                }
-                
-                // Charts section skeleton
-                VStack(alignment: .leading, spacing: 20) {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(Color.gray.opacity(0.3))
-                                .frame(width: 100, height: 28)
-                            
-                            RoundedRectangle(cornerRadius: 4)
-                                .fill(Color.gray.opacity(0.2))
-                                .frame(width: 150, height: 16)
-                        }
-                        Spacer()
-                    }
-                    .padding(.horizontal, 20)
-                    
-                    LazyVStack(spacing: 12) {
-                        ForEach(0..<5, id: \.self) { _ in
-                            LiquidSkeletonView(style: .episodeRow)
-                        }
+                        .font(.body)
+                        .accessibilityLabel("Clear Recent Searches")
                     }
                 }
             }
-            .padding(.vertical, 20)
-            .tabBarSpacing()
-        }
-    }
-    
-    private var heroFeaturedSection: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            JimmySectionHeader("Featured")
-            .padding(.horizontal, 20)
-            
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 20) {
-                    ForEach(Array(viewModel.featured.prefix(5))) { podcast in
+
+            Section("Top Shows") {
+                if viewModel.charts.isEmpty {
+                    ForEach(1...8, id: \.self) { rank in
+                        DiscoverTopShowRow(
+                            index: rank,
+                            result: .placeholder(id: rank),
+                            isSubscribed: false,
+                            onSubscribe: {}
+                        )
+                        .redacted(reason: .placeholder)
+                        .allowsHitTesting(false)
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel("Loading")
+                    }
+                } else {
+                    ForEach(Array(viewModel.charts.enumerated()), id: \.element.id) { index, result in
                         Button {
-                            openPodcast(podcast, sourceID: "discover-featured-\(podcast.id)")
+                            openPodcast(result, sourceID: "discover-charts-\(result.id)")
                         } label: {
-                            EnhancedFeaturedPodcastCard(
-                                result: podcast,
-                                isSubscribed: viewModel.isSubscribed(podcast),
-                                isProcessing: viewModel.isProcessing(podcast),
+                            DiscoverTopShowRow(
+                                index: index + 1,
+                                result: result,
+                                isSubscribed: viewModel.isSubscribed(result),
                                 onSubscribe: {
-                                    Task {
-                                        await viewModel.subscribe(to: podcast)
-                                    }
+                                    Task { await viewModel.subscribe(to: result) }
                                 }
                             )
-                            .matchedTransitionSource(id: "discover-featured-\(podcast.id)", in: discoverNamespace)
+                            .matchedTransitionSource(id: "discover-charts-\(result.id)", in: discoverNamespace)
                         }
                         .buttonStyle(.plain)
                         .accessibilityActions {
-                            if !viewModel.isSubscribed(podcast) {
-                                Button("Subscribe") { Task { await viewModel.subscribe(to: podcast) } }
+                            if !viewModel.isSubscribed(result) {
+                                Button("Subscribe") { Task { await viewModel.subscribe(to: result) } }
                             }
                         }
                     }
                 }
-                .scrollTargetLayout()
-                .padding(.horizontal, 20)
             }
-            .scrollTargetBehavior(.viewAligned)
+        }
+        .listStyle(.plain)
+        .headerProminence(.increased)
+        .refreshable {
+            await viewModel.refreshData()
         }
     }
 
-    private var trendingSection: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            JimmySectionHeader("Trending Episodes")
-            .padding(.horizontal, 20)
-            
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 16) {
-                    ForEach(Array(viewModel.trending.prefix(5)), id: \.id) { (episode: TrendingEpisode) in
+    // MARK: - Search Results
+
+    @ViewBuilder
+    private var searchResults: some View {
+        if viewModel.searchResults.isEmpty && !viewModel.isSearching && completedQuery == query {
+            ContentUnavailableView.search(text: query)
+        } else {
+            List {
+                if viewModel.searchResults.isEmpty {
+                    ForEach(1...8, id: \.self) { id in
+                        DiscoverSearchResultRow(
+                            result: .placeholder(id: id),
+                            isSubscribed: false,
+                            isProcessing: false,
+                            onSubscribe: {}
+                        )
+                        .redacted(reason: .placeholder)
+                        .allowsHitTesting(false)
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel("Searching")
+                    }
+                } else {
+                    ForEach(viewModel.searchResults) { result in
                         Button {
-                            openTrendingEpisode(episode, sourceID: "discover-trending-\(episode.id)")
+                            rememberSearch(query)
+                            openPodcast(result, sourceID: "discover-search-\(result.id)")
                         } label: {
-                            EnhancedTrendingEpisodeCard(
-                                episode: episode,
+                            DiscoverSearchResultRow(
+                                result: result,
+                                isSubscribed: viewModel.isSubscribed(result),
+                                isProcessing: viewModel.isProcessing(result),
                                 onSubscribe: {
-                                    // For trending episodes, we need to create a PodcastSearchResult from the episode
-                                    let podcastResult = PodcastSearchResult(
-                                        id: episode.id,
-                                        title: episode.podcastName,
-                                        author: episode.podcastName,
-                                        feedURL: episode.feedURL,
-                                        artworkURL: episode.artworkURL,
-                                        description: nil,
-                                        genre: "Podcast",
-                                        trackCount: 1
-                                    )
-                                    Task {
-                                        await viewModel.subscribe(to: podcastResult)
-                                    }
+                                    Task { await viewModel.subscribe(to: result) }
                                 }
                             )
-                            .matchedTransitionSource(id: "discover-trending-\(episode.id)", in: discoverNamespace)
+                            .matchedTransitionSource(id: "discover-search-\(result.id)", in: discoverNamespace)
                         }
                         .buttonStyle(.plain)
-                        .trendingEpisodeContextMenu(
-                            episode: episode,
-                            onSubscribe: {
-                                let podcastResult = PodcastSearchResult(
-                                    id: episode.id,
-                                    title: episode.podcastName,
-                                    author: episode.podcastName,
-                                    feedURL: episode.feedURL,
-                                    artworkURL: episode.artworkURL,
-                                    description: nil,
-                                    genre: "Podcast",
-                                    trackCount: 1
-                                )
-                                Task {
-                                    await viewModel.subscribe(to: podcastResult)
-                                }
-                            },
-                            onShare: {
-                                shareEpisode(episode)
+                        .accessibilityActions {
+                            if !viewModel.isSubscribed(result) {
+                                Button("Subscribe") { Task { await viewModel.subscribe(to: result) } }
                             }
-                        )
-                    }
-                }
-                .padding(.horizontal, 20)
-            }
-        }
-    }
- 
-    private var chartsSection: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            JimmySectionHeader("Top Shows")
-            .padding(.horizontal, 20)
-            
-            LazyVStack(spacing: 12) {
-                ForEach(Array(viewModel.charts.enumerated()), id: \.element.id) { index, result in
-                    Button {
-                        openPodcast(result, sourceID: "discover-charts-\(result.id)")
-                    } label: {
-                        EnhancedTopChartRow(
-                            index: index + 1,
-                            result: result,
-                            isSubscribed: viewModel.isSubscribed(result),
-                            onSubscribe: { 
-                                Task {
-                                    await viewModel.subscribe(to: result)
-                                }
-                            }
-                        )
-                        .matchedTransitionSource(id: "discover-charts-\(result.id)", in: discoverNamespace)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityActions {
-                        if !viewModel.isSubscribed(result) {
-                            Button("Subscribe") { Task { await viewModel.subscribe(to: result) } }
                         }
                     }
-                    .padding(.horizontal, 20)
                 }
             }
+            .listStyle(.plain)
+            .scrollDismissesKeyboard(.immediately)
         }
     }
 }
 
 #Preview {
-    DiscoverView()
-        .environment(ShellStore.shared)
+    NavigationStack {
+        DiscoverView()
+    }
+    .environment(ShellStore.shared)
 }
 
-// MARK: - DiscoverView Extension
+// MARK: - Recent Searches
 
 extension DiscoverView {
-    private func shareEpisode(_ episode: TrendingEpisode) {
-        // Share functionality will be handled by the context menu modifier
-        // For trending episodes, we can share the podcast link
+    private static let recentSearchLimit = 8
+
+    private var recentSearches: [String] {
+        recentSearchesStorage.split(separator: "\n").map(String.init)
     }
 
+    private func rememberSearch(_ query: String) {
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        var searches = recentSearches.filter { $0.caseInsensitiveCompare(trimmed) != .orderedSame }
+        searches.insert(trimmed, at: 0)
+        recentSearchesStorage = searches.prefix(Self.recentSearchLimit).joined(separator: "\n")
+    }
+
+    private func runSearch(_ query: String) {
+        shell.updateDiscoverSearch(query: query)
+        viewModel.searchText = query
+        rememberSearch(query)
+    }
+}
+
+// MARK: - Navigation
+
+extension DiscoverView {
     private func openPodcast(_ result: PodcastSearchResult, sourceID: String) {
         detailOpenToken = InteractionLatencyTracker.shared.begin(.podcastDetailOpen, detail: result.title)
         selectedDestination = .podcast(result: result, sourceID: sourceID)
-    }
-
-    private func openTrendingEpisode(_ episode: TrendingEpisode, sourceID: String) {
-        detailOpenToken = InteractionLatencyTracker.shared.begin(.podcastDetailOpen, detail: episode.title)
-        selectedDestination = .trending(episode: episode, sourceID: sourceID)
     }
 
     private func finishDetailOpenMeasurement() {
@@ -450,14 +282,11 @@ extension DiscoverView {
 
 private enum DiscoverNavigationDestination: Identifiable, Hashable {
     case podcast(result: PodcastSearchResult, sourceID: String)
-    case trending(episode: TrendingEpisode, sourceID: String)
 
     var id: String {
         switch self {
         case .podcast(let result, let sourceID):
             return "podcast-\(result.id)-\(sourceID)"
-        case .trending(let episode, let sourceID):
-            return "trending-\(episode.id)-\(sourceID)"
         }
     }
 
@@ -467,5 +296,21 @@ private enum DiscoverNavigationDestination: Identifiable, Hashable {
 
     func hash(into hasher: inout Hasher) {
         hasher.combine(id)
+    }
+}
+
+private extension PodcastSearchResult {
+    /// Stand-in text of a realistic length for `redacted(reason: .placeholder)` rows while loading.
+    static func placeholder(id: Int) -> PodcastSearchResult {
+        PodcastSearchResult(
+            id: -id,
+            title: "Podcast title",
+            author: "Author name",
+            feedURL: URL(fileURLWithPath: "/"),
+            artworkURL: nil,
+            description: nil,
+            genre: "Genre",
+            trackCount: 0
+        )
     }
 }
