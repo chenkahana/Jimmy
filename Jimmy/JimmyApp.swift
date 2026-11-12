@@ -91,6 +91,13 @@ struct JimmyApp: App {
         // which is what first writes `SettingsViewModel`'s `autoRestoreLastEpisode` default.
         // Skipped for `-demoLibrary`: `DemoLibrary.seed(into:)` drives `model.playback` itself,
         // and refreshing podcasts that were just subscribed to would only race it.
+        if !isRunningUnitTests {
+            Task {
+                let podcastCount = (try? await model.readyStore?.podcasts().count) ?? 0
+                Onboarding.shared.presentIfNeeded(podcastCount: podcastCount)
+            }
+        }
+
         if !isRunningUnitTests && !DemoLibrary.isRequested() {
             Task { await model.restoreLastEpisodeIfEnabled() }
             Task { await model.refreshAll() }
@@ -235,7 +242,9 @@ struct JimmyApp: App {
 
         // Fallback: handle file imports and legacy subscribe URLs
         Task {
-            if url.isFileURL {
+            if url.isFileURL, Onboarding.isImportFile(url) {
+                Onboarding.shared.present(files: [url])
+            } else if url.isFileURL {
                 await LocalAudioImporter.shared.handleSharedFile(from: url)
             } else if let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
                       let queryItems = components.queryItems,

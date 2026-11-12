@@ -14,7 +14,8 @@ public nonisolated enum FeedURLNormalizer {
         return components.url ?? url
     }
 
-    static func key(for url: URL) -> String {
+    /// The comparison key: two URLs with the same key are the same feed.
+    public static func key(for url: URL) -> String {
         var scheme = (url.scheme ?? "").lowercased()
         switch scheme {
         case "feed", "itpc", "pcast":

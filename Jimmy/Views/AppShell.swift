@@ -5,6 +5,7 @@ struct AppShell: View {
     @Environment(AppModel.self) private var appModel
     @Bindable private var shell = ShellStore.shared
     @ObservedObject private var audioImporter = LocalAudioImporter.shared
+    @Bindable private var onboarding = Onboarding.shared
 
     var body: some View {
         TabView(selection: Binding(get: { shell.selectedTab }, set: { shell.handleUserSelectedTab($0) })) {
@@ -25,6 +26,9 @@ struct AppShell: View {
                 Task { await MiniPlayerTip.openedNowPlaying.donate() }
                 shell.present(.nowPlaying)
             }
+        }
+        .fullScreenCover(isPresented: $onboarding.isPresented) {
+            OnboardingView()
         }
         .sheet(item: $shell.sheet) { sheet in
             switch sheet {

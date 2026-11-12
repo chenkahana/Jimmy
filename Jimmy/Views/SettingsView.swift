@@ -11,6 +11,7 @@ struct SettingsView: View {
     @State private var showingBackupImport = false
     @State private var backupFileURL: URL?
     @State private var showingAssistant = false
+    @State private var showingImport = false
 
     private static let playbackSpeeds: [Double] = [0.75, 1.0, 1.25, 1.5, 2.0]
     private static let skipBackIntervals: [Double] = [10, 15, 30, 45]
@@ -80,18 +81,8 @@ struct SettingsView: View {
                 viewModel.importError = error.localizedDescription
             }
         }
-        .fileImporter(
-            isPresented: $viewModel.isSpotifyImporting,
-            allowedContentTypes: [.text, .data]
-        ) { result in
-            switch result {
-            case .success:
-                Task {
-                    await viewModel.importFromSpotify()
-                }
-            case .failure(let error):
-                viewModel.spotifyImportMessage = "Error selecting file: \(error.localizedDescription)"
-            }
+        .sheet(isPresented: $showingImport) {
+            OnboardingView()
         }
         .sheet(isPresented: $showingAssistant) {
             NavigationStack {
@@ -193,21 +184,14 @@ struct SettingsView: View {
 
     private var importSection: some View {
         Section {
+            Button("Import from Another App") {
+                showingImport = true
+            }
             Button("Add Podcast by URL") {
                 viewModel.showingManualImport = true
             }
             progressButton("Import JSON File", isLoading: viewModel.isJSONImporting) {
                 viewModel.isJSONImporting = true
-            }
-            progressButton("Import from Apple Podcasts", isLoading: viewModel.isImportingFromApplePodcasts) {
-                Task {
-                    await viewModel.performComprehensiveApplePodcastsImport()
-                }
-            }
-            Button("Import from Spotify") {
-                Task {
-                    await viewModel.importFromSpotify()
-                }
             }
             Button("Export App Data") {
                 Task {
@@ -302,12 +286,8 @@ struct SettingsView: View {
         switch viewModel.activeAlert {
         case .resetData:
             return "Reset All Data?"
-        case .appleImport:
-            return "Import from Apple Podcasts"
         case .subscriptionImport:
             return "Subscription Import"
-        case .spotifyImport:
-            return "Import from Spotify"
         case .jsonImport:
             return "Import"
         case .clearSubscriptions:
@@ -340,7 +320,7 @@ struct SettingsView: View {
                 }
                 viewModel.dismissAlert()
             }
-        case .appleImport, .subscriptionImport, .spotifyImport, .jsonImport, .none:
+        case .subscriptionImport, .jsonImport, .none:
             Button("OK") {
                 viewModel.dismissAlert()
             }
@@ -351,9 +331,7 @@ struct SettingsView: View {
         switch viewModel.activeAlert {
         case .resetData:
             return Text("This deletes all subscriptions, your queue and settings. It can't be undone.")
-        case .appleImport(let message),
-             .subscriptionImport(let message),
-             .spotifyImport(let message),
+        case .subscriptionImport(let message),
              .jsonImport(let message):
             return Text(message)
         case .clearSubscriptions:

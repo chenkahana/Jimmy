@@ -59,6 +59,11 @@ with More. Episodes use the Queue row. Episode show notes in New York, tint only
 **Search / Discover.** Recent searches, Top Shows as a numbered list (it's a ranking), categories as a list. Loading
 uses `redacted(.placeholder)` on real rows.
 
+**Onboarding.** Shown once, on a first launch with an empty library. A `List` of source apps (installed ones first),
+each saying what comes over; one `.glassProminent` action at the bottom; Skip in the toolbar. A source screen gives
+numbered steps and one action (Choose File, Paste, Sign In). The import lists every show, with artwork filling in as
+each is added, under "Found 42 shows" and a progress bar. It ends with what came over and Open Queue or Open Library.
+
 **Settings.** `Form` with sections Playback, Appearance, Sync & Backup, Import & Export, Assistant, About, and the
 destructive actions last. Explanations go in section footers. The version appears once, in About.
 
