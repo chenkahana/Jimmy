@@ -224,6 +224,11 @@ struct ImportFileTests {
         #expect(ShowLink(feeds[2].feedURL) == .feed(URL(string: "https://example.com/rss")!))
     }
 
+    @Test func bareAppleIDsFromShortcuts() {
+        let feeds = LinkTextParser.parse("1200361736\n917918570\n42\n").feeds
+        #expect(feeds.map { ShowLink($0.feedURL) } == [.apple(id: 1_200_361_736), .apple(id: 917_918_570)])
+    }
+
     @Test func mergeDeduplicates() throws {
         let a = ImportResult(feeds: [ImportedFeed(feedURL: URL(string: "https://e.com/a.xml")!, title: "A")], skipped: [], showNames: [ImportedShowName(title: "S", publisher: nil)])
         let b = ImportResult(feeds: [ImportedFeed(feedURL: URL(string: "https://E.com/a.xml/")!, title: "A")], skipped: [], showNames: [ImportedShowName(title: "s", publisher: "P")])

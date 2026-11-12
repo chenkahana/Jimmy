@@ -16,6 +16,8 @@ final class Onboarding {
     var isPresented = false
     /// Files shared to Jimmy (an OPML from Overcast's share sheet, say) waiting for the flow.
     var pendingFiles: [URL] = []
+    /// Show links handed over by Jimmy's Apple Podcasts shortcut, through `jimmy://import`.
+    var pendingText: String?
     private(set) var session = LibraryImportSession()
 
     private let defaults: UserDefaults
@@ -51,6 +53,20 @@ final class Onboarding {
     func present(files: [URL] = []) {
         pendingFiles = files
         isPresented = true
+    }
+
+    func present(text: String) {
+        pendingText = text
+        isPresented = true
+    }
+
+    /// The links in `jimmy://import?text=…`, which the Apple Podcasts shortcut opens with every
+    /// show's Store URL or id.
+    static func importText(from url: URL) -> String? {
+        guard url.scheme?.lowercased() == "jimmy", url.host?.lowercased() == "import" else { return nil }
+        let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
+        let text = items.first { $0.name == "text" }?.value ?? ""
+        return text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : text
     }
 
     func finish() {

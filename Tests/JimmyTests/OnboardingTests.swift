@@ -38,6 +38,13 @@ final class OnboardingTests: XCTestCase {
         XCTAssertTrue(defaults.bool(forKey: Onboarding.completedKey))
     }
 
+    func testImportLinkFromShortcut() throws {
+        let url = try XCTUnwrap(URL(string: "jimmy://import?text=1200361736%0A917918570"))
+        XCTAssertEqual(Onboarding.importText(from: url), "1200361736\n917918570")
+        XCTAssertNil(Onboarding.importText(from: try XCTUnwrap(URL(string: "jimmy://import?text="))))
+        XCTAssertNil(Onboarding.importText(from: try XCTUnwrap(URL(string: "jimmy://queue"))))
+    }
+
     func testSharedFilesThatAreImports() {
         XCTAssertTrue(Onboarding.isImportFile(URL(fileURLWithPath: "/tmp/overcast.opml")))
         XCTAssertTrue(Onboarding.isImportFile(URL(fileURLWithPath: "/tmp/YourLibrary.JSON")))

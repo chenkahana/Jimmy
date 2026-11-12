@@ -38,16 +38,23 @@ public nonisolated enum ImportFile {
 }
 
 /// Every link in a block of text: RSS feeds, Apple Podcasts show pages and Spotify show pages,
-/// one per line or mixed into prose (a Shortcuts result, a note, a message).
+/// one per line or mixed into prose (a Shortcuts result, a note, a message). A line that is only
+/// an Apple Podcasts id (what Shortcuts' Store ID gives) counts as that show's page.
 public nonisolated enum LinkTextParser {
     public static func parse(_ text: String) -> ImportResult {
         guard let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue) else {
             return ImportResult(feeds: [], skipped: [])
         }
         let range = NSRange(text.startIndex..., in: text)
-        let candidates = detector.matches(in: text, range: range).compactMap { match -> ImportedFeed? in
+        var candidates = detector.matches(in: text, range: range).compactMap { match -> ImportedFeed? in
             guard let url = match.url, let scheme = url.scheme?.lowercased(),
                   ["http", "https", "feed", "itpc", "pcast"].contains(scheme), url.host != nil else { return nil }
+            return ImportedFeed(feedURL: url, title: nil)
+        }
+        candidates += text.components(separatedBy: CharacterSet(charactersIn: "\n,;")).compactMap { line in
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            guard (6...12).contains(trimmed.count), trimmed.allSatisfy(\.isASCIIDigit),
+                  let url = URL(string: "https://podcasts.apple.com/podcast/id\(trimmed)") else { return nil }
             return ImportedFeed(feedURL: url, title: nil)
         }
         let (feeds, skipped) = FeedDeduplicator.deduplicate(candidates)
@@ -75,4 +82,8 @@ public nonisolated enum ShowLink: Sendable, Equatable {
             self = .feed(url)
         }
     }
+}
+
+private nonisolated extension Character {
+    var isASCIIDigit: Bool { isASCII && isNumber }
 }
