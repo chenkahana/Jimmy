@@ -83,6 +83,7 @@ final class ArtworkColorExtractor: ObservableObject {
             context.draw(cgImage, in: CGRect(x: 0, y: 0, width: size, height: size))
 
             var colorCounts: [UInt32: Int] = [:]
+            var colorSums: [UInt32: (r: Int, g: Int, b: Int)] = [:]
             var maxSaturation: (h: CGFloat, s: CGFloat, b: CGFloat) = (0, 0, 0)
             var totalH: CGFloat = 0
             var totalS: CGFloat = 0
@@ -99,6 +100,9 @@ final class ArtworkColorExtractor: ObservableObject {
                 let quantB = b / 32
                 let key = UInt32(quantR) << 16 | UInt32(quantG) << 8 | UInt32(quantB)
                 colorCounts[key, default: 0] += 1
+                colorSums[key, default: (0, 0, 0)].r += Int(r)
+                colorSums[key]?.g += Int(g)
+                colorSums[key]?.b += Int(b)
 
                 let uiColor = UIColor(red: CGFloat(r) / 255, green: CGFloat(g) / 255, blue: CGFloat(b) / 255, alpha: 1)
                 var h: CGFloat = 0, s: CGFloat = 0, br: CGFloat = 0
@@ -116,10 +120,14 @@ final class ArtworkColorExtractor: ObservableObject {
 
             guard pixelCount > 0 else { return nil }
 
+            // The average of the pixels in the most common bucket, not the bucket's lower corner,
+            // which would pull every color toward black.
             let dominantKey = colorCounts.max(by: { $0.value < $1.value })?.key ?? 0
-            let dR = CGFloat((dominantKey >> 16) & 0xFF) * 32 / 255
-            let dG = CGFloat((dominantKey >> 8) & 0xFF) * 32 / 255
-            let dB = CGFloat(dominantKey & 0xFF) * 32 / 255
+            let count = CGFloat(max(colorCounts[dominantKey] ?? 1, 1))
+            let sums = colorSums[dominantKey] ?? (0, 0, 0)
+            let dR = CGFloat(sums.r) / count / 255
+            let dG = CGFloat(sums.g) / count / 255
+            let dB = CGFloat(sums.b) / count / 255
 
             return CachedColors(
                 dominant: Color(red: dR, green: dG, blue: dB),

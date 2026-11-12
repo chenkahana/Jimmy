@@ -135,7 +135,7 @@ slop check in `docs/design.md`.
 - [x] S2. Queue: plain `List`, native reorder and swipe actions (S)
 - [ ] S3. Now Playing: artwork backdrop, glass transport, one bottom panel for speed, sleep and chapters (S)
 - [x] S4. Library: artwork grid, `.searchable`, no overview card (S)
-- [ ] S5. Podcast and Episode: artwork band header, New York show notes (S)
+- [x] S5. Podcast and Episode: artwork band header, New York show notes (S)
 - [x] S6. Search and Discover: recent searches, Top Shows (S). Categories wait for a genre chart in JimmyKit's
   `PodcastDirectory`.
 - [x] S7. Settings: `Form` (S)

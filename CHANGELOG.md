@@ -27,6 +27,8 @@ All notable changes to Jimmy are recorded here. The format follows
   and loading shows placeholder rows instead of shimmering cards. The Featured and Trending Episodes rows, which
   repeated the same chart, are gone.
 - The queue is a plain list with artwork rows, drag to reorder, and swipe or long-press for Play Next, Played, Download and Remove.
+- Podcast pages put the header on a band of the artwork's color; episodes are plain rows and show notes are set in
+  New York.
 - Simplified architecture with a new core package, JimmyKit.
 - Xcode project now generated from `project.yml` via XcodeGen; build with `make build`.
 
