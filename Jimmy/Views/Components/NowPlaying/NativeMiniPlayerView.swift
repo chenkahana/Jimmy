@@ -84,16 +84,6 @@ struct NativeMiniPlayerView: View {
     private var backgroundCard: some View {
         RoundedRectangle(cornerRadius: JimmyDesign.Radius.lg, style: .continuous)
             .fill(.regularMaterial)
-            .overlay(
-                RoundedRectangle(cornerRadius: JimmyDesign.Radius.lg, style: .continuous)
-                    .stroke(JimmyDesign.Palette.mutedBorder, lineWidth: 0.6)
-            )
-            .shadow(
-                color: JimmyDesign.Shadow.cardColor,
-                radius: JimmyDesign.Shadow.cardRadius,
-                x: 0,
-                y: JimmyDesign.Shadow.cardY
-            )
     }
 
     private func loadPodcast(for episode: Episode) async {

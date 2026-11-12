@@ -79,7 +79,7 @@ struct TranscriptSegmentRow: View {
                     .frame(width: 50, alignment: .trailing)
 
                 Text(segment.text)
-                    .font(.system(.subheadline))
+                    .font(.subheadline)
                     .foregroundColor(isCurrent ? .primary : .secondary)
                     .fontWeight(isCurrent ? .medium : .regular)
                     .multilineTextAlignment(.leading)

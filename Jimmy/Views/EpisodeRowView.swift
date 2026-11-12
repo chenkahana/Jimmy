@@ -69,7 +69,7 @@ struct EpisodeRowView: View {
                 // Title and status row
                 HStack(alignment: .top, spacing: 8) {
                     Text(episodeWithState.episode.title)
-                        .font(.system(.subheadline, design: .rounded, weight: .semibold))
+                        .font(.system(.subheadline, weight: .semibold))
                         .lineLimit(3)
                         .foregroundColor(.primary)
                         .multilineTextAlignment(.leading)
@@ -87,7 +87,7 @@ struct EpisodeRowView: View {
                         // Duration
                         if let duration = episodeWithState.episode.duration, duration > 0 {
                             Text(formatDuration(Int(duration)))
-                                .font(.system(.caption2, design: .rounded, weight: .medium))
+                                .font(.system(.caption2, weight: .medium))
                                 .foregroundColor(.secondary)
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
@@ -116,13 +116,13 @@ struct EpisodeRowView: View {
                     VStack(spacing: 2) {
                         HStack(spacing: 4) {
                             Text(formatDuration(Int(episodeWithState.playbackState.position)))
-                                .font(.system(.caption2, design: .rounded))
+                                .font(.caption2)
                                 .foregroundColor(.secondary)
 
                             Spacer()
 
                             Text("\(Int(progress * 100))% complete")
-                                .font(.system(.caption2, design: .rounded))
+                                .font(.caption2)
                                 .foregroundColor(.secondary)
                         }
 
@@ -138,14 +138,14 @@ struct EpisodeRowView: View {
                 HStack(spacing: 8) {
                     if let publishedDate = episodeWithState.episode.publishedDate {
                         Text(publishedDate, style: .date)
-                            .font(.system(.caption2, design: .rounded))
+                            .font(.caption2)
                             .foregroundColor(.secondary)
                     }
                     
                     // Add file size if available
                     if let audioURL = episodeWithState.episode.audioURL {
                         Text("• MP3")
-                            .font(.system(.caption2, design: .rounded))
+                            .font(.caption2)
                             .foregroundColor(.secondary)
                     }
                     
@@ -154,11 +154,11 @@ struct EpisodeRowView: View {
                     // Play status text
                     if episodeWithState.playbackState.finished {
                         Text("Played")
-                            .font(.system(.caption2, design: .rounded, weight: .medium))
+                            .font(.system(.caption2, weight: .medium))
                             .foregroundColor(.green)
                     } else if episodeWithState.playbackState.position > 0 {
                         Text("In Progress")
-                            .font(.system(.caption2, design: .rounded, weight: .medium))
+                            .font(.system(.caption2, weight: .medium))
                             .foregroundColor(.orange)
                     }
                 }
@@ -179,15 +179,8 @@ struct EpisodeRowView: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
         .background(
-            // Liquid glass effect
-            RoundedRectangle(cornerRadius: 16)
-                .fill(.regularMaterial)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(.white.opacity(0.15), lineWidth: 1)
-                )
-                .shadow(color: .black.opacity(0.15), radius: 12, x: 0, y: 6)
-                .shadow(color: .black.opacity(0.08), radius: 4, x: 0, y: 2)
+            JimmyDesign.Palette.canvasElevated,
+            in: RoundedRectangle(cornerRadius: JimmyDesign.Radius.lg, style: .continuous)
         )
         .opacity(episodeWithState.playbackState.finished ? 0.8 : 1.0)
         .statusBadge(for: episodeWithState.episode)
@@ -378,7 +371,7 @@ struct SwipeActionButton: View {
                     .foregroundColor(.primary)
                 
                 Text(title)
-                    .font(.system(.caption2, design: .rounded, weight: .semibold))
+                    .font(.system(.caption2, weight: .semibold))
                     .foregroundColor(.primary)
                     .lineLimit(1)
             }

@@ -125,6 +125,21 @@ Lanes in the same wave run in parallel, each in its own worktree under `~/.workt
 - [ ] 28. Release guide, v8.0 tag (H)
 - [ ] 29. Going public, each step approved by Chen (main session)
 
+## Wave E: design (`docs/design.md`)
+Calm, artwork-first, native, in Boaz's language. One PR per screen; each carries light/dark screenshots and passes the
+slop check in `docs/design.md`.
+- [x] D2. Delete unused UI (S)
+- [ ] D1. Foundation: tokens, shared components, Signal accent, motion, copy; `docs/design.md` (S)
+- [ ] D3. App icon in Icon Composer: default, dark, clear, tinted (S)
+- [ ] S1. Shell: SwiftUI `TabView`, Search tab, mini player as `tabViewBottomAccessory`, Settings out of the tab bar (S)
+- [ ] S2. Queue: plain `List`, native reorder and swipe actions (S)
+- [ ] S3. Now Playing: artwork backdrop, glass transport, one bottom panel for speed, sleep and chapters (S)
+- [ ] S4. Library: artwork grid, `.searchable`, no overview card (S)
+- [ ] S5. Podcast and Episode: artwork band header, New York show notes (S)
+- [ ] S6. Search and Discover: recent searches, Top Shows, categories (S)
+- [ ] S7. Settings: `Form` (S)
+- [ ] S8. Refresh `docs/screenshots` with `Tools/screenshots.sh` (H)
+
 ## Only Chen
 - Export `jimmy.db` from the phone (PR 7).
 - Real-device check of the real library (PR 9b).

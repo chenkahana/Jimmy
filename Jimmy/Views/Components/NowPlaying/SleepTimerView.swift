@@ -68,11 +68,11 @@ struct SleepTimerView: View {
             // instead of "--:--".
             if appModel.playback?.sleepTimerMode == .endOfEpisode {
                 Text(SleepTimerPreset.endOfEpisode.label)
-                    .font(.system(size: 36, weight: .medium, design: .rounded))
+                    .font(.system(size: 36, weight: .medium))
                     .foregroundColor(.primary)
             } else {
                 Text(formattedRemaining)
-                    .font(.system(size: 64, weight: .thin, design: .rounded))
+                    .font(.system(size: 64, weight: .thin))
                     .monospacedDigit()
                     .foregroundColor(.primary)
             }
@@ -126,15 +126,6 @@ struct SleepTimerView: View {
 
     private var presetSelectionView: some View {
         VStack(spacing: 16) {
-            Image(systemName: "moon.zzz.fill")
-                .font(.system(size: 48))
-                .foregroundStyle(.tertiary)
-                .padding(.bottom, 8)
-
-            Text("Fall asleep to your podcasts")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
                 ForEach(SleepTimerPreset.allCases) { preset in
                     Button(action: {

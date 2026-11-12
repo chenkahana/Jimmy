@@ -17,6 +17,8 @@ All notable changes to Jimmy are recorded here. The format follows
 
 ### Changed
 
+- A calmer look: system backgrounds instead of the gradient backdrop, no card shadows, plain section headers,
+  standard empty states, and a new accent color.
 - Simplified architecture with a new core package, JimmyKit.
 - Xcode project now generated from `project.yml` via XcodeGen; build with `make build`.
 

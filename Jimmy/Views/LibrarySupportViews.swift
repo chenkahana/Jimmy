@@ -186,19 +186,16 @@ struct LibraryRouteLoadingView: View {
         ZStack {
             JimmyScreenBackground()
 
-            JimmyCard(padding: JimmyDesign.Spacing.lg) {
-                VStack(spacing: JimmyDesign.Spacing.md) {
-                    ProgressView()
-                        .scaleEffect(1.1)
-
-                    JimmySectionHeader(
-                        title: title,
-                        detail: subtitle,
-                        icon: "arrow.trianglehead.2.clockwise"
-                    )
-                }
+            VStack(spacing: JimmyDesign.Spacing.sm) {
+                ProgressView()
+                Text(title)
+                    .font(.headline)
+                Text(subtitle)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
             }
-            .padding(.horizontal, 20)
+            .padding(.horizontal, 32)
         }
     }
 }
@@ -214,8 +211,7 @@ struct LibraryRouteUnavailableView: View {
             JimmyScreenBackground()
 
             EmptyStateView(
-                icon: "exclamationmark.triangle.fill",
-                eyebrow: "Library",
+                icon: "exclamationmark.triangle",
                 title: title,
                 subtitle: subtitle,
                 primaryAction: .init(label: buttonTitle, systemImage: "arrow.clockwise", action: action)
@@ -260,7 +256,7 @@ struct OptimizedPodcastCard: View {
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(podcast.title)
-                        .font(.system(.subheadline, design: .rounded, weight: .semibold))
+                        .font(.system(.subheadline, weight: .semibold))
                         .foregroundStyle(.primary)
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)

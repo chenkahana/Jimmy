@@ -32,7 +32,6 @@ struct QueueView: View {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     if !episodes.isEmpty {
                         EditButton()
-                            .font(.system(size: 16, weight: .medium))
                             .popoverTip(QueueReorderTip(), arrowEdge: .top)
                     }
                 }
@@ -40,10 +39,8 @@ struct QueueView: View {
                     Button {
                         showingSuggestions = true
                     } label: {
-                        Image(systemName: "sparkles")
-                            .font(.system(size: 16, weight: .medium))
+                        Label("Suggestions", systemImage: "lightbulb")
                     }
-                    .accessibilityLabel("Suggestions")
                 }
             }
             .sheet(isPresented: $showingSuggestions) {
@@ -88,39 +85,16 @@ struct QueueView: View {
 
     private var emptyStateView: some View {
         EmptyStateView(
-            icon: "headphones.circle.fill",
-            eyebrow: "Queue",
-            title: "Build a listening run worth pressing play on",
-            subtitle: "Save the next great episode from anywhere in Jimmy and your queue becomes the one place you can trust for what comes next.",
-            primaryAction: .init(label: "Discover Podcasts", systemImage: "magnifyingglass") {
+            icon: "list.bullet",
+            title: "Queue Is Empty",
+            subtitle: "Episodes you add to your queue appear here.",
+            primaryAction: .init(label: "Browse Shows", systemImage: "magnifyingglass") {
                 DeepLinkRouter.shared.navigate(to: .discover)
             },
-            secondaryAction: .init(label: "Browse Library", systemImage: "books.vertical") {
+            secondaryAction: .init(label: "Open Library", systemImage: "books.vertical") {
                 DeepLinkRouter.shared.navigate(to: .library)
             }
-        ) {
-            JimmyCard(padding: JimmyDesign.Spacing.lg) {
-                JimmySectionHeader(
-                    title: "What Queue is built for",
-                    detail: "Keep fresh episodes lined up, promote favorites to the top, and jump straight back into listening.",
-                    icon: "sparkles"
-                )
-
-                VStack(spacing: JimmyDesign.Spacing.md) {
-                    queueHighlightRow(
-                        icon: "arrow.up.forward.circle.fill",
-                        title: "Promote the best stuff",
-                        detail: "Move must-hear episodes to the top without losing the rest of your stack."
-                    )
-                    queueHighlightRow(
-                        icon: "play.circle.fill",
-                        title: "Pick up instantly",
-                        detail: "Playback state and artwork stay visible so the next decision is effortless."
-                    )
-                }
-            }
-            .frame(maxWidth: 640)
-        }
+        )
     }
 
     private var queueList: some View {
@@ -135,23 +109,19 @@ struct QueueView: View {
                 LazyVStack(spacing: 8) {
                     // "Up Next" section (first 3 episodes)
                     if !upNextEpisodes.isEmpty {
-                        sectionHeader("Up Next", icon: "play.circle")
+                        sectionHeader("Up Next")
                         ForEach(Array(upNextEpisodes.enumerated()), id: \.element.id) { index, episode in
                             draggableEpisodeRow(episode: episode, index: index, isProminent: true)
-                                .staggeredAppear(index: index)
-                                .scrollEdgeTransition()
                         }
                     }
 
                     // "Later" section (remaining episodes)
                     if !laterEpisodes.isEmpty {
-                        sectionHeader("Later", icon: "clock")
+                        sectionHeader("Later")
                             .padding(.top, 8)
                         ForEach(Array(laterEpisodes.enumerated()), id: \.element.id) { offset, episode in
                             let index = upNextEpisodes.count + offset
                             draggableEpisodeRow(episode: episode, index: index, isProminent: false)
-                                .staggeredAppear(index: offset)
-                                .scrollEdgeTransition()
                         }
                     }
                 }
@@ -174,8 +144,7 @@ struct QueueView: View {
                             Label("Clear All", systemImage: "trash")
                         }
                     } label: {
-                        Image(systemName: "ellipsis.circle")
-                            .font(.system(size: 16, weight: .medium))
+                        Label("More", systemImage: "ellipsis.circle")
                     }
                 }
             }
@@ -204,36 +173,10 @@ struct QueueView: View {
         }
     }
 
-    private func sectionHeader(_ title: String, icon: String) -> some View {
-        JimmySectionHeader(
-            title: title,
-            icon: icon,
-            trailingText: title == "Up Next" ? "Ready first" : "Queued"
-        )
-        .padding(.horizontal, 16)
-        .padding(.vertical, 6)
-    }
-
-    private func queueHighlightRow(icon: String, title: String, detail: String) -> some View {
-        HStack(alignment: .top, spacing: JimmyDesign.Spacing.md) {
-            Image(systemName: icon)
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(Color.accentColor)
-                .frame(width: 24, height: 24)
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title)
-                    .font(.system(.subheadline, design: .rounded, weight: .semibold))
-                    .foregroundStyle(.primary)
-
-                Text(detail)
-                    .font(JimmyDesign.Typography.detail)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
-            Spacer(minLength: 0)
-        }
+    private func sectionHeader(_ title: String) -> some View {
+        JimmySectionHeader(title)
+            .padding(.horizontal, 4)
+            .padding(.top, 8)
     }
 
     private func draggableEpisodeRow(episode: Episode, index: Int, isProminent: Bool = false) -> some View {

@@ -94,6 +94,12 @@ Found already, to settle before going public:
 - Launch never crashes on a bad database: it shows an error and offers a reset.
 - Release guide (TestFlight / App Store), CHANGELOG, version tags.
 
+### 8. Design (2026-11-12)
+Jimmy looked generated: a gradient backdrop on every screen, cards with shadows around everything, all-caps
+eyebrows, marketing copy, a purple accent. The redesign follows `docs/design.md`: calm, artwork-first and native,
+in Boaz's language (neutral base, one accent, content supplies the color, Liquid Glass only on controls). The PRs
+are Wave E in `tasks/todo.md`.
+
 ## Done means
 - Every phase merged with green CI; no `fatalError` outside `init(coder:)`.
 - The library from today's app opens unchanged (fixture test + one real device).
