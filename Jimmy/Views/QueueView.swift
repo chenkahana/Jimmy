@@ -8,7 +8,6 @@ import JimmyKit
 struct QueueView: View {
     @Environment(AppModel.self) private var appModel
     @State private var editMode: EditMode = .inactive
-    @State private var allEpisodeItems: [JimmyKit.EpisodeListItem] = []
     @State private var episodes: [Episode] = []
     @Namespace private var queueNamespace
     @State private var selectedEpisodeDestination: QueueNavigationDestination?
@@ -46,16 +45,13 @@ struct QueueView: View {
             .task {
                 guard let stream = appModel.observeQueueItems() else { return }
                 do {
+                    // The observation already returns queue order, so it is the list's only source.
                     for try await items in stream {
-                        allEpisodeItems = items
-                        syncEpisodesWithQueue()
+                        episodes = items.map { $0.asLegacyEpisode() }
                     }
                 } catch {
                     // The observation stopped (e.g. the store closed); the queue just stops updating.
                 }
-            }
-            .onChange(of: appModel.queueEpisodeIDs) { _, _ in
-                syncEpisodesWithQueue()
             }
             .navigationDestination(item: $selectedEpisodeDestination) { destination in
                 EpisodeDetailView(episodeWithState: destination.episode)
@@ -159,7 +155,6 @@ struct QueueView: View {
         }
         .swipeActions(edge: .leading) {
             playNextButton(episode)
-                .tint(.accentColor)
             playedButton(episode)
         }
         .swipeActions(edge: .trailing) {
@@ -274,6 +269,7 @@ struct QueueView: View {
 
     private func remove(_ episodeID: UUID) {
         Motion.lightHaptic()
+        episodes.removeAll { $0.id == episodeID }
         Task { await appModel.dequeue(episodeID) }
     }
 
@@ -287,8 +283,8 @@ struct QueueView: View {
         episodes.move(fromOffsets: source, toOffset: destination)
         Motion.mediumHaptic()
         Task {
-            await QueueReorderTip.reorderedQueue.donate()
             await appModel.moveInQueue(movedEpisodeID, to: newIndex + 1)
+            await QueueReorderTip.reorderedQueue.donate()
         }
     }
 
@@ -301,17 +297,11 @@ struct QueueView: View {
     /// "4 episodes · 2 h 14 min left"
     private var summary: String {
         let count = episodes.count == 1 ? "1 episode" : "\(episodes.count) episodes"
-        let remaining = episodes.reduce(0) { $0 + $1.remainingTime }
+        let remaining = episodes
+            .filter { !$0.status.contains(.played) }
+            .reduce(0) { $0 + $1.remainingTime }
         guard remaining > 0 else { return count }
         return "\(count) · \(QueueTimeFormat.duration(remaining)) left"
-    }
-
-    /// Resolves `appModel`'s queue (ids and order) into the rich old `Episode` model this view
-    /// renders, looking each one up in `allEpisodeItems` (kept current by `observeQueueItems`) and
-    /// dropping anything no longer queued or not yet loaded.
-    private func syncEpisodesWithQueue() {
-        let itemsByID = Dictionary(uniqueKeysWithValues: allEpisodeItems.map { ($0.episode.id, $0) })
-        episodes = appModel.queueEpisodeIDs.compactMap { itemsByID[$0]?.asLegacyEpisode() }
     }
 
     private func clearPlayedEpisodes() async {
