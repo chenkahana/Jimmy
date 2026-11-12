@@ -17,6 +17,8 @@ All notable changes to Jimmy are recorded here. The format follows
 
 ### Changed
 
+- Tabs are Queue, Library and Search. The mini player sits above the tab bar, which shrinks as you scroll, and
+  Settings, Add by URL, Listening Stats and Feedback open from Library's More menu.
 - Library: shows are an artwork grid with no cards, search is the system search field, the Shows/Episodes switch
   sits under the title, and unsubscribing moves to each show's context menu. A show counts its new episodes.
 - A calmer look: system backgrounds instead of the gradient backdrop, no card shadows, plain section headers,

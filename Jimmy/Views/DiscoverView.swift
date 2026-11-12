@@ -33,6 +33,7 @@ struct DiscoverView: View {
                         isSearchFieldFocused = newValue
                     }
                 ),
+                placement: .navigationBarDrawer(displayMode: .always),
                 prompt: "Shows"
             )
             .onSubmit(of: .search) {

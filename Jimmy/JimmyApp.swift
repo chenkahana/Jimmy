@@ -127,8 +127,7 @@ struct JimmyApp: App {
     @ViewBuilder
     private var readyContent: some View {
         ZStack {
-            HostTabBarControllerRepresentable()
-                .ignoresSafeArea()
+            AppShell()
 
             #if DEBUG
             if showsPerformanceHUD {
@@ -137,25 +136,21 @@ struct JimmyApp: App {
             #endif
         }
         .environment(ShellStore.shared)
-        .environment(ShellStore.shared.chrome)
         .environment(InteractionLatencyTracker.shared)
         .fullScreenCover(
             isPresented: Binding(
                 get: { ShellStore.shared.presentation == .nowPlaying },
                 set: { isPresented in
                     if !isPresented {
-                        ShellStore.shared.chrome.isPresentingModal = false
                         ShellStore.shared.clearPresentation()
                     }
                 }
             )
         ) {
             ExpandedNowPlayingView {
-                ShellStore.shared.chrome.isPresentingModal = false
                 ShellStore.shared.clearPresentation()
             }
             .environment(ShellStore.shared)
-            .environment(ShellStore.shared.chrome)
             .environment(InteractionLatencyTracker.shared)
             .environment(appModel)
         }
@@ -253,17 +248,5 @@ struct JimmyApp: App {
         // Eagerly initialise SettingsViewModel so its Combine bindings are active.
         // SettingsViewModel.loadSettings() will apply the correct UIUserInterfaceStyle.
         _ = SettingsViewModel.shared
-    }
-}
-
-// MARK: - UIKit Bridge
-
-struct HostTabBarControllerRepresentable: UIViewControllerRepresentable {
-    func makeUIViewController(context: Context) -> StandardTabBarController {
-        return StandardTabBarController()
-    }
-    
-    func updateUIViewController(_ uiViewController: StandardTabBarController, context: Context) {
-        // No updates needed
     }
 }
