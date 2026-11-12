@@ -9,12 +9,12 @@ struct FeedbackFormView: View {
     @State private var statusMessage: String?
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             Form {
                 Section(header: Text("Your Name")) {
                     TextField("Name", text: $name)
-                        .disableAutocorrection(true)
-                        .autocapitalization(.words)
+                        .autocorrectionDisabled()
+                        .textInputAutocapitalization(.words)
                 }
 
                 Section(header: Text("Suggestion or Bug")) {
@@ -42,7 +42,7 @@ struct FeedbackFormView: View {
             .navigationTitle("Submit Feedback")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }
                 }
             }
@@ -55,7 +55,7 @@ struct FeedbackFormView: View {
         FeedbackService.shared.submit(name: name, notes: notes) { success, message in
             isSubmitting = false
             if success {
-                statusMessage = "Thank you!"
+                statusMessage = "Thanks. Your feedback was sent."
                 name = ""
                 notes = ""
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {

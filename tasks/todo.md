@@ -131,15 +131,15 @@ slop check in `docs/design.md`.
 - [x] D2. Delete unused UI (S)
 - [ ] D1. Foundation: tokens, shared components, Signal accent, motion, copy; `docs/design.md` (S)
 - [ ] D3. App icon in Icon Composer: default, dark, clear, tinted (S)
-- [ ] S1. Shell: SwiftUI `TabView`, Search tab, mini player as `tabViewBottomAccessory`, Settings out of the tab bar (S)
-- [ ] S2. Queue: plain `List`, native reorder and swipe actions (S)
-- [ ] S3. Now Playing: artwork backdrop, glass transport, one bottom panel for speed, sleep and chapters (S)
-- [ ] S4. Library: artwork grid, `.searchable`, no overview card (S)
-- [ ] S5. Podcast and Episode: artwork band header, New York show notes (S)
+- [x] S1. Shell: SwiftUI `TabView`, Search tab, mini player as `tabViewBottomAccessory`, Settings out of the tab bar (S)
+- [x] S2. Queue: plain `List`, native reorder and swipe actions (S)
+- [x] S3. Now Playing: artwork backdrop, glass transport, one bottom panel for speed, sleep and chapters (S)
+- [x] S4. Library: artwork grid, `.searchable`, no overview card (S)
+- [x] S5. Podcast and Episode: artwork band header, New York show notes (S)
 - [x] S6. Search and Discover: recent searches, Top Shows (S). Categories wait for a genre chart in JimmyKit's
   `PodcastDirectory`.
-- [ ] S7. Settings: `Form` (S)
-- [ ] S8. Refresh `docs/screenshots` with `Tools/screenshots.sh` (H)
+- [x] S7. Settings: `Form` (S)
+- [x] S8. Refresh `docs/screenshots` with `Tools/screenshots.sh` (H)
 
 ## Only Chen
 - Export `jimmy.db` from the phone (PR 7).

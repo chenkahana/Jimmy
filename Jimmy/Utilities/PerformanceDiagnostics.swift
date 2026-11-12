@@ -31,18 +31,12 @@ enum PerformanceMarker {
 }
 
 enum InteractionMetric {
-    case shellFirstRender
-    case tabSwitch
     case discoverSearch
     case queueReorder
     case podcastDetailOpen
 
     fileprivate var signpostName: StaticString {
         switch self {
-        case .shellFirstRender:
-            return "Shell First Render"
-        case .tabSwitch:
-            return "Tab Switch"
         case .discoverSearch:
             return "Discover Search"
         case .queueReorder:
@@ -64,15 +58,11 @@ final class InteractionLatencyTracker {
 
     static let shared = InteractionLatencyTracker()
 
-    var shellFirstRenderMilliseconds: Double?
-    var tabSwitchMilliseconds: Double?
     var discoverSearchMilliseconds: Double?
     var queueReorderMilliseconds: Double?
     var podcastDetailOpenMilliseconds: Double?
 
     @ObservationIgnored private let clock = ContinuousClock()
-    @ObservationIgnored private var shellFirstRenderToken: Token?
-    @ObservationIgnored private var tabSwitchToken: Token?
 
     private init() {}
 
@@ -97,37 +87,12 @@ final class InteractionLatencyTracker {
         PerformanceMarker.end(token.interval)
 
         switch token.metric {
-        case .shellFirstRender:
-            shellFirstRenderMilliseconds = elapsedMilliseconds
-        case .tabSwitch:
-            tabSwitchMilliseconds = elapsedMilliseconds
         case .discoverSearch:
             discoverSearchMilliseconds = elapsedMilliseconds
         case .queueReorder:
             queueReorderMilliseconds = elapsedMilliseconds
         case .podcastDetailOpen:
             podcastDetailOpenMilliseconds = elapsedMilliseconds
-        }
-    }
-
-    func beginShellFirstRender() {
-        shellFirstRenderToken = begin(.shellFirstRender)
-    }
-
-    func endShellFirstRender() {
-        end(shellFirstRenderToken)
-        shellFirstRenderToken = nil
-    }
-
-    func beginTabSwitch() {
-        tabSwitchToken = begin(.tabSwitch)
-    }
-
-    func endTabSwitch(tab: ShellTab) {
-        if let tabSwitchToken {
-            PerformanceMarker.emit(InteractionMetric.tabSwitch.signpostName, message: tab.identifier)
-            end(tabSwitchToken)
-            self.tabSwitchToken = nil
         }
     }
 
@@ -144,8 +109,6 @@ struct PerformanceDebugOverlay: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: JimmyDesign.Spacing.xs) {
-            metricLine("Shell", tracker.shellFirstRenderMilliseconds)
-            metricLine("Tab", tracker.tabSwitchMilliseconds)
             metricLine("Search", tracker.discoverSearchMilliseconds)
             metricLine("Queue", tracker.queueReorderMilliseconds)
             metricLine("Detail", tracker.podcastDetailOpenMilliseconds)

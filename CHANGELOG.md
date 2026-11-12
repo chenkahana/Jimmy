@@ -17,11 +17,22 @@ All notable changes to Jimmy are recorded here. The format follows
 
 ### Changed
 
+- Now Playing sits on a flat color sampled from the artwork, with transport in one glass capsule. Speed, Sleep and
+  Chapters open one bottom panel, and chapters show their lengths. Download moves to the More menu.
+- Tabs are Queue, Library and Search. The mini player sits above the tab bar, which shrinks as you scroll, and
+  Settings, Add by URL, Listening Stats and Feedback open from Library's More menu.
+- Library: shows are an artwork grid with no cards, search is the system search field, the Shows/Episodes switch
+  sits under the title, and unsubscribing moves to each show's context menu. A show counts its new episodes.
 - A calmer look: system backgrounds instead of the gradient backdrop, no card shadows, plain section headers,
   standard empty states, and a new accent color.
+- Settings is a native grouped form: Playback, Appearance, Sync & Backup, Import & Export, About, with
+  destructive actions last and the app version shown once.
 - Discover is a plain list: your recent searches, then Top Shows as a numbered ranking. Search results are rows,
   and loading shows placeholder rows instead of shimmering cards. The Featured and Trending Episodes rows, which
   repeated the same chart, are gone.
+- The queue is a plain list with artwork rows, drag to reorder, and swipe or long-press for Play Next, Played, Download and Remove.
+- Podcast pages open on the show's artwork as a large hero that fades into the page; episodes are plain rows and
+  show notes are set in New York.
 - Simplified architecture with a new core package, JimmyKit.
 - Xcode project now generated from `project.yml` via XcodeGen; build with `make build`.
 

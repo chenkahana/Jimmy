@@ -2,7 +2,8 @@
 //  ExpandedNowPlayingView.swift
 //  Jimmy
 //
-//  Full-screen now playing experience with matched geometry morphing
+//  The full-screen player: artwork on a flat backdrop sampled from it, the scrubber, transport in one glass
+//  capsule, and speed, sleep and chapters in one bottom panel.
 //
 
 import SwiftUI
@@ -11,425 +12,299 @@ import JimmyKit
 
 struct ExpandedNowPlayingView: View {
     @StateObject private var viewModel = CurrentPlayViewModel.shared
+    @ObservedObject private var settings = SettingsViewModel.shared
     @Environment(AppModel.self) private var appModel
-    @Environment(\.nowPlayingNamespace) private var namespace
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @ScaledMetric(relativeTo: .title) private var skipGlyph: CGFloat = 28
+    @ScaledMetric(relativeTo: .title) private var playGlyph: CGFloat = 30
 
     @State private var dragOffset: CGFloat = 0
-    @State private var showingSleepTimer = false
-    @StateObject private var colorExtractor = ArtworkColorExtractor.shared
+    /// The artwork's color when it is legible; `nil` falls back to the system background.
+    @State private var backdrop: ArtworkContrast?
+    @State private var panel: Panel?
+    /// The scrubber's position while it is being dragged.
+    @State private var scrubPosition: TimeInterval?
+    @State private var scrubsEnded = 0
     private let onClose: (() -> Void)?
+
+    private enum Panel { case speed, sleep, chapters }
+    private static let speeds: [Double] = [0.75, 1.0, 1.25, 1.5, 2.0]
 
     init(onClose: (() -> Void)? = nil) {
         self.onClose = onClose
     }
 
     var body: some View {
-        GeometryReader { geometry in
-            let screenWidth = UIScreen.main.bounds.width
-            let screenHeight = UIScreen.main.bounds.height
-            let topInset = max(geometry.safeAreaInsets.top, 52)
-            let bottomInset = max(geometry.safeAreaInsets.bottom, 20)
-            let horizontalPadding = min(max(screenWidth * 0.06, JimmyDesign.Spacing.lg), JimmyDesign.Spacing.xl)
+        ZStack {
+            (backdrop?.color ?? Color(.systemBackground)).ignoresSafeArea()
 
-            ZStack {
-                Color.black.ignoresSafeArea()
-                backgroundView
-
-                LinearGradient(
-                    colors: [
-                        Color.black.opacity(0.22),
-                        Color.black.opacity(backdropOpacity + 0.56)
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                .ignoresSafeArea()
-                .allowsHitTesting(false)
-
-                if let currentEpisode = viewModel.currentPlayingEpisode {
-                    VStack(spacing: 0) {
-                        topBar(topInset: topInset)
-
-                        ScrollView(showsIndicators: false) {
-                            VStack(spacing: JimmyDesign.Spacing.lg) {
-                                artworkView(
-                                    for: currentEpisode,
-                                    availableWidth: screenWidth - (horizontalPadding * 2)
-                                )
-                                metadataView(for: currentEpisode)
-                                progressCard
-                                transportControlsCard
-                                secondaryControlsCard
-                                episodeDetailsCard(for: currentEpisode)
-                            }
-                            .frame(width: max(screenWidth - (horizontalPadding * 2), 0), alignment: .center)
-                            .padding(.horizontal, horizontalPadding)
-                            .padding(.top, JimmyDesign.Spacing.md)
-                            .padding(.bottom, max(bottomInset, JimmyDesign.Spacing.lg) + JimmyDesign.Spacing.xl)
-                        }
-                    }
-                    .frame(width: screenWidth, height: screenHeight, alignment: .top)
+            if let episode = viewModel.currentPlayingEpisode {
+                player(for: episode)
+                    .accessibilityHidden(panel != nil)
                     .offset(y: dragOffset)
                     .gesture(dismissGesture)
-                    .onAppear {
-                        colorExtractor.extractColors(from: currentEpisode.artworkURL ?? viewModel.getPodcast(for: currentEpisode)?.artworkURL)
-                    }
-                } else {
-                    VStack(spacing: JimmyDesign.Spacing.lg) {
-                        topBar(topInset: topInset)
-
-                        Spacer()
-
-                        JimmyCard {
-                            VStack(spacing: JimmyDesign.Spacing.md) {
-                                Image(systemName: "waveform.circle")
-                                    .font(.system(size: 46, weight: .light))
-                                    .foregroundStyle(.secondary)
-
-                                Text("Nothing Is Playing")
-                                    .font(.title3.weight(.semibold))
-
-                                Text("Start an episode from Queue, Library, or Discover and the full player will appear here.")
-                                    .font(.body)
-                                    .multilineTextAlignment(.center)
-                                    .foregroundStyle(.secondary)
-
-                                Button("Close") {
-                                    closePlayer()
-                                }
-                                .buttonStyle(.borderedProminent)
-                            }
-                            .frame(maxWidth: .infinity)
+                    .task(id: artworkURL(for: episode)) {
+                        guard let url = artworkURL(for: episode),
+                              let color = await ArtworkColorExtractor.dominantColor(of: url) else {
+                            backdrop = nil
+                            return
                         }
-                        .padding(.horizontal, horizontalPadding)
-
-                        Spacer()
+                        backdrop = ArtworkContrast(color.resolve(in: EnvironmentValues())).usable
                     }
-                    .frame(width: screenWidth, height: screenHeight, alignment: .top)
+            } else {
+                ContentUnavailableView {
+                    Label("Nothing Is Playing", systemImage: "play.circle")
+                } description: {
+                    Text("Episodes you play appear here.")
+                } actions: {
+                    Button("Close", action: closePlayer)
+                        .buttonStyle(.borderedProminent)
                 }
             }
-            .frame(width: screenWidth, height: screenHeight, alignment: .top)
+
+            if let panel {
+                BottomPanel(tint: backdrop, maxHeight: 0.6, onDismiss: { show(nil) }, content: {
+                    panelContent(panel)
+                })
+                .zIndex(1)
+            }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .environment(\.colorScheme, backdrop?.colorScheme ?? colorScheme)
         .animation(.motion, value: dragOffset)
     }
 
-    // MARK: - Subviews
+    // MARK: - Player
 
-    private var backgroundView: some View {
-        Group {
-            if let currentEpisode = viewModel.currentPlayingEpisode {
-                BulletproofAsyncImage(url: currentEpisode.artworkURL ?? viewModel.getPodcast(for: currentEpisode)?.artworkURL) { image in
+    private func player(for episode: Episode) -> some View {
+        VStack(spacing: JimmyDesign.Spacing.lg) {
+            topBar(for: episode)
+            artwork(for: episode)
+
+            VStack(alignment: .leading, spacing: JimmyDesign.Spacing.xs) {
+                Text(episode.title)
+                    .font(.title3.weight(.semibold))
+                    .lineLimit(2)
+                if let show = viewModel.getPodcast(for: episode)?.title {
+                    Text(show)
+                        .foregroundStyle(secondaryText)
+                        .lineLimit(1)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            scrubber
+            transport
+            secondaryControls
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, JimmyDesign.Spacing.xl)
+        .padding(.bottom, JimmyDesign.Spacing.sm)
+        .foregroundStyle(.primary)
+    }
+
+    private func topBar(for episode: Episode) -> some View {
+        HStack {
+            Button(action: closePlayer) {
+                Image(systemName: "chevron.down")
+                    .font(.title3.weight(.semibold))
+                    .frame(width: 44, height: 44)
+            }
+            .accessibilityLabel("Close Now Playing")
+
+            Spacer()
+
+            Menu {
+                downloadButton(for: episode)
+            } label: {
+                Image(systemName: "ellipsis")
+                    .font(.title3.weight(.semibold))
+                    .frame(width: 44, height: 44)
+            }
+            .accessibilityLabel("More")
+        }
+        .buttonStyle(.plain)
+        .tint(.primary)
+        .padding(.horizontal, -JimmyDesign.Spacing.md)
+    }
+
+    @ViewBuilder
+    private func downloadButton(for episode: Episode) -> some View {
+        switch viewModel.downloadState(for: episode) {
+        case .queued, .downloading:
+            Button("Cancel Download", systemImage: "xmark") { viewModel.cancelDownload(episode) }
+        case .done:
+            Button("Remove Download", systemImage: "trash", role: .destructive) { viewModel.deleteDownload(episode) }
+        case .failed, nil:
+            Button("Download", systemImage: "arrow.down.circle") { viewModel.downloadEpisode(episode) }
+        }
+    }
+
+    private func artwork(for episode: Episode) -> some View {
+        let podcastName = viewModel.getPodcast(for: episode)?.title ?? ""
+        return Color.clear
+            .aspectRatio(1, contentMode: .fit)
+            .overlay {
+                BulletproofAsyncImage(url: artworkURL(for: episode)) { image in
                     image
                         .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .blur(radius: 72)
-                        .overlay(Color.black.opacity(0.52))
+                        .scaledToFill()
                 } placeholder: {
-                    Color.black
+                    Color(.systemGray5)
                 }
-                .ignoresSafeArea()
-                .overlay(colorExtractor.dominantColor.opacity(0.12).ignoresSafeArea())
-            } else {
-                Color.black.ignoresSafeArea()
             }
-        }
+            .clipShape(ArtworkShape())
+            .shadow(color: JimmyDesign.Shadow.artworkColor, radius: JimmyDesign.Shadow.artworkRadius,
+                    x: 0, y: JimmyDesign.Shadow.artworkY)
+            .frame(maxWidth: 400)
+            .layoutPriority(1)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(podcastName.isEmpty
+                ? "Artwork for \(episode.title)"
+                : "Artwork for \(episode.title) from \(podcastName)")
+            .accessibilityAddTraits(.isImage)
     }
 
-    private var dragIndicator: some View {
-        RoundedRectangle(cornerRadius: 3)
-            .fill(Color.white.opacity(0.28))
-            .frame(width: 36, height: 5)
-            .padding(.bottom, 8)
-            .accessibilityLabel("Drag to dismiss")
-            .accessibilityHint("Swipe down to close the player")
-            .accessibilityAddTraits(.isButton)
-    }
-
-    private func topBar(topInset: CGFloat) -> some View {
-        VStack(spacing: JimmyDesign.Spacing.sm) {
-            dragIndicator
-                .padding(.top, max(topInset, JimmyDesign.Spacing.sm))
-
-            HStack {
-                Button(action: dismissWithAnimation) {
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(.white)
-                        .frame(width: 44, height: 44)
-                        .background(.ultraThinMaterial, in: Circle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Close now playing")
-
-                Spacer()
-            }
-            .padding(.horizontal, JimmyDesign.Spacing.lg)
-        }
-    }
-
-    private func artworkView(for episode: Episode, availableWidth: CGFloat) -> some View {
-        let podcastName = viewModel.getPodcast(for: episode)?.title ?? ""
-        let artworkLabel = podcastName.isEmpty
-            ? "Artwork for \(episode.title)"
-            : "Artwork for \(episode.title) from \(podcastName)"
-        let artworkSize = min(max(availableWidth, 0), 320.0)
-
-        return BulletproofAsyncImage(url: episode.artworkURL ?? viewModel.getPodcast(for: episode)?.artworkURL) { image in
-            image
-                .resizable()
-                .aspectRatio(contentMode: .fill)
-        } placeholder: {
-            artworkPlaceholder
-        }
-        .frame(width: artworkSize, height: artworkSize)
-        .clipShape(RoundedRectangle(cornerRadius: JimmyDesign.Radius.xl))
-        .shadow(color: JimmyDesign.Shadow.artworkColor, radius: JimmyDesign.Shadow.artworkRadius, x: 0, y: JimmyDesign.Shadow.artworkY)
-        .accessibilityLabel(artworkLabel)
-        .accessibilityAddTraits(.isImage)
-        .if(namespace != nil) { view in
-            view.matchedGeometryEffect(id: NowPlayingGeometryID.artwork, in: namespace!)
-        }
-    }
-
-    private var artworkPlaceholder: some View {
-        RoundedRectangle(cornerRadius: JimmyDesign.Radius.xl)
-            .fill(Color(.systemGray5))
-            .overlay(
-                Image(systemName: "waveform")
-                    .font(.largeTitle)
-                    .foregroundStyle(Color(.systemGray2))
-            )
-    }
-
-    private func metadataView(for episode: Episode) -> some View {
-        VStack(spacing: JimmyDesign.Spacing.sm) {
-            Text(episode.title)
-                .font(.title2.weight(.semibold))
-                .foregroundStyle(.white)
-                .multilineTextAlignment(.center)
-                .lineLimit(3)
-                .if(namespace != nil) { view in
-                    view.matchedGeometryEffect(id: NowPlayingGeometryID.title, in: namespace!)
-                }
-
-            if let podcast = viewModel.getPodcast(for: episode) {
-                Text(podcast.title)
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(Color.white.opacity(0.72))
-                    .if(namespace != nil) { view in
-                        view.matchedGeometryEffect(id: NowPlayingGeometryID.subtitle, in: namespace!)
-                    }
-            }
-
-            Label(viewModel.currentOutputDevice.displayName, systemImage: viewModel.currentOutputDevice.icon)
-                .font(.caption.weight(.medium))
-                .foregroundStyle(Color.white.opacity(0.78))
-                .padding(.horizontal, JimmyDesign.Spacing.md)
-                .padding(.vertical, JimmyDesign.Spacing.xs + 2)
-                .background(.thinMaterial, in: Capsule())
-        }
-        .frame(maxWidth: .infinity)
-    }
-
-    private var progressCard: some View {
-        JimmyCard {
-            progressSliderView
-        }
-        .frame(maxWidth: .infinity)
-    }
-
-    private var transportControlsCard: some View {
-        JimmyCard {
-            HStack(spacing: 48) {
-                Button(action: {
-                    viewModel.skipBackward()
-                    Motion.lightHaptic()
-                }) {
-                    Image(systemName: "gobackward.\(Int(SettingsViewModel.shared.skipBackwardDuration))")
-                        .font(.title2.weight(.semibold))
-                        .frame(width: 52, height: 52)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Skip back \(Int(SettingsViewModel.shared.skipBackwardDuration)) seconds")
-                .accessibilityHint("Double tap to rewind")
-
-                Button(action: {
-                    viewModel.playPauseCurrentEpisode()
-                    Motion.mediumHaptic()
-                }) {
-                    ZStack {
-                        Circle()
-                            .fill(Color.accentColor)
-                            .frame(width: 70, height: 70)
-                            .overlay(
-                                Image(systemName: (appModel.playback?.isPlaying ?? false) ? "pause.fill" : "play.fill")
-                                    .font(.title2.weight(.bold))
-                                    .foregroundColor(.white)
-                                    .contentTransition(.symbolEffect(.replace.downUp))
-                            )
-                    }
-                }
-                .buttonStyle(BounceButtonStyle())
-                .accessibilityLabel((appModel.playback?.isPlaying ?? false) ? "Pause" : "Play")
-                .accessibilityHint("Double tap to \((appModel.playback?.isPlaying ?? false) ? "pause" : "play") the episode")
-
-                Button(action: {
-                    viewModel.skipForward()
-                    Motion.lightHaptic()
-                }) {
-                    Image(systemName: "goforward.\(Int(SettingsViewModel.shared.skipForwardDuration))")
-                        .font(.title2.weight(.semibold))
-                        .frame(width: 52, height: 52)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Skip forward \(Int(SettingsViewModel.shared.skipForwardDuration)) seconds")
-                .accessibilityHint("Double tap to skip ahead")
-            }
-            .frame(maxWidth: .infinity)
-            .foregroundColor(.primary)
-        }
-        .frame(maxWidth: .infinity)
-    }
-
-    private var currentEpisodeDownloadState: JimmyKit.DownloadState? {
-        guard let episode = viewModel.currentPlayingEpisode else { return nil }
-        return viewModel.downloadState(for: episode)
-    }
-
-    private var secondaryControlsCard: some View {
-        JimmyCard {
-            HStack(spacing: JimmyDesign.Spacing.xl) {
-                Button(action: {
-                    guard let episode = viewModel.currentPlayingEpisode else { return }
-                    switch currentEpisodeDownloadState {
-                    case .queued, .downloading:
-                        viewModel.cancelDownload(episode)
-                    case .done:
-                        viewModel.deleteDownload(episode)
-                    case .failed, nil:
-                        viewModel.downloadEpisode(episode)
-                    }
-                }) {
-                    Image(systemName: {
-                        switch currentEpisodeDownloadState {
-                        case .queued, .downloading: return "arrow.down.circle.fill"
-                        case .done: return "checkmark.circle.fill"
-                        case .failed, nil: return "arrow.down.circle"
-                        }
-                    }())
-                    .font(.title3)
-                    .foregroundColor(currentEpisodeDownloadState == .done ? .green : .primary)
-                    .contentTransition(.symbolEffect(.replace.downUp))
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel({
-                    switch currentEpisodeDownloadState {
-                    case .queued, .downloading: return "Cancel download"
-                    case .done: return "Remove download"
-                    case .failed, nil: return "Download episode"
-                    }
-                }())
-
-                Button(action: { showingSleepTimer = true }) {
-                    HStack(spacing: 4) {
-                        Image(systemName: isSleepTimerActive ? "moon.zzz.fill" : "moon.zzz")
-                            .font(.title3)
-                        if isSleepTimerActive {
-                            Text(formattedSleepTimerRemaining)
-                                .font(.system(size: 11, weight: .bold))
-                                .foregroundColor(.accentColor)
-                        }
-                    }
-                }
-                .buttonStyle(.plain)
-                .foregroundColor(.primary)
-                .accessibilityLabel(isSleepTimerActive ? "Sleep timer active, \(formattedSleepTimerRemaining) remaining" : "Sleep timer")
-                .accessibilityHint("Double tap to configure sleep timer")
-
-                RoutePickerViewRepresentable()
-                    .frame(width: 44, height: 44)
-                    .accessibilityLabel("AirPlay")
-            }
-            .frame(maxWidth: .infinity)
-            .foregroundColor(.primary)
-        }
-        .frame(maxWidth: .infinity)
-        .sheet(isPresented: $showingSleepTimer) {
-            SleepTimerView()
-                .presentationDetents([.medium])
-        }
-    }
-
-    private var progressSliderView: some View {
-        let position = appModel.playback?.position ?? 0
+    private var scrubber: some View {
         let duration = appModel.playback?.duration ?? 0
-        return VStack(spacing: JimmyDesign.Spacing.sm) {
+        let position = scrubPosition ?? appModel.playback?.position ?? 0
+        return VStack(spacing: JimmyDesign.Spacing.xs) {
             Slider(
                 value: Binding(
                     get: { position },
                     set: { newValue in
-                        viewModel.seek(to: newValue)
+                        if scrubPosition != nil {
+                            scrubPosition = newValue
+                        } else {
+                            viewModel.seek(to: newValue)
+                        }
                     }
                 ),
-                in: 0...max(duration, 1)
+                in: 0...max(duration, 1),
+                onEditingChanged: { editing in
+                    if editing {
+                        scrubPosition = position
+                    } else if let target = scrubPosition {
+                        viewModel.seek(to: target)
+                        scrubPosition = nil
+                        scrubsEnded += 1
+                    }
+                }
             )
-            .frame(height: 44)
             .tint(.accentColor)
-            .accessibilityLabel("Playback progress")
+            .sensoryFeedback(.selection, trigger: scrubsEnded)
+            .accessibilityLabel("Playback position")
             .accessibilityValue("\(formatTime(position)) of \(formatTime(duration))")
-            .accessibilityHint("Drag to seek")
+            .accessibilityAdjustableAction { direction in
+                switch direction {
+                case .increment: viewModel.skipForward()
+                case .decrement: viewModel.skipBackward()
+                @unknown default: break
+                }
+            }
 
             HStack {
                 Text(formatTime(position))
-                    .font(.caption.weight(.medium))
-                    .foregroundColor(.secondary)
-                    .monospacedDigit()
-
                 Spacer()
-
-                Text("-\(formatTime(duration - position))")
-                    .font(.caption.weight(.medium))
-                    .foregroundColor(.secondary)
-                    .monospacedDigit()
+                Text("\u{2212}\(formatTime(duration - position))")
             }
+            .font(.caption)
+            .monospacedDigit()
+            .foregroundStyle(secondaryText)
+            .accessibilityHidden(true)
         }
-        .if(namespace != nil) { view in
-            view.matchedGeometryEffect(id: NowPlayingGeometryID.progress, in: namespace!)
+    }
+
+    private var transport: some View {
+        let back = Int(settings.skipBackwardDuration)
+        let forward = Int(settings.skipForwardDuration)
+        let isPlaying = appModel.playback?.isPlaying ?? false
+        return HStack(spacing: JimmyDesign.Spacing.xl) {
+            Button(action: viewModel.skipBackward) {
+                Image(systemName: "gobackward.\(back)")
+                    .font(.system(size: min(skipGlyph, 40), weight: .semibold))
+                    .frame(width: 56, height: 56)
+            }
+            .accessibilityLabel("Skip back \(back) seconds")
+
+            Button(action: viewModel.playPauseCurrentEpisode) {
+                Image(systemName: isPlaying ? "pause.fill" : "play.fill")
+                    .font(.system(size: min(playGlyph, 44), weight: .semibold))
+                    .foregroundStyle(.white)
+                    .contentTransition(.symbolEffect(.replace))
+                    .frame(width: 72, height: 72)
+                    .background(Color.accentColor, in: .circle)
+            }
+            .accessibilityLabel(isPlaying ? "Pause" : "Play")
+
+            Button(action: viewModel.skipForward) {
+                Image(systemName: "goforward.\(forward)")
+                    .font(.system(size: min(skipGlyph, 40), weight: .semibold))
+                    .frame(width: 56, height: 56)
+            }
+            .accessibilityLabel("Skip forward \(forward) seconds")
         }
+        .buttonStyle(BounceButtonStyle())
+        .padding(JimmyDesign.Spacing.sm)
+        .glassEffect(.regular.interactive(), in: .capsule)
     }
 
-    private var isSleepTimerActive: Bool {
-        appModel.playback?.sleepTimerMode != nil
+    private var secondaryControls: some View {
+        HStack {
+            Button(speedText(settings.playbackSpeed)) { show(.speed) }
+                .accessibilityLabel("Playback speed, \(speedText(settings.playbackSpeed))")
+            Spacer()
+            Button(sleepLabel) { show(.sleep) }
+                .monospacedDigit()
+                .accessibilityLabel(isSleepTimerActive ? "Sleep timer, \(sleepLabel)" : "Sleep timer")
+            Spacer()
+            Button("Chapters") { show(.chapters) }
+            Spacer()
+            RoutePickerViewRepresentable()
+                .frame(width: 44, height: 44)
+                .accessibilityLabel("AirPlay")
+        }
+        .font(.subheadline.weight(.medium))
+        .buttonStyle(.plain)
+        .frame(minHeight: 44)
     }
 
-    private var formattedSleepTimerRemaining: String {
-        guard let remaining = appModel.playback?.sleepTimerRemaining else { return "" }
-        let total = Int(max(0, remaining))
-        return String(format: "%d:%02d", total / 60, total % 60)
-    }
+    // MARK: - Panel
 
-    private func episodeDetailsCard(for episode: Episode) -> some View {
-        JimmyCard {
-            VStack(alignment: .leading, spacing: JimmyDesign.Spacing.sm) {
-                Text("Episode Details")
-                    .font(.headline.weight(.semibold))
-
-                if let description = episode.description, !description.cleanedDescription.isEmpty {
-                    Text(description.cleanedDescription)
-                        .font(.body)
-                        .foregroundColor(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                } else {
-                    Text("No description available for this episode yet.")
-                        .font(.body)
-                        .foregroundStyle(.secondary)
+    @ViewBuilder
+    private func panelContent(_ panel: Panel) -> some View {
+        switch panel {
+        case .speed:
+            VStack(alignment: .leading, spacing: JimmyDesign.Spacing.lg) {
+                Text("Playback Speed")
+                    .font(.headline)
+                    .accessibilityAddTraits(.isHeader)
+                Picker("Playback Speed", selection: $settings.playbackSpeed) {
+                    ForEach(Self.speeds, id: \.self) { speed in
+                        Text(speedText(speed)).tag(speed)
+                    }
                 }
+                .pickerStyle(.segmented)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(JimmyDesign.Spacing.xl)
+        case .sleep:
+            SleepTimerView()
+                .padding(JimmyDesign.Spacing.xl)
+        case .chapters:
+            if let episode = viewModel.currentPlayingEpisode {
+                NowPlayingChaptersPanel(episodeID: episode.id, duration: appModel.playback?.duration) { start in
+                    viewModel.seek(to: start)
+                }
+                .id(episode.id)
+            }
         }
-        .frame(maxWidth: .infinity)
+    }
+
+    private func show(_ newPanel: Panel?) {
+        withAnimation(BottomPanelStyle.motion(reduceMotion: reduceMotion)) {
+            panel = newPanel
+        }
     }
 
     // MARK: - Gestures & Actions
@@ -443,18 +318,13 @@ struct ExpandedNowPlayingView: View {
             }
             .onEnded { value in
                 if value.translation.height > 100 {
-                    dismissWithAnimation()
+                    closePlayer()
                 } else {
                     withAnimation(.motionGentle) {
                         dragOffset = 0
                     }
                 }
             }
-    }
-
-    private func dismissWithAnimation() {
-        Motion.mediumHaptic()
-        closePlayer()
     }
 
     private func closePlayer() {
@@ -469,10 +339,31 @@ struct ExpandedNowPlayingView: View {
 
     // MARK: - Helpers
 
-    private var backdropOpacity: Double {
-        let maxOpacity = 0.3
-        let dragProgress = min(1.0, dragOffset / 200.0)
-        return maxOpacity * (1.0 - dragProgress)
+    /// Secondary text stays full strength on artwork color, where a translucent label could miss 4.5:1.
+    private var secondaryText: HierarchicalShapeStyle {
+        backdrop == nil ? .secondary : .primary
+    }
+
+    private func artworkURL(for episode: Episode) -> URL? {
+        episode.artworkURL ?? viewModel.getPodcast(for: episode)?.artworkURL
+    }
+
+    private func speedText(_ speed: Double) -> String {
+        "\(speed.formatted(.number.precision(.fractionLength(0...2))))×"
+    }
+
+    private var isSleepTimerActive: Bool {
+        appModel.playback?.sleepTimerMode != nil
+    }
+
+    private var sleepLabel: String {
+        switch appModel.playback?.sleepTimerMode {
+        case nil: return "Sleep"
+        case .endOfEpisode: return SleepTimerPreset.endOfEpisode.label
+        default:
+            let total = Int(max(0, appModel.playback?.sleepTimerRemaining ?? 0))
+            return String(format: "%d:%02d", total / 60, total % 60)
+        }
     }
 
     private func rubberBand(_ translation: CGFloat) -> CGFloat {
@@ -494,11 +385,19 @@ struct ExpandedNowPlayingView: View {
     }
 }
 
+/// Artwork corners at 0.18 of the side, continuous.
+private nonisolated struct ArtworkShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        RoundedRectangle(cornerRadius: min(rect.width, rect.height) * 0.18, style: .continuous).path(in: rect)
+    }
+}
+
 struct BounceButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .scaleEffect(configuration.isPressed ? 0.88 : 1.0)
-            .animation(.spring(response: 0.25, dampingFraction: 0.45), value: configuration.isPressed)
+            .contentShape(.rect)
+            .scaleEffect(configuration.isPressed ? 0.95 : 1.0)
+            .animation(.motion, value: configuration.isPressed)
     }
 }
 
