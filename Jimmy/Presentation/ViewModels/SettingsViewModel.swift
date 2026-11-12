@@ -98,10 +98,6 @@ class SettingsViewModel: ObservableObject {
         setupSettingsBindings()
     }
     
-    deinit {
-        cancellables.removeAll()
-    }
-    
     // MARK: - Private Methods
     private func loadInitialData() {
         loadSettings()
@@ -252,20 +248,7 @@ class SettingsViewModel: ObservableObject {
             isCalculatingCache = true
         }
 
-        let totalBytes = await Task.detached(priority: .utility) {
-            var bytes: Int64 = 0
-
-            // URLCache disk usage
-            bytes += Int64(URLCache.shared.currentDiskUsage)
-
-            // App Caches directory
-            let fm = FileManager.default
-            if let cachesDir = fm.urls(for: .cachesDirectory, in: .userDomainMask).first {
-                bytes += (try? Self.directorySize(at: cachesDir, fm: fm)) ?? 0
-            }
-
-            return bytes
-        }.value
+        let totalBytes = await Self.cacheBytes()
 
         let formatted = Self.formatBytes(totalBytes)
 
@@ -275,7 +258,31 @@ class SettingsViewModel: ObservableObject {
         }
     }
 
-    private static func directorySize(at url: URL, fm: FileManager) throws -> Int64 {
+    /// Reads a picked file off the main actor: an iCloud Drive or Files-provider file may have to
+    /// download first.
+    @concurrent
+    private nonisolated static func readFile(_ url: URL) async throws -> Data {
+        try Data(contentsOf: url)
+    }
+
+    /// Walks the caches directory off the main actor.
+    @concurrent
+    private nonisolated static func cacheBytes() async -> Int64 {
+        var bytes: Int64 = 0
+
+        // URLCache disk usage
+        bytes += Int64(URLCache.shared.currentDiskUsage)
+
+        // App Caches directory
+        let fm = FileManager.default
+        if let cachesDir = fm.urls(for: .cachesDirectory, in: .userDomainMask).first {
+            bytes += (try? directorySize(at: cachesDir, fm: fm)) ?? 0
+        }
+
+        return bytes
+    }
+
+    private nonisolated static func directorySize(at url: URL, fm: FileManager) throws -> Int64 {
         var total: Int64 = 0
         let resourceKeys: Set<URLResourceKey> = [.fileSizeKey, .isDirectoryKey]
         guard let enumerator = fm.enumerator(at: url, includingPropertiesForKeys: Array(resourceKeys)) else {
@@ -337,7 +344,7 @@ class SettingsViewModel: ObservableObject {
         }
 
         progressHandler(0.3)
-        let data = try Data(contentsOf: url)
+        let data = try await Self.readFile(url)
         progressHandler(0.5)
 
         let outcome = try await SubscriptionImporter.importSubscriptions(from: data, format: .opml)
@@ -499,7 +506,7 @@ class SettingsViewModel: ObservableObject {
             }
             
             // Read the file data
-            let data = try Data(contentsOf: fileURL)
+            let data = try await Self.readFile(fileURL)
             await MainActor.run {
                 self.jsonImportMessage = "Parsing JSON data..."
             }

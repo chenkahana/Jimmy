@@ -768,7 +768,7 @@ struct LibraryView: View {
             BulletproofImageCache.shared.preloadImages(urls: priorityURLs)
             let remainingURLs = Set(podcasts.compactMap { $0.artworkURL }).subtracting(priorityURLs)
             if !remainingURLs.isEmpty {
-                Task.detached(priority: .background) {
+                Task(priority: .background) {
                     BulletproofImageCache.shared.preloadImages(urls: remainingURLs)
                 }
             }

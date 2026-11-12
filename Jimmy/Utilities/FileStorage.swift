@@ -9,7 +9,6 @@ class FileStorage {
 
     private let fileManager = FileManager.default
     private let documentsDirectory: URL
-    private let ioQueue = DispatchQueue(label: "file-storage-io", qos: .utility)
 
     private init() {
         guard let documentsDir = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else {
@@ -163,26 +162,6 @@ class FileStorage {
         }
 
         return nil
-    }
-
-    // MARK: - Async Interface
-
-    /// Save Codable object to file asynchronously
-    func saveAsync<T: Codable>(_ object: T, to filename: String, completion: ((Bool) -> Void)? = nil) {
-        ioQueue.async {
-            let result = self.save(object, to: filename)
-            if let completion = completion {
-                DispatchQueue.main.async { completion(result) }
-            }
-        }
-    }
-
-    /// Load Codable object from file asynchronously
-    func loadAsync<T: Codable>(_ type: T.Type, from filename: String, completion: @escaping (T?) -> Void) {
-        ioQueue.async {
-            let result = self.load(type, from: filename)
-            DispatchQueue.main.async { completion(result) }
-        }
     }
 
     // MARK: - Private Methods

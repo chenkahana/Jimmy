@@ -10,7 +10,7 @@ import JimmyKit
 /// (`com.chenkahana.Jimmy.downloads`), now that `DownloadManager` itself is gone.
 @Observable
 @MainActor
-final class AppModel {
+final class AppModel: Sendable {
     /// Whether opening the store succeeded. There's no "still opening" case: `Store.init` is
     /// synchronous, so this is known by the time anything can observe `launchState`.
     enum LaunchState {

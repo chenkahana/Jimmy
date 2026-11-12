@@ -9,6 +9,7 @@ import XCTest
 import SwiftUI
 @testable import Jimmy
 
+@MainActor
 final class TabBarDesignTokensTests: XCTestCase {
     
     // MARK: - Size Class Tests

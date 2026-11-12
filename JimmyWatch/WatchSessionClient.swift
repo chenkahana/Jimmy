@@ -38,7 +38,7 @@ final class WatchSessionClient: NSObject {
     /// "Open Jimmy on your iPhone" until the phone next updates.
     private func requestState() {
         guard WCSession.isSupported(), WCSession.default.activationState == .activated else { return }
-        WCSession.default.sendMessage(["request": "state"], replyHandler: { [weak self] reply in
+        WCSession.default.sendMessage(["request": "state"], replyHandler: { @Sendable [weak self] reply in
             guard let data = reply["state"] as? Data else { return }
             Task { @MainActor in self?.applyEncodedState(data) }
         }, errorHandler: nil)
@@ -56,14 +56,16 @@ extension WatchSessionClient: WCSessionDelegate {
         activationDidCompleteWith activationState: WCSessionActivationState,
         error: Error?
     ) {
+        let reachable = session.isReachable
         Task { @MainActor in
-            self.isReachable = session.isReachable
+            self.isReachable = reachable
             self.requestState()
         }
     }
 
     nonisolated func sessionReachabilityDidChange(_ session: WCSession) {
-        Task { @MainActor in self.isReachable = session.isReachable }
+        let reachable = session.isReachable
+        Task { @MainActor in self.isReachable = reachable }
     }
 
     nonisolated func session(_ session: WCSession, didReceiveApplicationContext applicationContext: [String: Any]) {

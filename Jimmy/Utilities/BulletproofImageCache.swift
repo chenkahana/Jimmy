@@ -7,12 +7,12 @@ import UIKit
 /// with advanced caching, retry logic, and fallback mechanisms
 /// Based on the original working AsyncImage pattern but made bulletproof
 final class BulletproofImageCache: ObservableObject {
-    private static let logger = Logger(subsystem: "com.chenkahana.Jimmy", category: "BulletproofImageCache")
+    private nonisolated static let logger = Logger(subsystem: "com.chenkahana.Jimmy", category: "BulletproofImageCache")
     static let shared = BulletproofImageCache()
     
     // MARK: - Configuration
     
-    private struct Config {
+    private nonisolated struct Config {
         static let memoryCapacity = 50 * 1024 * 1024  // 50MB memory cache
         static let diskCapacity = 200 * 1024 * 1024   // 200MB disk cache
         static let maxRetries = 3
@@ -31,7 +31,6 @@ final class BulletproofImageCache: ObservableObject {
     
     // Track ongoing downloads to prevent duplicates
     private var activeDownloads: [URL: Task<UIImage?, Never>] = [:]
-    private let activeDownloadsLock = NSLock()
     
     // MARK: - Initialization
     
@@ -58,7 +57,8 @@ final class BulletproofImageCache: ObservableObject {
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            self?.memoryCache.removeAllObjects()
+            // Delivered on `.main`, per the `queue:` argument.
+            MainActor.assumeIsolated { self?.memoryCache.removeAllObjects() }
             Self.logger.info("BulletproofImageCache: Cleared memory cache due to memory warning")
         }
     }
@@ -74,9 +74,7 @@ final class BulletproofImageCache: ObservableObject {
         }
         
         // 2. Check if download is already in progress
-        activeDownloadsLock.lock()
         if let existingTask = activeDownloads[url] {
-            activeDownloadsLock.unlock()
             return await existingTask.value
         }
         
@@ -85,14 +83,11 @@ final class BulletproofImageCache: ObservableObject {
             await self.downloadImageWithRetries(from: url)
         }
         activeDownloads[url] = downloadTask
-        activeDownloadsLock.unlock()
         
         // 4. Wait for download and cleanup
         let result = await downloadTask.value
         
-        activeDownloadsLock.lock()
         activeDownloads.removeValue(forKey: url)
-        activeDownloadsLock.unlock()
         
         return result
     }
@@ -132,20 +127,28 @@ final class BulletproofImageCache: ObservableObject {
     func preloadImages(urls: Set<URL>) {
         guard !urls.isEmpty else { return }
         
-        Task.detached(priority: .background) {
+        let notInMemory = urls.filter { memoryCache.object(forKey: cacheKeyForURL($0)) == nil }
+        guard !notInMemory.isEmpty else { return }
+        let diskCache = diskCache
+        Task(priority: .background) {
+            let missing = await Self.urlsMissing(from: diskCache, among: notInMemory)
             await withTaskGroup(of: Void.self) { group in
-                for url in urls {
-                    // Only preload if not already cached
-                    if !self.isImageCached(url: url) {
-                        group.addTask {
-                            _ = await self.loadImage(from: url)
-                        }
+                for url in missing {
+                    group.addTask {
+                        _ = await self.loadImage(from: url)
                     }
                 }
             }
         }
     }
     
+    /// The disk-cache lookups for `preloadImages`, off the main actor: one synchronous
+    /// `URLCache` read per artwork URL adds up on a large library.
+    @concurrent
+    private nonisolated static func urlsMissing(from diskCache: URLCache, among urls: Set<URL>) async -> [URL] {
+        urls.filter { diskCache.cachedResponse(for: URLRequest(url: $0)) == nil }
+    }
+
     // MARK: - Private Implementation
     
     private func downloadImageWithRetries(from url: URL) async -> UIImage? {
@@ -177,7 +180,9 @@ final class BulletproofImageCache: ObservableObject {
         return nil
     }
     
-    private func downloadImageWithFallbacks(from url: URL) async throws -> UIImage? {
+    /// Downloads and decodes off the main actor.
+    @concurrent
+    private nonisolated func downloadImageWithFallbacks(from url: URL) async throws -> UIImage? {
         // Strategy 1: Use URLSession.shared (the original working approach)
         do {
             let (data, response) = try await URLSession.shared.data(from: url)
@@ -248,7 +253,7 @@ final class BulletproofImageCache: ObservableObject {
         Self.logger.debug("BulletproofImageCache: Cached image for \(url.absoluteString)")
     }
     
-    private func cacheKeyForURL(_ url: URL) -> NSString {
+    private nonisolated func cacheKeyForURL(_ url: URL) -> NSString {
         return url.absoluteString as NSString
     }
     

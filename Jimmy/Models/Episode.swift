@@ -2,7 +2,7 @@ import Foundation
 import GRDB
 
 /// Three orthogonal flags – can be combined (e.g., queued & played)
-public struct EpisodeStatus: OptionSet, Codable, Sendable {
+public nonisolated struct EpisodeStatus: OptionSet, Codable, Sendable {
     public let rawValue: Int
     public init(rawValue: Int) { self.rawValue = rawValue }
 
@@ -11,7 +11,7 @@ public struct EpisodeStatus: OptionSet, Codable, Sendable {
     public static let playing  = EpisodeStatus(rawValue: 1 << 2)
 }
 
-public struct Episode: Identifiable, Codable, Equatable, FetchableRecord, PersistableRecord {
+public nonisolated struct Episode: Identifiable, Codable, Equatable, Sendable, FetchableRecord, PersistableRecord {
     public let id: UUID
     public var title: String
     public var audioURL: URL?
@@ -156,7 +156,7 @@ public struct Episode: Identifiable, Codable, Equatable, FetchableRecord, Persis
     
     // MARK: - GRDB Conformance
     
-    public static var databaseTableName: String = "episodes"
+    public static let databaseTableName: String = "episodes"
     
     public enum Columns: String, ColumnExpression {
         case id, title, audioURL, podcastID, publishedDate, duration

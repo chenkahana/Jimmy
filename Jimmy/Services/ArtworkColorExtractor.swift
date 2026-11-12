@@ -12,7 +12,7 @@ final class ArtworkColorExtractor: ObservableObject {
     private var cache: [String: CachedColors] = [:]
     private let maxCacheSize = 30
 
-    private struct CachedColors {
+    private nonisolated struct CachedColors: Sendable {
         let dominant: Color
         let vibrant: Color
         let muted: Color
@@ -34,9 +34,9 @@ final class ArtworkColorExtractor: ObservableObject {
             return
         }
 
-        Task.detached(priority: .userInitiated) { [weak self] in
+        Task(priority: .userInitiated) { [weak self] in
             guard let colors = await Self.extractColorsFromImage(url: url) else { return }
-            await self?.applyColors(colors, forKey: key)
+            self?.applyColors(colors, forKey: key)
         }
     }
 
@@ -53,7 +53,9 @@ final class ArtworkColorExtractor: ObservableObject {
         }
     }
 
-    private static func extractColorsFromImage(url: URL) async -> CachedColors? {
+    /// Downloads and samples the artwork off the main actor.
+    @concurrent
+    private nonisolated static func extractColorsFromImage(url: URL) async -> CachedColors? {
         do {
             let (data, _) = try await URLSession.shared.data(from: url)
             guard let image = UIImage(data: data),

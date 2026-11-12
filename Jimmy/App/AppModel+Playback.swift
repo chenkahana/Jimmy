@@ -159,7 +159,8 @@ extension AppModel {
             guard let image = await Self.loadArtworkImage(from: artworkURL) else { return }
             await MainActor.run {
                 guard let self, self.playback?.currentEpisode?.id == episode.id else { return }
-                self.nowPlayingArtworkCache[episode.id] = MPMediaItemArtwork(boundsSize: image.size) { _ in image }
+                // MediaPlayer calls the request handler off the main thread, so it must not be main-actor isolated.
+                self.nowPlayingArtworkCache[episode.id] = MPMediaItemArtwork(boundsSize: image.size) { @Sendable _ in image }
                 self.syncNowPlaying(ready)
             }
         }

@@ -30,7 +30,7 @@ final class ProMotionManager {
         }
     }
 
-    deinit {
+    isolated deinit {
         if let observer = frameRateObserver {
             NotificationCenter.default.removeObserver(observer)
         }

@@ -9,7 +9,7 @@ struct PlaybackState: Codable, Equatable, FetchableRecord, PersistableRecord {
     var queuePosition: Int? // NULL means not in queue, 1 = first in queue
     var updatedAt: Date
 
-    static var databaseTableName: String = "playback_state"
+    static let databaseTableName: String = "playback_state"
     
     // Define database columns
     enum Columns: String, ColumnExpression {

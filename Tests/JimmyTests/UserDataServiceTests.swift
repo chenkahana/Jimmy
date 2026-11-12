@@ -5,6 +5,7 @@ import XCTest
 @testable import Jimmy
 #endif
 
+@MainActor
 final class UserDataServiceTests: XCTestCase {
     func testSaveAndLoadUserData() throws {
         let service = UserDataService.shared

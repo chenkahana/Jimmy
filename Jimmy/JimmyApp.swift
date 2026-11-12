@@ -172,16 +172,14 @@ struct JimmyApp: App {
 
         // Background initialization for non-critical services
         // These will initialize lazily when first accessed
-        Task.detached(priority: .background) {
+        Task(priority: .background) {
             let bgStart = CFAbsoluteTimeGetCurrent()
             
             // Network (needed for data fetching, but not blocking UI)
             _ = UnifiedNetworkService.shared
 
             // Start iCloud KVS sync observer
-            await MainActor.run {
-                AppDataDocument.startObservingICloudChanges()
-            }
+            AppDataDocument.startObservingICloudChanges()
             
             let bgElapsed = CFAbsoluteTimeGetCurrent() - bgStart
             Self.logger.info("Background services initialized in \(String(format: "%.3f", bgElapsed))s")
@@ -198,7 +196,7 @@ struct JimmyApp: App {
         switch newPhase {
         case .background:
             appModel.flushPlaybackForBackground()
-            Task.detached(priority: .background) {
+            Task(priority: .background) {
                 await BackgroundTaskManager.shared.scheduleBackgroundRefresh()
                 await BackgroundTaskManager.shared.scheduleLibraryIncrementalRefresh()
             }

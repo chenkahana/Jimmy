@@ -1,6 +1,6 @@
 import Foundation
 import JimmyKit
-import WatchConnectivity
+@preconcurrency import WatchConnectivity // replyHandler isn't annotated @Sendable, though WCSession allows calling it from any thread.
 
 /// The phone's one connectivity surface to the watch app: pushes the current `WatchSessionState`
 /// (built by `AppModel.watchState()`) via `updateApplicationContext` whenever `AppModel` asks,
@@ -27,16 +27,18 @@ final class WatchConnectivityService: NSObject, WCSessionDelegate {
     }
 
     // MARK: - WCSessionDelegate
+    // WCSession calls these on its own background queue, so they're nonisolated and hop to the
+    // main actor themselves.
 
-    func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {}
+    nonisolated func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {}
 
-    func sessionDidBecomeInactive(_ session: WCSession) {}
+    nonisolated func sessionDidBecomeInactive(_ session: WCSession) {}
 
-    func sessionDidDeactivate(_ session: WCSession) {
+    nonisolated func sessionDidDeactivate(_ session: WCSession) {
         session.activate()
     }
 
-    func session(_ session: WCSession, didReceiveMessage message: [String: Any]) {
+    nonisolated func session(_ session: WCSession, didReceiveMessage message: [String: Any]) {
         guard let data = message["command"] as? Data,
               let command = try? JSONDecoder().decode(WatchCommand.self, from: data) else { return }
         Task { @MainActor in
@@ -44,10 +46,10 @@ final class WatchConnectivityService: NSObject, WCSessionDelegate {
         }
     }
 
-    func session(
+    nonisolated func session(
         _ session: WCSession,
         didReceiveMessage message: [String: Any],
-        replyHandler: @escaping ([String: Any]) -> Void
+        replyHandler: @escaping @Sendable ([String: Any]) -> Void
     ) {
         guard message["request"] as? String == "state" else {
             replyHandler([:])

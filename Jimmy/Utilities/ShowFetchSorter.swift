@@ -8,7 +8,7 @@ import Foundation
 public enum ShowFetchSorter {
     /// Type alias for a closure that fetches the most recent episode date for a
     /// podcast. Returning `nil` indicates that the date could not be determined.
-    public typealias EpisodeDateFetcher = (Podcast) async throws -> Date?
+    public typealias EpisodeDateFetcher = @Sendable (Podcast) async throws -> Date?
 
     /// Concurrently fetch latest episode dates for the supplied podcasts, apply
     /// the results to the provided cache and return podcasts sorted by newest

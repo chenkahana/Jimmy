@@ -54,7 +54,7 @@ final class RetryManager {
     }
     
     /// Determine if a network error should be retried
-    static func shouldRetryNetworkError(_ error: Error) -> Bool {
+    nonisolated static func shouldRetryNetworkError(_ error: Error) -> Bool {
         // Don't retry 304 Not Modified - it's a success case indicating cached data is valid
         // Don't retry 304 Not Modified (represented as cancelled in UnifiedNetworkService)
         if let urlError = error as? URLError, urlError.code == .cancelled {

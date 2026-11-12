@@ -11,12 +11,6 @@ protocol ServiceLifecycleProtocol {
     var isReady: Bool { get }
 }
 
-// MARK: - Error Handling Protocol
-protocol ErrorHandlingServiceProtocol {
-    func handleError(_ error: Error, context: String)
-    func logError(_ error: Error, context: String, userInfo: [String: Any]?)
-}
-
 // MARK: - Cache Service Protocol
 protocol CacheServiceProtocol {
     associatedtype CacheKey: Hashable

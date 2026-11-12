@@ -2,7 +2,7 @@ import Foundation
 import OSLog
 
 /// State of a circuit breaker.
-enum CircuitState: Equatable {
+nonisolated enum CircuitState: Equatable {
     case closed
     case open(Date)
     case halfOpen

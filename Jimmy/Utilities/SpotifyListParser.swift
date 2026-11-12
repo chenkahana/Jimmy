@@ -1,6 +1,6 @@
 import Foundation
 
-struct SpotifyListParser {
+nonisolated struct SpotifyListParser {
     static func parse(data: Data) -> [URL] {
         guard let text = String(data: data, encoding: .utf8) else { return [] }
         let lines = text.components(separatedBy: .newlines)

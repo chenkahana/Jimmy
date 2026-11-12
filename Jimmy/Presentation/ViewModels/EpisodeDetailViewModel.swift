@@ -30,10 +30,6 @@ class EpisodeDetailViewModel: ObservableObject {
         loadInitialData()
     }
 
-    deinit {
-        cancellables.removeAll()
-    }
-
     // MARK: - Private Methods
     private func setupBindings() {
         observePlaybackState()

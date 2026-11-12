@@ -370,26 +370,29 @@ struct SparkleOverlay: View {
         
         // Animate sparkles
         Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { timer in
-            guard isActive else {
+            // Scheduled from the view, so it fires on the main run loop.
+            guard MainActor.assumeIsolated({ isActive }) else {
                 timer.invalidate()
                 return
             }
-            
-            for i in sparkles.indices {
-                sparkles[i].opacity *= 0.95
-                sparkles[i].scale *= 0.98
-                sparkles[i].rotationAngle += 10
+
+            MainActor.assumeIsolated {
+                for i in sparkles.indices {
+                    sparkles[i].opacity *= 0.95
+                    sparkles[i].scale *= 0.98
+                    sparkles[i].rotationAngle += 10
                 
-                if sparkles[i].opacity < 0.1 {
-                    sparkles[i] = SparkleParticle(
-                        position: CGPoint(
-                            x: CGFloat.random(in: 20...200),
-                            y: CGFloat.random(in: 20...80)
-                        ),
-                        scale: CGFloat.random(in: 0.5...1.0),
-                        opacity: Double.random(in: 0.3...0.8),
-                        rotationAngle: Double.random(in: 0...360)
-                    )
+                    if sparkles[i].opacity < 0.1 {
+                        sparkles[i] = SparkleParticle(
+                            position: CGPoint(
+                                x: CGFloat.random(in: 20...200),
+                                y: CGFloat.random(in: 20...80)
+                            ),
+                            scale: CGFloat.random(in: 0.5...1.0),
+                            opacity: Double.random(in: 0.3...0.8),
+                            rotationAngle: Double.random(in: 0...360)
+                        )
+                    }
                 }
             }
         }

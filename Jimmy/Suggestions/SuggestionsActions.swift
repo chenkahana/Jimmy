@@ -35,7 +35,7 @@ protocol SuggestionsActions: AnyObject, Sendable {
 /// A trimmed-down Apple Podcasts search hit for "new shows like the ones you finish" — just what
 /// the Suggestions screen needs, so it doesn't depend on the legacy `PodcastSearchResult`/
 /// `iTunesSearchService` types directly.
-struct SuggestedShowResult: Sendable, Equatable, Identifiable {
+nonisolated struct SuggestedShowResult: Sendable, Equatable, Identifiable {
     var id: URL { feedURL }
     let title: String
     let author: String

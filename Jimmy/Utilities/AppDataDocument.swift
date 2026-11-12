@@ -3,7 +3,7 @@ import UniformTypeIdentifiers
 import Foundation
 import JimmyKit
 
-struct AppData: Codable {
+nonisolated struct AppData: Codable {
     let podcasts: [Podcast]
     let episodes: [Episode]
     let queue: [Episode]
@@ -12,7 +12,7 @@ struct AppData: Codable {
 }
 
 struct AppDataDocument: FileDocument {
-    static var readableContentTypes: [UTType] = [.json]
+    static let readableContentTypes: [UTType] = [.json]
     
     var appData: AppData
     
@@ -137,7 +137,7 @@ struct AppDataDocument: FileDocument {
 
 /// Lightweight sync payload for NSUbiquitousKeyValueStore (max 1MB limit).
 /// Syncs subscriptions, queue order, and playback positions across devices.
-struct SyncPayload: Codable {
+nonisolated struct SyncPayload: Codable {
     let version: Int = 1
     let modifiedAt: Date
     let feedURLs: [String]         // Subscribed podcast feed URLs
@@ -193,7 +193,7 @@ extension AppDataDocument {
         guard UserDefaults.standard.bool(forKey: "iCloudSyncEnabled") else { return }
         guard iCloudKeyValueStoreAvailable() else { return }
 
-        Task.detached(priority: .utility) {
+        Task(priority: .utility) {
             let podcasts = await AppModel.current?.podcasts ?? []
             let feedURLs = podcasts.map { $0.feedURL.absoluteString }
 
