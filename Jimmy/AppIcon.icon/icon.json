@@ -1,0 +1,43 @@
+{
+  "fill-specializations" : [
+    { "value" : { "solid" : "srgb:0.19216,0.22353,0.98431,1.00000" } },
+    { "appearance" : "dark", "value" : { "solid" : "srgb:0.05490,0.06275,0.17647,1.00000" } }
+  ],
+  "groups" : [
+    {
+      "name" : "Foreground",
+      "layers" : [
+        {
+          "name" : "capsule",
+          "image-name" : "capsule.svg",
+          "glass" : true,
+          "fill-specializations" : [
+            { "value" : { "solid" : "srgb:1.00000,1.00000,1.00000,1.00000" } },
+            { "appearance" : "dark", "value" : { "solid" : "srgb:0.54902,0.61961,1.00000,1.00000" } }
+          ]
+        }
+      ],
+      "shadow" : { "kind" : "neutral", "opacity" : 0.5 },
+      "translucency" : { "enabled" : true, "value" : 0.4 }
+    },
+    {
+      "name" : "Middle",
+      "layers" : [
+        {
+          "name" : "stem",
+          "image-name" : "stem.svg",
+          "glass" : true,
+          "fill-specializations" : [
+            { "value" : { "solid" : "srgb:1.00000,1.00000,1.00000,1.00000" } },
+            { "appearance" : "dark", "value" : { "solid" : "srgb:0.54902,0.61961,1.00000,1.00000" } }
+          ]
+        }
+      ],
+      "shadow" : { "kind" : "neutral", "opacity" : 0.5 },
+      "translucency" : { "enabled" : true, "value" : 0.4 }
+    }
+  ],
+  "supported-platforms" : {
+    "squares" : [ "iOS" ]
+  }
+}
