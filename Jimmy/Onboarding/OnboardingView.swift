@@ -68,12 +68,14 @@ struct OnboardingView: View {
         .interactiveDismissDisabled()
         .onAppear {
             sources = ImportSource.ordered()
-            if onboarding.pendingFiles.isEmpty, onboarding.session.isRunning {
+            if onboarding.session.isRunning {
                 path = [.progress]
             }
             importPendingFiles()
         }
         .onChange(of: onboarding.pendingFiles) { importPendingFiles() }
+        // A file shared while an import was running waits for it to finish.
+        .onChange(of: onboarding.session.isRunning) { importPendingFiles() }
     }
 
     @ViewBuilder
@@ -107,6 +109,11 @@ struct OnboardingView: View {
     /// Pushes the progress screen and runs `work` on a fresh session. The import keeps going if
     /// the listener leaves before it finishes.
     private func start(_ work: @escaping @MainActor (LibraryImportSession, AppModel) async -> Void) {
+        // One import at a time: show the one that's running.
+        guard !onboarding.session.isRunning else {
+            path = [.progress]
+            return
+        }
         onboarding.startOver()
         let session = onboarding.session
         let model = appModel

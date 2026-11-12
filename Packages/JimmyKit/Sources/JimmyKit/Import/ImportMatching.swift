@@ -29,9 +29,10 @@ public nonisolated enum EpisodeMatcher {
     public static func match(_ state: ImportedEpisodeState, in episodes: [Episode]) -> Episode? {
         if let enclosureURL = state.enclosureURL {
             let key = enclosureKey(enclosureURL)
-            if let byURL = episodes.first(where: { $0.audioURL.map(enclosureKey) == key }) {
-                return byURL
-            }
+            let byURL = episodes.filter { $0.audioURL.map(enclosureKey) == key }
+            // A feed that tells episodes apart only by query string (`download.php?id=…`) gives
+            // them all one key; fall through to the title for those.
+            if byURL.count == 1 { return byURL[0] }
         }
 
         let titleKey = TitleNormalizer.key(state.title)

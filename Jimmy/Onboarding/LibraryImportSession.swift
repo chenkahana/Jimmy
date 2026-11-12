@@ -47,17 +47,7 @@ final class LibraryImportSession {
     /// data download).
     func run(files: [URL], model: AppModel) async {
         phase = .reading
-        var combined = ImportResult(feeds: [], skipped: [])
-        var unreadable = 0
-        for file in files {
-            let hasAccess = file.startAccessingSecurityScopedResource()
-            defer { if hasAccess { file.stopAccessingSecurityScopedResource() } }
-            guard let data = try? Data(contentsOf: file), let result = try? ImportFile.parse(data: data) else {
-                unreadable += 1
-                continue
-            }
-            combined = combined.merged(with: result)
-        }
+        let (combined, unreadable) = await Self.read(files)
         if combined.isEmpty {
             phase = .failed(unreadable > 0
                 ? "Jimmy couldn't read that file. Choose an OPML file or your app's export."
@@ -65,6 +55,25 @@ final class LibraryImportSession {
             return
         }
         await run(combined, model: model)
+    }
+
+    /// Reads and parses every file off the main actor: a Spotify extended history runs to
+    /// tens of megabytes.
+    private nonisolated static func read(_ files: [URL]) async -> (ImportResult, unreadable: Int) {
+        await Task.detached(priority: .userInitiated) {
+            var combined = ImportResult(feeds: [], skipped: [])
+            var unreadable = 0
+            for file in files {
+                let hasAccess = file.startAccessingSecurityScopedResource()
+                defer { if hasAccess { file.stopAccessingSecurityScopedResource() } }
+                guard let data = try? Data(contentsOf: file), let result = try? ImportFile.parse(data: data) else {
+                    unreadable += 1
+                    continue
+                }
+                combined = combined.merged(with: result)
+            }
+            return (combined, unreadable)
+        }.value
     }
 
     /// Imports whatever `fetch` returns (Spotify's library, after sign-in), reading meanwhile.
@@ -236,6 +245,8 @@ final class LibraryImportSession {
     private func importHistory(_ history: [ImportedEpisodeState], podcastIDs: [String: UUID], model: AppModel) async {
         guard let store = model.readyStore, !history.isEmpty else { return }
 
+        let podcastIDs = Self.withLibrary(podcastIDs, podcasts: model.podcasts)
+
         var statesByPodcast: [UUID: [ImportedEpisodeState]] = [:]
         for state in history {
             let key = state.feedURL.map { FeedURLNormalizer.key(for: $0) }
@@ -247,7 +258,8 @@ final class LibraryImportSession {
         var queue: [QueueCandidate] = []
         for (podcastID, states) in statesByPodcast {
             let episodes = (try? await store.episodes(podcastID: podcastID)) ?? []
-            let plan = HistoryPlan.make(states: states, episodes: episodes)
+            let existing = await Self.progress(of: episodes, in: store)
+            let plan = HistoryPlan.make(states: states, episodes: episodes, existing: existing)
             for action in plan.actions {
                 switch action {
                 case .markPlayed(let id): try? await store.markPlayed(id)
@@ -274,6 +286,29 @@ enum ImportShowState: Equatable { case waiting, adding, added, notFound }
 private enum PendingShowSource: Sendable {
     case link(ImportedFeed)
     case name(ImportedShowName)
+}
+
+extension LibraryImportSession {
+    /// History for shows already in the library counts too, not only the ones just added.
+    static func withLibrary(_ podcastIDs: [String: UUID], podcasts: [JimmyKit.Podcast]) -> [String: UUID] {
+        var result = podcastIDs
+        for podcast in podcasts {
+            for key in [FeedURLNormalizer.key(for: podcast.feedURL), TitleNormalizer.key(podcast.title)]
+            where result[key] == nil {
+                result[key] = podcast.id
+            }
+        }
+        return result
+    }
+
+    /// What Jimmy already knows, so an import never rolls back newer listening.
+    static func progress(of episodes: [JimmyKit.Episode], in store: Store) async -> [UUID: JimmyKit.Progress] {
+        var existing: [UUID: JimmyKit.Progress] = [:]
+        for episode in episodes {
+            if let progress = try? await store.progress(for: episode.id) { existing[episode.id] = progress }
+        }
+        return existing
+    }
 }
 
 private extension Optional {

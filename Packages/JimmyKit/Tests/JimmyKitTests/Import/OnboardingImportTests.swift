@@ -91,6 +91,15 @@ struct EpisodeMatcherTests {
     }
 }
 
+extension EpisodeMatcherTests {
+    @Test func sharedEnclosureKeyFallsBackToTitle() {
+        let first = episode("One", audio: "https://example.com/download.php?id=1")
+        let second = episode("Two", audio: "https://example.com/download.php?id=2")
+        let state = ImportedEpisodeState(title: "Two", enclosureURL: URL(string: "https://example.com/download.php?id=2"))
+        #expect(EpisodeMatcher.match(state, in: [first, second]) == second)
+    }
+}
+
 struct DirectoryMatcherTests {
     func result(_ id: Int, _ title: String, _ author: String) -> PodcastDirectoryResult {
         PodcastDirectoryResult(
@@ -249,5 +258,36 @@ struct HistoryPlanTests {
         #expect(plan.queue.map(\.episodeID) == [saved.id, half.id])
         #expect(plan.actions.contains(.markPlayed(almost.id)))
         #expect(plan.actions.contains { if case .saveProgress(let p) = $0 { p.episodeID == half.id && p.position == 500 } else { false } })
+    }
+}
+
+extension HistoryPlanTests {
+    @Test func savedEpisodePlusStreamingHistoryCombine() {
+        let episode = Episode(title: "A.I. Week", duration: 3480)
+        let plan = HistoryPlan.make(states: [
+            ImportedEpisodeState(podcastTitle: "Hard Fork", title: "A.I. Week", isQueued: true),
+            ImportedEpisodeState(podcastTitle: "Hard Fork", title: "A.I. Week", position: 3400),
+        ], episodes: [episode])
+        #expect(plan.actions == [.markPlayed(episode.id)])
+        #expect(plan.queue.isEmpty)
+    }
+
+    @Test func newerOrFinishedJimmyProgressWins() {
+        let finished = Episode(title: "Finished", duration: 1000)
+        let newer = Episode(title: "Newer", duration: 1000)
+        let older = Episode(title: "Older", duration: 1000)
+        let imported = Date(timeIntervalSince1970: 1_000)
+        let existing: [UUID: JimmyKit.Progress] = [
+            finished.id: JimmyKit.Progress(episodeID: finished.id, position: 0, isFinished: true, updatedAt: .distantPast),
+            newer.id: JimmyKit.Progress(episodeID: newer.id, position: 700, updatedAt: Date(timeIntervalSince1970: 2_000)),
+            older.id: JimmyKit.Progress(episodeID: older.id, position: 100, updatedAt: Date(timeIntervalSince1970: 500)),
+        ]
+        let plan = HistoryPlan.make(states: [
+            ImportedEpisodeState(title: "Finished", position: 200, updatedAt: imported),
+            ImportedEpisodeState(title: "Newer", position: 200, updatedAt: imported),
+            ImportedEpisodeState(title: "Older", position: 200, updatedAt: imported),
+        ], episodes: [finished, newer, older], existing: existing)
+        #expect(plan.inProgressCount == 1)
+        #expect(plan.queue.map(\.episodeID) == [older.id])
     }
 }
