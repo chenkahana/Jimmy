@@ -54,4 +54,20 @@ final class LibraryNewEpisodeCountTests: XCTestCase {
 
         XCTAssertNil(counts[show.id])
     }
+
+    func testEachShowIsCountedSeparatelyAndTheFollowMomentIsNotNew() {
+        let first = podcast()
+        let second = podcast()
+        let items = [
+            item(first, publishedOffset: 0),     // published as it was followed
+            item(first, publishedOffset: 60),
+            item(second, publishedOffset: 60),
+            item(second, publishedOffset: 120)
+        ]
+
+        let counts = LibraryShowCell.newEpisodeCounts(episodes: items, podcasts: [first, second])
+
+        XCTAssertEqual(counts[first.id], 1)
+        XCTAssertEqual(counts[second.id], 2)
+    }
 }

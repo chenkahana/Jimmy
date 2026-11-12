@@ -120,15 +120,24 @@ struct LibraryView: View {
         }
     }
 
-    /// The 100 most recent episodes, narrowed by the search text (episode or show title).
+    /// The 100 most recent episodes, narrowed by the search text (episode or show title). The scan
+    /// stops at the 100th match.
     private var recentEpisodeItems: [JimmyKit.EpisodeListItem] {
-        guard !searchText.isEmpty else { return Array(allEpisodeItems.prefix(100)) }
+        Array(allEpisodeItems.lazy.filter(episodeSearchFilter()).prefix(100))
+    }
+
+    private var hasRecentEpisodes: Bool {
+        allEpisodeItems.contains(where: episodeSearchFilter())
+    }
+
+    private func episodeSearchFilter() -> (JimmyKit.EpisodeListItem) -> Bool {
+        guard !searchText.isEmpty else { return { _ in true } }
+        let text = searchText
         let matchingShowIDs = Set(filteredPodcasts.map(\.id))
-        let matches = allEpisodeItems.filter { item in
-            item.episode.title.localizedCaseInsensitiveContains(searchText) ||
+        return { item in
+            item.episode.title.localizedCaseInsensitiveContains(text) ||
             item.episode.podcastID.map(matchingShowIDs.contains) == true
         }
-        return Array(matches.prefix(100))
     }
 
     private func unsubscribe(_ podcastID: UUID) async {
@@ -163,7 +172,13 @@ struct LibraryView: View {
             do {
                 for try await items in stream {
                     allEpisodeItems = items
-                    newEpisodeCounts = LibraryShowCell.newEpisodeCounts(episodes: items, podcasts: jimmyKitPodcasts)
+                    // The stream re-emits on every progress save, so count off the main actor and
+                    // only touch the grid when a count changed.
+                    let podcasts = jimmyKitPodcasts
+                    let counts = await Task.detached(priority: .utility) {
+                        LibraryShowCell.newEpisodeCounts(episodes: items, podcasts: podcasts)
+                    }.value
+                    if counts != newEpisodeCounts { newEpisodeCounts = counts }
                     isLoadingEpisodes = false
                 }
             } catch {
@@ -240,7 +255,7 @@ struct LibraryView: View {
                 ContentUnavailableView.search(text: searchText)
             }
         case .episodes:
-            if recentEpisodeItems.isEmpty && !isLoadingEpisodes {
+            if !isLoadingEpisodes && !hasRecentEpisodes {
                 if searchText.isEmpty {
                     ContentUnavailableView(
                         "No Episodes",

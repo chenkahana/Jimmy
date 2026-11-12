@@ -9,6 +9,8 @@ struct LibraryShowCell: View {
     let transitionID: String
     let namespace: Namespace.ID
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             artwork
@@ -17,13 +19,13 @@ struct LibraryShowCell: View {
             Text(podcast.title)
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.primary)
-                .lineLimit(2)
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
                 .multilineTextAlignment(.leading)
 
             Text(podcast.author)
                 .font(.footnote)
                 .foregroundStyle(.secondary)
-                .lineLimit(1)
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
 
             if newEpisodeCount > 0 {
                 Text("\(newEpisodeCount) new")
