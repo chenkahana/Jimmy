@@ -31,119 +31,47 @@ enum SleepTimerPreset: String, CaseIterable, Identifiable {
     }
 }
 
-/// Sheet for configuring the sleep timer with preset durations
+/// Now Playing's sleep timer panel: presets, or the running timer with extend and cancel.
 struct SleepTimerView: View {
     @Environment(AppModel.self) private var appModel
-    @Environment(\.dismiss) private var dismiss
-
-    private var isActive: Bool { appModel.playback?.sleepTimerMode != nil }
 
     var body: some View {
-        NavigationView {
-            VStack(spacing: 24) {
-                if isActive {
-                    activeTimerView
-                } else {
-                    presetSelectionView
-                }
-            }
-            .padding()
-            .navigationTitle("Sleep Timer")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") { dismiss() }
-                }
-            }
-        }
-    }
+        VStack(alignment: .leading, spacing: JimmyDesign.Spacing.lg) {
+            Text("Sleep Timer")
+                .font(.headline)
+                .accessibilityAddTraits(.isHeader)
 
-    // MARK: - Active Timer View
-
-    private var activeTimerView: some View {
-        VStack(spacing: 24) {
-            Spacer()
-
-            // An end-of-episode timer has no end date to count down to, so it shows its own label
-            // instead of "--:--".
-            if appModel.playback?.sleepTimerMode == .endOfEpisode {
-                Text(SleepTimerPreset.endOfEpisode.label)
-                    .font(.system(size: 36, weight: .medium))
-                    .foregroundColor(.primary)
-            } else {
-                Text(formattedRemaining)
-                    .font(.system(size: 64, weight: .thin))
+            if let mode = appModel.playback?.sleepTimerMode {
+                // An end-of-episode timer has no end date to count down to, so it shows its own label.
+                Text(mode == .endOfEpisode ? SleepTimerPreset.endOfEpisode.label : formattedRemaining)
+                    .font(.largeTitle.weight(.semibold))
                     .monospacedDigit()
-                    .foregroundColor(.primary)
-            }
 
-            Spacer()
-
-            // Action buttons
-            HStack(spacing: 16) {
-                Button(action: { appModel.playback?.extendSleepTimer(by: 5 * 60) }) {
-                    Label("+5 min", systemImage: "plus.circle")
-                        .font(.system(.subheadline, weight: .semibold))
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 12)
-                        .background(.ultraThinMaterial)
-                        .clipShape(Capsule())
+                HStack(spacing: JimmyDesign.Spacing.md) {
+                    Button("+5 min") { appModel.playback?.extendSleepTimer(by: 5 * 60) }
+                        .accessibilityLabel("Add 5 minutes")
+                    Button("+15 min") { appModel.playback?.extendSleepTimer(by: 15 * 60) }
+                        .accessibilityLabel("Add 15 minutes")
+                    Spacer()
+                    Button("Cancel Timer", role: .destructive) { appModel.playback?.cancelSleepTimer() }
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Add 5 minutes")
-                .accessibilityHint("Extends the sleep timer by 5 minutes")
-
-                Button(action: { appModel.playback?.extendSleepTimer(by: 15 * 60) }) {
-                    Label("+15 min", systemImage: "plus.circle")
-                        .font(.system(.subheadline, weight: .semibold))
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 12)
-                        .background(.ultraThinMaterial)
-                        .clipShape(Capsule())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Add 15 minutes")
-                .accessibilityHint("Extends the sleep timer by 15 minutes")
-            }
-
-            Button(role: .destructive, action: {
-                appModel.playback?.cancelSleepTimer()
-                dismiss()
-            }) {
-                Text("Cancel Timer")
-                    .font(.system(.body, weight: .semibold))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(Color.red.opacity(0.15))
-                    .foregroundColor(.red)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-            }
-            .buttonStyle(.plain)
-        }
-    }
-
-    // MARK: - Preset Selection
-
-    private var presetSelectionView: some View {
-        VStack(spacing: 16) {
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                ForEach(SleepTimerPreset.allCases) { preset in
-                    Button(action: {
-                        appModel.playback?.startSleepTimer(preset.mode)
-                    }) {
-                        Text(preset.label)
-                            .font(.system(.body, weight: .medium))
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 16)
-                            .background(.ultraThinMaterial)
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                .buttonStyle(.bordered)
+            } else {
+                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: JimmyDesign.Spacing.md) {
+                    ForEach(SleepTimerPreset.allCases) { preset in
+                        Button {
+                            appModel.playback?.startSleepTimer(preset.mode)
+                        } label: {
+                            Text(preset.label)
+                                .frame(maxWidth: .infinity, minHeight: 36)
+                        }
+                        .accessibilityLabel("Set sleep timer to \(preset.label)")
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Set sleep timer to \(preset.label)")
-                    .accessibilityHint("Double tap to start a \(preset.label) sleep timer")
                 }
+                .buttonStyle(.bordered)
             }
         }
+        .tint(.primary)
     }
 
     private var formattedRemaining: String {

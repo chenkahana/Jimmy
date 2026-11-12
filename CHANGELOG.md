@@ -17,6 +17,8 @@ All notable changes to Jimmy are recorded here. The format follows
 
 ### Changed
 
+- Now Playing sits on a flat color sampled from the artwork, with transport in one glass capsule. Speed, Sleep and
+  Chapters open one bottom panel, and chapters show their lengths. Download moves to the More menu.
 - Library: shows are an artwork grid with no cards, search is the system search field, the Shows/Episodes switch
   sits under the title, and unsubscribing moves to each show's context menu. A show counts its new episodes.
 - A calmer look: system backgrounds instead of the gradient backdrop, no card shadows, plain section headers,
