@@ -271,8 +271,8 @@ struct PodcastDetailView: View {
 
 // MARK: - Page
 
-/// The podcast page: the header on a band of the artwork's color, then the episode rows, in a plain
-/// `List` under the system navigation bar.
+/// The podcast page: the artwork hero and header, then the episode rows, in a plain `List` that runs
+/// up under the system navigation bar.
 private struct PodcastPage<Rows: View>: View {
     let podcast: Podcast
     let isFollowing: Bool
@@ -285,7 +285,6 @@ private struct PodcastPage<Rows: View>: View {
     @Binding var selectedEpisode: EpisodeWithPlaybackState?
     @ViewBuilder let rows: Rows
 
-    @State private var band: ArtworkContrast?
     @State private var isTitleVisible = true
 
     private var title: String { podcast.cleanTitle.isEmpty ? podcast.title : podcast.cleanTitle }
@@ -295,7 +294,6 @@ private struct PodcastPage<Rows: View>: View {
             PodcastHeader(
                 podcast: podcast,
                 title: title,
-                band: band,
                 isFollowing: isFollowing,
                 isUpdatingFollow: isUpdatingFollow,
                 onFollow: onFollow,
@@ -304,6 +302,7 @@ private struct PodcastPage<Rows: View>: View {
             )
             .listRowInsets(EdgeInsets())
             .listRowSeparator(.hidden)
+            .listRowBackground(Color.clear)
 
             Section {
                 rows
@@ -313,12 +312,12 @@ private struct PodcastPage<Rows: View>: View {
             .headerProminence(.increased)
         }
         .listStyle(.plain)
+        // The hero starts at the top of the screen, behind the status bar and the navigation bar.
+        .ignoresSafeArea(.container, edges: .top)
         .navigationTitle(isTitleVisible ? "" : title)
         .navigationBarTitleDisplayMode(.inline)
-        // The bar takes the band's color while the band is in view, so the band reaches the top edge.
-        .toolbarBackground(band?.color ?? JimmyDesign.Palette.canvas, for: .navigationBar)
-        .toolbarBackgroundVisibility(isTitleVisible ? .visible : .automatic, for: .navigationBar)
-        .toolbarColorScheme(isTitleVisible ? band?.colorScheme : nil, for: .navigationBar)
+        // No bar background over the hero; once the title scrolls away the bar takes over.
+        .toolbarBackgroundVisibility(isTitleVisible ? .hidden : .automatic, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu("Filter and Sort", systemImage: "line.3.horizontal.decrease") {
@@ -342,11 +341,6 @@ private struct PodcastPage<Rows: View>: View {
             if let selectedEpisode {
                 EpisodeDetailView(episodeWithState: selectedEpisode)
             }
-        }
-        .task(id: podcast.artworkURL) {
-            guard let url = podcast.artworkURL,
-                  let color = await ArtworkColorExtractor.dominantColor(of: url) else { return }
-            band = ArtworkContrast(color.resolve(in: EnvironmentValues())).usable
         }
     }
 }

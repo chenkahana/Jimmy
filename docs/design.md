@@ -7,7 +7,7 @@ Calm, artwork-first, native. Jimmy is a sibling of Boaz: a neutral app where the
 1. **Content or control.** Every element on screen is artwork, text the listener reads, or something they tap.
    No decorative icons, eyebrow labels, glows, intro cards or wordmarks.
 2. **Artwork is the color.** The UI is system background and label colors. The only other color comes from show
-   artwork: the Now Playing backdrop, the podcast header band, glass tinted at 0.35–0.45. Text on artwork color must
+   artwork: the Now Playing backdrop, the podcast hero, glass tinted at 0.35–0.45. Text on artwork color must
    pass WCAG 4.5:1.
 3. **One accent, three jobs.** Signal marks the primary action, the unplayed dot and the progress fill. Nothing else
    is tinted.
@@ -53,7 +53,7 @@ capsule. Speed, Sleep and Chapters open one shared bottom panel; chapters show t
 **Library.** Artwork grid, adaptive columns, title under each, small accent unplayed count. Segmented Shows / Episodes
 / Downloads. `.searchable`.
 
-**Podcast.** Artwork on a band of its color, title, author, Follow (`.glassProminent`), description in three lines
+**Podcast.** The artwork as a full-width hero behind the bars, faded into the page top and bottom, then title, author, Follow (`.glassProminent`), description in three lines
 with More. Episodes use the Queue row. Episode show notes in New York, tint only on links.
 
 **Search / Discover.** Recent searches, Top Shows as a numbered list (it's a ranking), categories as a list. Loading
@@ -66,4 +66,4 @@ destructive actions last. Explanations go in section footers. The version appear
 
 - Screenshots in light and dark, at AX5 text size, with Increase Contrast, Reduce Motion and Reduce Transparency.
 - `rg -n 'tracking\(|uppercased\(\)|LinearGradient|\.shadow\(|design: \.rounded|font\(\.system\(size|sparkles|ultraThinMaterial'`
-  over the touched views returns nothing, except the Now Playing artwork shadow and the capped transport glyphs.
+  over the touched views returns nothing, except the Now Playing artwork shadow, the capped transport glyphs and the podcast hero's fade mask.
