@@ -234,7 +234,6 @@ struct EpisodeDetailView: View {
                     .background(
                         RoundedRectangle(cornerRadius: 12)
                             .fill(Color.accentColor)
-                            .shadow(color: Color.accentColor.opacity(0.4), radius: 8, x: 0, y: 4)
                     )
                     .foregroundColor(.white)
                 }
@@ -616,11 +615,7 @@ struct EpisodeCollapsibleHeaderView: View {
                             .resizable()
                             .aspectRatio(contentMode: .fill)
                     default:
-                        LinearGradient(
-                            colors: [.purple.opacity(0.3), .blue.opacity(0.3)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
+                        Color(.systemGray5)
                     }
                 }
                 .frame(
@@ -638,11 +633,7 @@ struct EpisodeCollapsibleHeaderView: View {
                                 .resizable()
                                 .aspectRatio(contentMode: .fill)
                         default:
-                            LinearGradient(
-                                colors: [.purple.opacity(0.3), .blue.opacity(0.3)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
+                            Color(.systemGray5)
                         }
                     }
                     .blur(radius: 20)

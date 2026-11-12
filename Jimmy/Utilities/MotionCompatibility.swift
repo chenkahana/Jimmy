@@ -28,24 +28,10 @@ enum Motion {
 }
 
 // MARK: - Animation Extensions
+// One motion vocabulary (docs/design.md): snappy for panels and state changes, a soft spring for paging.
 extension Animation {
-    /// Motion-style spring animation
-    static var motion: Animation {
-        .spring(response: 0.4, dampingFraction: 0.8, blendDuration: 0)
-    }
-    
-    /// Gentle motion animation
-    static var motionGentle: Animation {
-        .spring(response: 0.6, dampingFraction: 0.9, blendDuration: 0)
-    }
-    
-    /// Micro motion animation for subtle interactions
-    static var motionMicro: Animation {
-        .spring(response: 0.2, dampingFraction: 0.7, blendDuration: 0)
-    }
-    
-    /// Transition motion animation
-    static var motionTransition: Animation {
-        .spring(response: 0.5, dampingFraction: 0.8, blendDuration: 0)
-    }
+    static var motion: Animation { .snappy(duration: 0.3) }
+    static var motionGentle: Animation { .snappy(duration: 0.3) }
+    static var motionMicro: Animation { .snappy(duration: 0.25) }
+    static var motionTransition: Animation { .spring(response: 0.38, dampingFraction: 0.82) }
 }

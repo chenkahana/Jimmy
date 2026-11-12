@@ -103,7 +103,7 @@ struct QueueEpisodeCard: View {
                 // Episode title and description
                 VStack(alignment: .leading, spacing: 2) {
                     Text(episode.title)
-                        .font(.system(.subheadline, design: .rounded, weight: .semibold))
+                        .font(.system(.subheadline, weight: .semibold))
                         .lineLimit(2)
                         .foregroundColor(.primary)
                         .multilineTextAlignment(.leading)
@@ -138,16 +138,9 @@ struct QueueEpisodeCard: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
         .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(.regularMaterial)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(isCurrentlyPlaying ? Color.accentColor.opacity(0.3) : .white.opacity(0.1), lineWidth: isCurrentlyPlaying ? 2 : 1)
-                )
-                .shadow(color: .black.opacity(0.15), radius: 20, x: 0, y: 8)
-                .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
+            JimmyDesign.Palette.canvasElevated,
+            in: RoundedRectangle(cornerRadius: JimmyDesign.Radius.lg, style: .continuous)
         )
-        .nowPlayingGlow(isPlaying: isCurrentlyPlaying)
         .opacity(episode.status == .played ? 0.7 : 1.0)
     }
     
@@ -157,13 +150,13 @@ struct QueueEpisodeCard: View {
         VStack(spacing: 2) {
             HStack(spacing: 4) {
                 Text(formatDuration(Int(episode.duration * episode.playProgress)))
-                    .font(.system(.caption2, design: .rounded))
+                    .font(.caption2)
                     .foregroundColor(.secondary)
 
                 Spacer()
 
                 Text("\(Int(episode.playProgress * 100))% complete")
-                    .font(.system(.caption2, design: .rounded))
+                    .font(.caption2)
                     .foregroundColor(.secondary)
             }
 

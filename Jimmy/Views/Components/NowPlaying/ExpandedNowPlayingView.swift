@@ -17,7 +17,6 @@ struct ExpandedNowPlayingView: View {
 
     @State private var dragOffset: CGFloat = 0
     @State private var showingSleepTimer = false
-    @State private var playPulse = false
     @StateObject private var colorExtractor = ArtworkColorExtractor.shared
     private let onClose: (() -> Void)?
 
@@ -75,7 +74,6 @@ struct ExpandedNowPlayingView: View {
                     .gesture(dismissGesture)
                     .onAppear {
                         colorExtractor.extractColors(from: currentEpisode.artworkURL ?? viewModel.getPodcast(for: currentEpisode)?.artworkURL)
-                        playPulse = appModel.playback?.isPlaying ?? false
                     }
                 } else {
                     VStack(spacing: JimmyDesign.Spacing.lg) {
@@ -166,16 +164,6 @@ struct ExpandedNowPlayingView: View {
                 .accessibilityLabel("Close now playing")
 
                 Spacer()
-
-                Text("NOW PLAYING")
-                    .font(JimmyDesign.Typography.caption)
-                    .tracking(1.2)
-                    .foregroundStyle(Color.white.opacity(0.72))
-
-                Spacer()
-
-                Color.clear
-                    .frame(width: 44, height: 44)
             }
             .padding(.horizontal, JimmyDesign.Spacing.lg)
         }
@@ -197,7 +185,7 @@ struct ExpandedNowPlayingView: View {
         }
         .frame(width: artworkSize, height: artworkSize)
         .clipShape(RoundedRectangle(cornerRadius: JimmyDesign.Radius.xl))
-        .shadow(color: JimmyDesign.Shadow.elevatedColor, radius: JimmyDesign.Shadow.elevatedRadius, x: 0, y: JimmyDesign.Shadow.elevatedY)
+        .shadow(color: JimmyDesign.Shadow.artworkColor, radius: JimmyDesign.Shadow.artworkRadius, x: 0, y: JimmyDesign.Shadow.artworkY)
         .accessibilityLabel(artworkLabel)
         .accessibilityAddTraits(.isImage)
         .if(namespace != nil) { view in
@@ -207,19 +195,10 @@ struct ExpandedNowPlayingView: View {
 
     private var artworkPlaceholder: some View {
         RoundedRectangle(cornerRadius: JimmyDesign.Radius.xl)
-            .fill(
-                LinearGradient(
-                    colors: [
-                        Color(.systemGray5),
-                        Color(.systemGray4)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
+            .fill(Color(.systemGray5))
             .overlay(
-                Image(systemName: "waveform.circle.fill")
-                    .font(.system(size: 80, weight: .thin))
+                Image(systemName: "waveform")
+                    .font(.largeTitle)
                     .foregroundStyle(Color(.systemGray2))
             )
     }
@@ -281,16 +260,6 @@ struct ExpandedNowPlayingView: View {
                     Motion.mediumHaptic()
                 }) {
                     ZStack {
-                        if appModel.playback?.isPlaying ?? false {
-                            Circle()
-                                .stroke(Color.accentColor.opacity(playPulse ? 0 : 0.6), lineWidth: 3)
-                                .frame(width: playPulse ? 94 : 70, height: playPulse ? 94 : 70)
-                                .animation(
-                                    .easeOut(duration: 2.0).repeatForever(autoreverses: false),
-                                    value: playPulse
-                                )
-                        }
-
                         Circle()
                             .fill(Color.accentColor)
                             .frame(width: 70, height: 70)
@@ -300,15 +269,11 @@ struct ExpandedNowPlayingView: View {
                                     .foregroundColor(.white)
                                     .contentTransition(.symbolEffect(.replace.downUp))
                             )
-                            .shadow(color: .accentColor.opacity(0.4), radius: 12, x: 0, y: 6)
                     }
                 }
                 .buttonStyle(BounceButtonStyle())
                 .accessibilityLabel((appModel.playback?.isPlaying ?? false) ? "Pause" : "Play")
                 .accessibilityHint("Double tap to \((appModel.playback?.isPlaying ?? false) ? "pause" : "play") the episode")
-                .onChange(of: appModel.playback?.isPlaying) { _, playing in
-                    playPulse = playing ?? false
-                }
 
                 Button(action: {
                     viewModel.skipForward()
@@ -373,7 +338,7 @@ struct ExpandedNowPlayingView: View {
                             .font(.title3)
                         if isSleepTimerActive {
                             Text(formattedSleepTimerRemaining)
-                                .font(.system(size: 11, weight: .bold, design: .rounded))
+                                .font(.system(size: 11, weight: .bold))
                                 .foregroundColor(.accentColor)
                         }
                     }

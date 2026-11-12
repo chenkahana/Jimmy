@@ -9,8 +9,6 @@ struct LibraryView: View {
     @State private var toastMessage: String = ""
     @State private var showToast: Bool = false
     @AppStorage("libraryViewMode") private var viewMode: LibraryViewMode = .shows
-    @AppStorage("libraryShowsOverviewDismissed") private var isShowsOverviewDismissed = false
-    @AppStorage("libraryEpisodesOverviewDismissed") private var isEpisodesOverviewDismissed = false
 
     @State private var searchText: String = ""
     @State private var isEditMode: Bool = false
@@ -47,10 +45,6 @@ struct LibraryView: View {
 
             VStack(spacing: 0) {
                 if showsLibraryChrome {
-                    if shouldShowLibraryOverviewHeader {
-                        libraryOverviewHeader
-                            .transition(.move(edge: .top).combined(with: .opacity))
-                    }
                     searchBar
                     viewModeToggle
                 }
@@ -68,7 +62,6 @@ struct LibraryView: View {
         }
         .navigationTitle("Library")
         .navigationBarTitleDisplayMode(.large)
-        .animation(.motionGentle, value: shouldShowLibraryOverviewHeader)
         .onAppear {
             if !gridInitialized {
                 initializeGridLayout()
@@ -81,7 +74,7 @@ struct LibraryView: View {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button(action: { isEditMode.toggle() }) {
                     Text(isEditMode ? "Done" : "Edit")
-                        .font(.system(.body, design: .rounded, weight: .medium))
+                        .font(.system(.body, weight: .medium))
                         .foregroundColor(.accentColor)
                 }
             }
@@ -235,7 +228,7 @@ struct LibraryView: View {
     private var toastView: some View {
         HStack {
             Text(toastMessage)
-                .font(.system(.body, design: .rounded))
+                .font(.body)
                 .fontWeight(.medium)
                 .foregroundColor(.white)
 
@@ -256,62 +249,6 @@ struct LibraryView: View {
 
     private var showsLibraryChrome: Bool {
         isLoadingEpisodes || !jimmyKitPodcasts.isEmpty || !allEpisodes.isEmpty
-    }
-
-    private var libraryOverviewHeader: some View {
-        JimmyCard(isHighlighted: viewMode == .shows && !jimmyKitPodcasts.isEmpty, padding: JimmyDesign.Spacing.lg) {
-            JimmySectionHeader(
-                eyebrow: "Collection",
-                title: viewMode == .shows ? "Your shows" : "Recent episodes",
-                subtitle: libraryOverviewSubtitle,
-                icon: viewMode == .shows ? "books.vertical.fill" : "waveform.path"
-            ) {
-                if hasLibraryContent {
-                    Button(action: dismissLibraryOverviewHeader) {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundStyle(.secondary)
-                            .frame(width: 28, height: 28)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Dismiss library summary")
-                    .accessibilityHint("Hides this library summary card")
-                }
-            }
-        }
-        .padding(.horizontal, 16)
-        .padding(.top, 8)
-    }
-
-    private var shouldShowLibraryOverviewHeader: Bool {
-        if !hasLibraryContent { return true }
-        return !currentOverviewDismissed
-    }
-
-    private var hasLibraryContent: Bool {
-        !jimmyKitPodcasts.isEmpty || !allEpisodes.isEmpty
-    }
-
-    private var libraryOverviewSubtitle: String {
-        if jimmyKitPodcasts.isEmpty && allEpisodes.isEmpty {
-            return "Follow standout podcasts, import an existing lineup, or sample a few shows to get started."
-        }
-        return "\(jimmyKitPodcasts.count) shows • \(allEpisodes.count) episodes ready for quick browsing."
-    }
-
-    private var currentOverviewDismissed: Bool {
-        switch viewMode {
-        case .shows: return isShowsOverviewDismissed
-        case .episodes: return isEpisodesOverviewDismissed
-        }
-    }
-
-    private func dismissLibraryOverviewHeader() {
-        Motion.lightHaptic()
-        switch viewMode {
-        case .shows: isShowsOverviewDismissed = true
-        case .episodes: isEpisodesOverviewDismissed = true
-        }
     }
 
     private var streamingProgressBanner: some View {
@@ -668,52 +605,21 @@ struct LibraryView: View {
 
     private var emptyStateView: some View {
         EmptyStateView(
-            icon: "waveform.circle.fill",
-            eyebrow: "Library",
-            title: "Build a podcast shelf that feels curated",
-            subtitle: "Follow a few standout shows, import what you already love, and Jimmy will keep recent episodes within reach.",
-            primaryAction: .init(label: "Discover Podcasts", systemImage: "magnifyingglass") {
+            icon: "books.vertical",
+            title: "No Shows Yet",
+            subtitle: "Shows you follow appear here.",
+            primaryAction: .init(label: "Browse Shows", systemImage: "magnifyingglass") {
                 DeepLinkRouter.shared.navigate(to: .discover)
-            }
-        ) {
-            JimmyCard(padding: JimmyDesign.Spacing.lg) {
-                JimmySectionHeader(
-                    title: "Quick start",
-                    detail: "Seed the library with a few sample podcasts so you can explore the full experience immediately.",
-                    icon: "sparkles"
-                )
-
-                Button {
-                    Task {
-                        isAddingSamplePodcasts = true
-                        await addSamplePodcasts()
-                        isAddingSamplePodcasts = false
-                    }
-                } label: {
-                    HStack(spacing: JimmyDesign.Spacing.sm) {
-                        if isAddingSamplePodcasts {
-                            ProgressView().scaleEffect(0.8).tint(.accentColor)
-                        } else {
-                            Image(systemName: "plus.circle.fill").foregroundStyle(Color.accentColor)
-                        }
-                        Text(isAddingSamplePodcasts ? "Adding sample podcasts..." : "Add sample podcasts")
-                            .font(.system(.subheadline, design: .rounded, weight: .semibold))
-                        Spacer()
-                        Image(systemName: "arrow.right")
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundStyle(.secondary)
-                    }
-                    .padding(.horizontal, JimmyDesign.Spacing.md)
-                    .padding(.vertical, 12)
-                    .background(
-                        RoundedRectangle(cornerRadius: JimmyDesign.Radius.md, style: .continuous)
-                            .fill(Color.accentColor.opacity(0.08))
-                    )
+            },
+            secondaryAction: .init(label: isAddingSamplePodcasts ? "Adding Sample Shows…" : "Add Sample Shows", systemImage: "plus") {
+                guard !isAddingSamplePodcasts else { return }
+                Task {
+                    isAddingSamplePodcasts = true
+                    await addSamplePodcasts()
+                    isAddingSamplePodcasts = false
                 }
-                .buttonStyle(.plain)
-                .disabled(isAddingSamplePodcasts)
             }
-        }
+        )
     }
 
     // MARK: - Episode Actions

@@ -1,42 +1,30 @@
 import SwiftUI
 
-struct EmptyStateView<Accessory: View>: View {
+/// A system empty state: a symbol, a title, one sentence about what will appear, and at most two actions.
+struct EmptyStateView: View {
     let icon: String
-    let eyebrow: String?
     let title: String
     let subtitle: String
     var primaryAction: JimmyEmptyStateAction?
     var secondaryAction: JimmyEmptyStateAction?
-    let accessory: Accessory
-
-    init(
-        icon: String,
-        eyebrow: String? = nil,
-        title: String,
-        subtitle: String,
-        primaryAction: JimmyEmptyStateAction? = nil,
-        secondaryAction: JimmyEmptyStateAction? = nil,
-        @ViewBuilder accessory: () -> Accessory = { EmptyView() }
-    ) {
-        self.icon = icon
-        self.eyebrow = eyebrow
-        self.title = title
-        self.subtitle = subtitle
-        self.primaryAction = primaryAction
-        self.secondaryAction = secondaryAction
-        self.accessory = accessory()
-    }
 
     var body: some View {
-        JimmyEmptyState(
-            icon: icon,
-            eyebrow: eyebrow,
-            title: title,
-            subtitle: subtitle,
-            primaryAction: primaryAction,
-            secondaryAction: secondaryAction
-        ) {
-            accessory
+        ContentUnavailableView {
+            Label(title, systemImage: icon)
+        } description: {
+            Text(subtitle)
+        } actions: {
+            if let primaryAction {
+                JimmyPrimaryButton(
+                    title: primaryAction.label,
+                    systemImage: primaryAction.systemImage,
+                    action: primaryAction.action
+                )
+            }
+
+            if let secondaryAction {
+                Button(secondaryAction.label, action: secondaryAction.action)
+            }
         }
     }
 }

@@ -57,11 +57,7 @@ public struct CollapsibleHeaderView: View {
                             .resizable()
                             .aspectRatio(contentMode: .fill)
                     default:
-                        LinearGradient(
-                            colors: [.purple.opacity(0.3), .blue.opacity(0.3)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
+                        Color(.systemGray5)
                     }
                 }
                 .frame(
@@ -78,11 +74,7 @@ public struct CollapsibleHeaderView: View {
                                 .resizable()
                                 .aspectRatio(contentMode: .fill)
                         default:
-                            LinearGradient(
-                                colors: [.purple.opacity(0.3), .blue.opacity(0.3)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
+                            Color(.systemGray5)
                         }
                     }
                     .blur(radius: 20)

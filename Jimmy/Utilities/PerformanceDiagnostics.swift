@@ -153,10 +153,6 @@ struct PerformanceDebugOverlay: View {
         .padding(.horizontal, JimmyDesign.Spacing.md)
         .padding(.vertical, JimmyDesign.Spacing.sm)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: JimmyDesign.Radius.md, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: JimmyDesign.Radius.md, style: .continuous)
-                .stroke(JimmyDesign.Palette.mutedBorder, lineWidth: 0.6)
-        )
         .padding(.top, JimmyDesign.Spacing.xl)
         .padding(.trailing, JimmyDesign.Spacing.lg)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)

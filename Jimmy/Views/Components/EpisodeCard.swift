@@ -123,7 +123,7 @@ struct EpisodeCard: View, Equatable {
                 VStack(alignment: .leading, spacing: 4) {
                     // Episode title
                     Text(episode.title)
-                        .font(.system(.caption, design: .rounded, weight: .semibold)) // Made smaller
+                        .font(.system(.caption, weight: .semibold)) // Made smaller
                         .lineLimit(2)
                         .foregroundColor(.primary)
                         .multilineTextAlignment(.leading)
@@ -218,8 +218,7 @@ struct EpisodeCard: View, Equatable {
         .padding(.vertical, 10)
         .opacity(episode.status == .played ? 0.7 : 1.0)
         .saturation(episode.status == .played ? 0.5 : 1.0)
-        .jimmyCard(isHighlighted: isActuallyPlaying)
-        .nowPlayingGlow(isPlaying: isActuallyPlaying)
+        .jimmyCard()
         .contentShape(Rectangle())
     }
     

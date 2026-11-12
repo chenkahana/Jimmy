@@ -56,31 +56,12 @@ struct DiscoverView: View {
                 } else {
                     ScrollView {
                         LazyVStack(spacing: 32) {
-                            discoverIntroCard
-                                .transition(.asymmetric(
-                                    insertion: .opacity.combined(with: .move(edge: .top)),
-                                    removal: .opacity
-                                ))
-
                             heroFeaturedSection
-                                .transition(.asymmetric(
-                                    insertion: .opacity.combined(with: .move(edge: .top)),
-                                    removal: .opacity
-                                ))
                             
                             trendingSection
-                                .transition(.asymmetric(
-                                    insertion: .opacity.combined(with: .move(edge: .leading)),
-                                    removal: .opacity
-                                ))
                             
                             chartsSection
-                                .transition(.asymmetric(
-                                    insertion: .opacity.combined(with: .move(edge: .bottom)),
-                                    removal: .opacity
-                                ))
                         }
-                        .animation(.spring(response: 0.6, dampingFraction: 0.8), value: viewModel.hasAnyData)
                         .padding(.vertical, 20)
                         .tabBarSpacing()
                     }
@@ -153,29 +134,18 @@ struct DiscoverView: View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 20) {
                 JimmySectionHeader(
-                    eyebrow: "Search",
-                    title: "Search results",
+                    "Results",
                     subtitle: viewModel.isSearching
-                    ? "Searching the catalog..."
-                    : "\(viewModel.searchResults.count) podcasts found",
-                    icon: "magnifyingglass"
+                    ? "Searching…"
+                    : "\(viewModel.searchResults.count) shows"
                 )
                 .padding(.horizontal, 20)
                 .padding(.top, 20)
                 
                 if viewModel.isSearching {
                     LazyVStack(spacing: 12) {
-                        ForEach(0..<6, id: \.self) { index in
+                        ForEach(0..<6, id: \.self) { _ in
                             LiquidSkeletonView(style: .searchResult)
-                                .transition(.asymmetric(
-                                    insertion: .opacity.combined(with: .scale(scale: 0.95)),
-                                    removal: .opacity
-                                ))
-                                .animation(
-                                    .proMotionSpring(response: 0.5, dampingFraction: 0.8)
-                                        .delay(Double(index) * 0.05),
-                                    value: viewModel.isSearching
-                                )
                         }
                     }
                     .padding(.horizontal, 20)
@@ -214,6 +184,11 @@ struct DiscoverView: View {
                                 .matchedTransitionSource(id: "discover-search-\(result.id)", in: discoverNamespace)
                             }
                             .buttonStyle(.plain)
+                            .accessibilityActions {
+                                if !viewModel.isSubscribed(result) {
+                                    Button("Subscribe") { Task { await viewModel.subscribe(to: result) } }
+                                }
+                            }
                             .padding(.horizontal, 20)
                         }
                     }
@@ -223,43 +198,6 @@ struct DiscoverView: View {
         }
     }
 
-    private var discoverIntroCard: some View {
-        JimmyCard(isHighlighted: true, padding: JimmyDesign.Spacing.xl) {
-            VStack(alignment: .leading, spacing: JimmyDesign.Spacing.lg) {
-                JimmySectionHeader(
-                    eyebrow: "Editorial",
-                    title: "Find the next show that earns a place in your queue",
-                    subtitle: "Featured picks, trending episodes, and chart leaders are all here with one search model behind them.",
-                    icon: "sparkles"
-                )
-
-                HStack(spacing: JimmyDesign.Spacing.sm) {
-                    discoverSignalPill(title: "Featured", icon: "star.fill")
-                    discoverSignalPill(title: "Trending", icon: "flame.fill")
-                    discoverSignalPill(title: "Charts", icon: "chart.line.uptrend.xyaxis")
-                }
-            }
-        }
-        .padding(.horizontal, 20)
-        .popoverTip(DiscoverSearchTip(), arrowEdge: .top)
-    }
-
-    private func discoverSignalPill(title: String, icon: String) -> some View {
-        HStack(spacing: 6) {
-            Image(systemName: icon)
-                .font(.system(size: 11, weight: .bold))
-            Text(title)
-                .font(.system(.caption, design: .rounded, weight: .semibold))
-        }
-        .foregroundStyle(.primary)
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
-        .background(
-            Capsule()
-                .fill(Color.accentColor.opacity(0.08))
-        )
-    }
-    
     private var loadingView: some View {
         ScrollView {
             LazyVStack(spacing: 32) {
@@ -345,19 +283,7 @@ struct DiscoverView: View {
     
     private var heroFeaturedSection: some View {
         VStack(alignment: .leading, spacing: 20) {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Featured")
-                        .font(JimmyDesign.Typography.largeTitle)
-                        .foregroundStyle(.primary)
-                    
-                    Text("Handpicked podcasts just for you")
-                        .font(JimmyDesign.Typography.body)
-                        .foregroundStyle(.secondary)
-                }
-                
-                Spacer()
-            }
+            JimmySectionHeader("Featured")
             .padding(.horizontal, 20)
             
             ScrollView(.horizontal, showsIndicators: false) {
@@ -379,7 +305,11 @@ struct DiscoverView: View {
                             .matchedTransitionSource(id: "discover-featured-\(podcast.id)", in: discoverNamespace)
                         }
                         .buttonStyle(.plain)
-                        .carouselScrollTransition()
+                        .accessibilityActions {
+                            if !viewModel.isSubscribed(podcast) {
+                                Button("Subscribe") { Task { await viewModel.subscribe(to: podcast) } }
+                            }
+                        }
                     }
                 }
                 .scrollTargetLayout()
@@ -391,29 +321,7 @@ struct DiscoverView: View {
 
     private var trendingSection: some View {
         VStack(alignment: .leading, spacing: 20) {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Trending Episodes")
-                        .font(.title.bold())
-                        .foregroundColor(.primary)
-                    
-                    Text("What everyone's listening to")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                }
-                
-                Spacer()
-                
-                Image(systemName: "flame.fill")
-                    .font(.title2)
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [.accentColor, .red],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-            }
+            JimmySectionHeader("Trending Episodes")
             .padding(.horizontal, 20)
             
             ScrollView(.horizontal, showsIndicators: false) {
@@ -444,7 +352,6 @@ struct DiscoverView: View {
                             .matchedTransitionSource(id: "discover-trending-\(episode.id)", in: discoverNamespace)
                         }
                         .buttonStyle(.plain)
-                        .carouselScrollTransition()
                         .trendingEpisodeContextMenu(
                             episode: episode,
                             onSubscribe: {
@@ -475,23 +382,7 @@ struct DiscoverView: View {
  
     private var chartsSection: some View {
         VStack(alignment: .leading, spacing: 20) {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Top Charts")
-                        .font(.title.bold())
-                        .foregroundColor(.primary)
-                    
-                    Text("Most popular podcasts")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                }
-                
-                Spacer()
-                
-                Image(systemName: "chart.line.uptrend.xyaxis")
-                    .font(.title2)
-                    .foregroundColor(.accentColor)
-            }
+            JimmySectionHeader("Top Shows")
             .padding(.horizontal, 20)
             
             LazyVStack(spacing: 12) {
@@ -512,8 +403,11 @@ struct DiscoverView: View {
                         .matchedTransitionSource(id: "discover-charts-\(result.id)", in: discoverNamespace)
                     }
                     .buttonStyle(.plain)
-                    .staggeredAppear(index: index)
-                    .scrollEdgeTransition()
+                    .accessibilityActions {
+                        if !viewModel.isSubscribed(result) {
+                            Button("Subscribe") { Task { await viewModel.subscribe(to: result) } }
+                        }
+                    }
                     .padding(.horizontal, 20)
                 }
             }
