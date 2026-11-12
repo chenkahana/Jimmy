@@ -28,7 +28,40 @@ struct SettingsView: View {
             playbackSection
             appearanceSection
             syncSection
+                .fileImporter(
+                    isPresented: $showingBackupImport,
+                    allowedContentTypes: [.json]
+                ) { result in
+                    switch result {
+                    case .success(let url):
+                        Task {
+                            do {
+                                let counts = try await BackupService.shared.importBackup(from: url)
+                                let message = "Restored \(counts.podcasts) podcasts and \(counts.episodes) episodes."
+                                viewModel.showAlert(.jsonImport(message))
+                            } catch {
+                                viewModel.showAlert(.jsonImport("Import failed: \(error.localizedDescription)"))
+                            }
+                        }
+                    case .failure(let error):
+                        viewModel.showAlert(.jsonImport("Error selecting file: \(error.localizedDescription)"))
+                    }
+                }
             importSection
+                .fileImporter(
+                    isPresented: $viewModel.isJSONImporting,
+                    allowedContentTypes: [.json, .plainText, .data, .text]
+                ) { result in
+                    switch result {
+                    case .success(let url):
+                        Task {
+                            await viewModel.importFromJSON(fileURL: url)
+                        }
+                    case .failure(let error):
+                        viewModel.jsonImportMessage = "Error selecting file: \(error.localizedDescription)"
+                        viewModel.showAlert(.jsonImport(viewModel.jsonImportMessage ?? "Unknown error"))
+                    }
+                }
             assistantSection
             aboutSection
             #if DEBUG
@@ -58,39 +91,6 @@ struct SettingsView: View {
                 }
             case .failure(let error):
                 viewModel.spotifyImportMessage = "Error selecting file: \(error.localizedDescription)"
-            }
-        }
-        .fileImporter(
-            isPresented: $viewModel.isJSONImporting,
-            allowedContentTypes: [.json, .plainText, .data, .text]
-        ) { result in
-            switch result {
-            case .success(let url):
-                Task {
-                    await viewModel.importFromJSON(fileURL: url)
-                }
-            case .failure(let error):
-                viewModel.jsonImportMessage = "Error selecting file: \(error.localizedDescription)"
-                viewModel.showAlert(.jsonImport(viewModel.jsonImportMessage ?? "Unknown error"))
-            }
-        }
-        .fileImporter(
-            isPresented: $showingBackupImport,
-            allowedContentTypes: [.json]
-        ) { result in
-            switch result {
-            case .success(let url):
-                Task {
-                    do {
-                        let counts = try await BackupService.shared.importBackup(from: url)
-                        let message = "Restored \(counts.podcasts) podcasts and \(counts.episodes) episodes."
-                        viewModel.showAlert(.jsonImport(message))
-                    } catch {
-                        viewModel.showAlert(.jsonImport("Import failed: \(error.localizedDescription)"))
-                    }
-                }
-            case .failure(let error):
-                viewModel.showAlert(.jsonImport("Error selecting file: \(error.localizedDescription)"))
             }
         }
         .sheet(isPresented: $showingAssistant) {
@@ -427,6 +427,7 @@ struct ManualImportView: View {
 
     private func startImport() {
         guard !trimmedURL.isEmpty, !isImporting else { return }
+        isImporting = true
         Task {
             await importPodcast()
         }

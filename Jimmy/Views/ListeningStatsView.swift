@@ -26,7 +26,7 @@ struct ListeningStatsView: View {
                             x: .value("Day", shortDayLabel(log.date)),
                             y: .value("Minutes", log.seconds / 60)
                         )
-                        .foregroundStyle(Color.accentColor)
+                        .foregroundStyle(Color.secondary)
                     }
                     .chartYAxisLabel("Minutes")
                     .frame(minHeight: 180)

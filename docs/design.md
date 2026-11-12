@@ -59,7 +59,8 @@ with More. Episodes use the Queue row. Episode show notes in New York, tint only
 **Search / Discover.** Recent searches, Top Shows as a numbered list (it's a ranking), categories as a list. Loading
 uses `redacted(.placeholder)` on real rows.
 
-**Settings.** `Form` with sections Playback, Downloads, Sync, Import & Export, About. The version appears once, in About.
+**Settings.** `Form` with sections Playback, Appearance, Sync & Backup, Import & Export, Assistant, About, and the
+destructive actions last. Explanations go in section footers. The version appears once, in About.
 
 ## Checks for every UI change
 
