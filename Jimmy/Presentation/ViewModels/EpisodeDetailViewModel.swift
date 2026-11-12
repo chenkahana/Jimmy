@@ -11,9 +11,6 @@ class EpisodeDetailViewModel: ObservableObject {
     @Published var podcast: Podcast?
     @Published var isLoading: Bool = false
     @Published var isPlaying: Bool = false
-    @Published var isDownloaded: Bool = false
-    @Published var downloadProgress: Double = 0.0
-    @Published var isDownloading: Bool = false
     @Published var errorMessage: String?
     @Published var showingShareSheet: Bool = false
     @Published var playbackProgress: Double = 0.0
@@ -47,10 +44,6 @@ class EpisodeDetailViewModel: ObservableObject {
             self.isInQueue = AppModel.current?.isQueued(self.episode.id) ?? false
         }
         .store(in: &cancellables)
-
-        // Monitor download status
-        // Monitor download status manually since $cachedEpisodes doesn't exist
-        updateDownloadStatus()
     }
 
     /// `Playback` is `@Observable`, not an `ObservableObject` this Combine-based view model can
@@ -77,65 +70,41 @@ class EpisodeDetailViewModel: ObservableObject {
     private func loadInitialData() {
         Task {
             await loadPodcast()
-            await checkDownloadStatus()
         }
     }
-    
+
     private func loadPodcast() async {
         isLoading = true
-        
+
         podcast = AppModel.current?.podcasts.first { $0.id == episode.podcastID }?.asLegacyPodcast()
 
         isLoading = false
     }
-    
-    private func checkDownloadStatus() async {
-        // Check if episode is cached using available methods
-        // Note: getCachedEpisode method doesn't exist, using a simple check
-        isDownloaded = false // Simplified for now
-    }
-    
+
     // MARK: - Public Methods
 
-    func downloadEpisode() async {
-        guard !isDownloaded && !isDownloading else { return }
-        
-        isDownloading = true
-        downloadProgress = 0.0
-        errorMessage = nil
-        
-        do {
-            let progressHandler: (Double) -> Void = { [weak self] progress in
-                Task { @MainActor in
-                    self?.downloadProgress = progress
-                }
-            }
-            
-            // Note: cacheEpisode method doesn't exist, episodes are cached automatically
-            // Simulate progress for UI
-            for progress in stride(from: 0.0, through: 1.0, by: 0.1) {
-                await progressHandler(progress)
-                try await Task.sleep(nanoseconds: 100_000_000) // 0.1 second
-            }
-            isDownloaded = true
-        } catch {
-            errorMessage = "Failed to download episode: \(error.localizedDescription)"
-        }
-        
-        isDownloading = false
-        downloadProgress = 0.0
+    /// `episode`'s download lifecycle state, `nil` if nothing has ever started downloading it.
+    var downloadState: JimmyKit.DownloadState? {
+        AppModel.current?.downloadState(for: episode.id)
     }
-    
-    func removeDownload() async {
-        isLoading = true
-        errorMessage = nil
-        
-        // Note: removeCachedEpisode method doesn't exist
-        // Episodes are managed automatically by the cache service
-        isDownloaded = false
-        isLoading = false
+
+    /// `episode`'s download progress (0...1), `nil` while it isn't downloading.
+    var downloadProgress: Double? {
+        AppModel.current?.downloads?.progress[episode.id]
     }
-    
+
+    func downloadEpisode() {
+        AppModel.current?.download(episode.asPlaybackEpisode())
+    }
+
+    func cancelDownload() {
+        AppModel.current?.cancelDownload(episode.id)
+    }
+
+    func deleteDownload() {
+        AppModel.current?.deleteDownload(episode.id)
+    }
+
     func addToQueue() async {
         await AppModel.current?.enqueue(episode.id)
         errorMessage = nil
@@ -175,15 +144,10 @@ class EpisodeDetailViewModel: ObservableObject {
     func refreshEpisode() async {
         isLoading = true
         errorMessage = nil
-        
-        do {
-            // Refresh episode data from podcast service
-            await loadPodcast()
-            await checkDownloadStatus()
-        } catch {
-            errorMessage = "Failed to refresh episode: \(error.localizedDescription)"
-        }
-        
+
+        // Refresh episode data from podcast service
+        await loadPodcast()
+
         isLoading = false
     }
     
@@ -217,10 +181,4 @@ class EpisodeDetailViewModel: ObservableObject {
             return String(format: "%d:%02d", minutes, seconds)
         }
     }
-    
-    private func updateDownloadStatus() {
-        // Check if episode is cached using available methods
-        // Note: getCachedEpisode method doesn't exist, using a simple check
-        isDownloaded = false // Simplified for now
-    }
-} 
+}

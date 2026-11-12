@@ -91,6 +91,7 @@ struct PodcastEpisodeListView: View {
                 )
                 .episodeContextMenu(
                     episode: legacyEpisode,
+                    downloadState: appModel.downloadState(for: item.episode.id),
                     onAddToQueue: {
                         Task { await appModel.enqueue(item.episode.id) }
                     },
@@ -106,7 +107,10 @@ struct PodcastEpisodeListView: View {
                     onPlayNext: {
                         Task { await appModel.playNext(item.episode.id) }
                     },
-                    onShare: {}
+                    onShare: {},
+                    onDownload: { appModel.download(item.episode) },
+                    onCancelDownload: { appModel.cancelDownload(item.episode.id) },
+                    onDeleteDownload: { appModel.deleteDownload(item.episode.id) }
                 )
             }
         }
