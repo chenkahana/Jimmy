@@ -51,10 +51,7 @@ class SettingsViewModel: ObservableObject {
     // Import/Export States (KEEP @Published - bound to UI loading states)
     @Published var isExporting = false
     @Published var isImporting = false
-    @Published var isImportingFromApplePodcasts = false
     @Published var showingManualImport = false
-    @Published var isSpotifyImporting = false
-    @Published var spotifyImportMessage: String?
     @Published var isJSONImporting = false
     @Published var jsonImportMessage: String?
     @Published var showDeleteConfirmation = false
@@ -531,57 +528,6 @@ class SettingsViewModel: ObservableObject {
         }
     }
     
-    func importFromSpotify() async {
-        await MainActor.run {
-            isSpotifyImporting = true
-        }
-        defer {
-            Task { @MainActor in
-                self.isSpotifyImporting = false
-            }
-        }
-
-        let message = """
-        Spotify does not provide a direct podcast export. \
-        To import your Spotify podcast follows:
-        1. Open Spotify and find the podcast.
-        2. Search for the podcast's RSS feed online (e.g. via Podcast Index).
-        3. Use OPML import in Jimmy with the feed URL.
-
-        Alternatively, export an OPML file from another podcast app you may have used.
-        """
-        await MainActor.run {
-            self.spotifyImportMessage = message
-            self.showAlert(.spotifyImport(message))
-        }
-    }
-    
-    func performComprehensiveApplePodcastsImport() async {
-        await MainActor.run {
-            isImportingFromApplePodcasts = true
-        }
-        defer {
-            Task { @MainActor in
-                self.isImportingFromApplePodcasts = false
-            }
-        }
-
-        let guide = """
-        To import from Apple Podcasts:
-        1. Open Apple Podcasts on your Mac.
-        2. Go to File > Export Subscriptions…
-        3. Save the .opml file.
-        4. Transfer the file to your iPhone via AirDrop or Files.
-        5. In Jimmy, tap "Import OPML" and select the file.
-
-        On iPhone only: Go to Settings > Privacy > Media & Apple Music \
-        and grant Jimmy access, then use "Import from Apple Podcasts" in Jimmy Settings.
-        """
-        await MainActor.run {
-            self.activeAlert = .appleImport(guide)
-        }
-    }
-    
     // MARK: - Management Actions
     func clearAllSubscriptions() async {
         await MainActor.run {
@@ -622,8 +568,6 @@ class SettingsViewModel: ObservableObject {
 // MARK: - Supporting Types
 enum SettingsAlert {
     case resetData
-    case appleImport(String)
-    case spotifyImport(String)
     case jsonImport(String)
     case clearSubscriptions
     case subscriptionImport(String)

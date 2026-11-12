@@ -246,7 +246,7 @@ struct HistoryPlanTests {
         #expect(plan.playedCount == 2)
         #expect(plan.inProgressCount == 1)
         #expect(plan.unmatchedCount == 1)
-        #expect(plan.queue == [saved.id, half.id])
+        #expect(plan.queue.map(\.episodeID) == [saved.id, half.id])
         #expect(plan.actions.contains(.markPlayed(almost.id)))
         #expect(plan.actions.contains { if case .saveProgress(let p) = $0 { p.episodeID == half.id && p.position == 500 } else { false } })
     }

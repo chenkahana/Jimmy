@@ -6,11 +6,18 @@ public nonisolated enum HistoryAction: Sendable, Hashable {
     case saveProgress(Progress)
 }
 
+/// An episode the Queue should get, and when the listener last touched it.
+public nonisolated struct QueueCandidate: Sendable, Hashable {
+    public let episodeID: UUID
+    public let date: Date
+}
+
 /// Turns another app's listening history into writes against the store, plus the Queue it
 /// implies: episodes started there, and episodes saved for later, most recent first.
 public nonisolated struct HistoryPlan: Sendable, Hashable {
     public var actions: [HistoryAction] = []
-    public var queue: [UUID] = []
+    /// Most recent first.
+    public var queue: [QueueCandidate] = []
     public var playedCount = 0
     public var inProgressCount = 0
     public var unmatchedCount = 0
@@ -23,7 +30,7 @@ public nonisolated struct HistoryPlan: Sendable, Hashable {
     public static func make(states: [ImportedEpisodeState], episodes: [Episode], now: Date = Date()) -> HistoryPlan {
         var plan = HistoryPlan()
         var seen = Set<UUID>()
-        var queued: [(id: UUID, date: Date)] = []
+        var queued: [QueueCandidate] = []
 
         for state in states {
             guard let episode = EpisodeMatcher.match(state, in: episodes) else {
@@ -49,11 +56,11 @@ public nonisolated struct HistoryPlan: Sendable, Hashable {
                 plan.inProgressCount += 1
             }
             if position > 0 || state.isQueued {
-                queued.append((episode.id, state.updatedAt ?? episode.publishedDate ?? .distantPast))
+                queued.append(QueueCandidate(episodeID: episode.id, date: state.updatedAt ?? episode.publishedDate ?? .distantPast))
             }
         }
 
-        plan.queue = queued.sorted { $0.date > $1.date }.map(\.id)
+        plan.queue = queued.sorted { $0.date > $1.date }
         return plan
     }
 }

@@ -43,6 +43,9 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.chenkahana.Jimmy
+        # Client ID of a Spotify app with redirect URI jimmy://spotify-callback. Empty hides
+        # "Sign In with Spotify"; the data-download import works either way.
+        SPOTIFY_CLIENT_ID: ""
         CODE_SIGN_ENTITLEMENTS: Jimmy/Jimmy.entitlements
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_FILE: Jimmy/Info.plist
