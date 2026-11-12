@@ -25,22 +25,18 @@ extension AppModel {
         readyStore?.observeEpisodes(podcastID: podcastID)
     }
 
+    func observeQueueItems() -> AsyncValueObservation<[JimmyKit.EpisodeListItem]>? {
+        readyStore?.observeQueueItems()
+    }
+
     /// Marks `episodeID` played/unplayed. Position is left untouched, matching today's "mark
-    /// played" toggle. Also mirrors the toggle into the legacy `episodes.status`/`.played`
-    /// columns via `LegacyEpisodeStatusMirror`, so `QueueView` and other screens that haven't
-    /// moved onto `progress` yet stay in sync.
+    /// played" toggle.
     func markPlayed(_ episodeID: UUID) async {
         try? await readyStore?.markPlayed(episodeID)
-        if let episodeWithState = try? await DIContainer.shared.episodeRepository.fetchEpisode(by: episodeID) {
-            LegacyEpisodeStatusMirror.markPlayed(episodeWithState.episode)
-        }
     }
 
     func markUnplayed(_ episodeID: UUID) async {
         try? await readyStore?.markUnplayed(episodeID)
-        if let episodeWithState = try? await DIContainer.shared.episodeRepository.fetchEpisode(by: episodeID) {
-            LegacyEpisodeStatusMirror.markUnplayed(episodeWithState.episode)
-        }
     }
 
     // MARK: - Bookmarks

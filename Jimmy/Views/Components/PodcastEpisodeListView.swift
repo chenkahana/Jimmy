@@ -126,10 +126,7 @@ struct PodcastEpisodeListView: View {
         case .played:
             filtered = filtered.filter { $0.progress?.isFinished ?? false }
         case .downloaded:
-            // The old "Downloaded" filter checked disk state through `DownloadManager`, not a
-            // database column — `DownloadManager` still owns download state until a later PR
-            // moves it onto JimmyKit's `Downloads`.
-            filtered = filtered.filter { DownloadManager.shared.isDownloaded($0.asLegacyEpisode()) }
+            filtered = filtered.filter { appModel.isDownloaded($0.episode.id) }
         }
 
         switch sortOrder {

@@ -22,6 +22,14 @@ nonisolated extension Store {
             .values(in: pool)
     }
 
+    /// The queued episodes, in queue order, with their progress and download state. Cheaper than
+    /// `observeEpisodes(podcastID: nil)` for the Queue screen, which re-reads on every progress save.
+    public func observeQueueItems() -> AsyncValueObservation<[EpisodeListItem]> {
+        ValueObservation
+            .tracking { db in try Self.wrapAsListItems(Self.fetchQueueEpisodes(db), db: db) }
+            .values(in: pool)
+    }
+
     private static func fetchEpisodeListItems(podcastID: UUID?, db: Database) throws -> [EpisodeListItem] {
         let episodes: [Episode]
         if let podcastID {

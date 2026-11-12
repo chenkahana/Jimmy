@@ -196,12 +196,7 @@ class PodcastSearchViewModel: ObservableObject, TaskManagedViewModel {
     }
 
     func getSubscribedPodcasts() async -> [Podcast] {
-        do {
-            return try await DIContainer.shared.subscriptionRepository.fetchSubscriptions(ignoreCache: false)
-        } catch {
-            Self.logger.error("PodcastSearchViewModel: Failed to fetch subscribed podcasts: \(error)")
-            return []
-        }
+        (AppModel.current?.podcasts ?? []).map { $0.asLegacyPodcast() }
     }
 
     func subscribe(to result: PodcastSearchResult) async {

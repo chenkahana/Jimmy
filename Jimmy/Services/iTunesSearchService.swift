@@ -219,29 +219,6 @@ struct PodcastSearchResult: Identifiable, Codable {
     let description: String?
     let genre: String
     let trackCount: Int
-    
-    // Convert to Podcast model (DEPRECATED - use getFullPodcast() instead)
-    func toPodcast() -> Podcast {
-        let cleanedDescription = description?.cleanedEpisodeDescription ?? ""
-        return Podcast(
-            title: title,
-            author: author,
-            description: cleanedDescription,
-            feedURL: feedURL,
-            artworkURL: artworkURL
-        )
-    }
-    
-    // Get full podcast data from RSS feed with complete description
-    func getFullPodcast() async -> Podcast? {
-        do {
-            let (podcast, _) = try await DIContainer.shared.podcastRepository.fetchPodcastWithEpisodes(from: feedURL)
-            return podcast
-        } catch {
-            // Fallback to basic podcast if RSS fetch fails
-            return toPodcast()
-        }
-    }
 }
 
 // MARK: - Episode Search Models

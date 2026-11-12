@@ -144,7 +144,6 @@ struct PodcastSearchView: View {
         }
         .navigationTitle("Search")
         .navigationBarTitleDisplayMode(.inline)
-        .performanceAdaptive(baseSkeletonCount: 6)
         .onAppear {
             Task {
                 subscribedPodcasts = await viewModel.getSubscribedPodcasts()

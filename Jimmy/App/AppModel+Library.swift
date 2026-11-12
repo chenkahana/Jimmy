@@ -30,6 +30,36 @@ extension AppModel {
         return try await readyStore.subscribe(feedURL: fetchableURL, parsed: parsed, etag: etag)
     }
 
+    /// Fetches and parses `feedURL` without saving anything — for a Discover search result's
+    /// preview, shown before the user has subscribed.
+    func previewPodcast(feedURL: URL) async throws -> (podcast: JimmyKit.Podcast, episodes: [JimmyKit.Episode]) {
+        let fetchableURL = FeedURLNormalizer.fetchableURL(for: feedURL)
+        let fetchResult = try await feedFetcher.fetch(from: fetchableURL, etag: nil, lastModified: nil)
+
+        let data: Data
+        switch fetchResult {
+        case .notModified:
+            data = Data()
+        case .fetched(let fetchedData, _, _):
+            data = fetchedData
+        }
+
+        let podcastID = FeedIDs.generatePodcastID(from: fetchableURL)
+        let parsed = try FeedParser.parse(data: data, podcastID: podcastID, feedURL: fetchableURL)
+        let title = parsed.podcast.title ?? fetchableURL.absoluteString
+        let podcast = JimmyKit.Podcast(
+            id: podcastID,
+            title: title,
+            cleanTitle: title,
+            author: parsed.podcast.author ?? "",
+            description: parsed.podcast.description ?? "",
+            feedURL: fetchableURL,
+            artworkURL: parsed.podcast.artworkURL,
+            lastEpisodeDate: parsed.episodes.compactMap(\.publishedDate).max()
+        )
+        return (podcast, parsed.episodes)
+    }
+
     /// Sets whether `podcastID`'s newly-fetched episodes are auto-added to the queue.
     func setAutoAddToQueue(_ enabled: Bool, podcastID: UUID) async {
         try? await readyStore?.setAutoAddToQueue(enabled, podcastID: podcastID)

@@ -141,7 +141,7 @@ public nonisolated final class Store: Sendable {
 
     // MARK: - Queue internals
 
-    private static func fetchQueueEpisodes(_ db: Database) throws -> [Episode] {
+    static func fetchQueueEpisodes(_ db: Database) throws -> [Episode] {
         try Episode.fetchAll(db, sql: """
             SELECT episodes.* FROM episodes
             JOIN queue ON queue.episodeID = episodes.id

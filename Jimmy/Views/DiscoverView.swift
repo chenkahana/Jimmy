@@ -92,8 +92,6 @@ struct DiscoverView: View {
         }
         .navigationTitle("Discover")
         .navigationBarTitleDisplayMode(.large)
-        .performanceAdaptive(baseSkeletonCount: 6)
-
         .searchable(
             text: Binding(
                 get: { shell.discoverSearchQuery },

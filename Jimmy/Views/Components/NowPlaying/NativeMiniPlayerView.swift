@@ -6,11 +6,8 @@
 //
 
 import SwiftUI
-import os
 
 struct NativeMiniPlayerView: View {
-    private let logger = Logger(subsystem: "com.chenkahana.Jimmy", category: "NativeMiniPlayerView")
-
     @Environment(AppModel.self) private var appModel
     @State private var podcast: Podcast?
 
@@ -104,10 +101,6 @@ struct NativeMiniPlayerView: View {
             return
         }
 
-        do {
-            podcast = try await DIContainer.shared.podcastRepository.fetchPodcast(id: podcastID, ignoreCache: false)
-        } catch {
-            logger.error("Failed to load podcast: \(error)")
-        }
+        podcast = appModel.podcasts.first { $0.id == podcastID }?.asLegacyPodcast()
     }
 }

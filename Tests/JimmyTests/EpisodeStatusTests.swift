@@ -1,14 +1,11 @@
 import XCTest
-import GRDB
 #if canImport(JimmyUtilities)
 @testable import JimmyUtilities
 #else
 @testable import Jimmy
 #endif
 
-/// Characterization tests for the EpisodeStatus OptionSet (Jimmy/Models/Episode.swift) and
-/// for what the playback-state layer does to position when an episode is marked finished
-/// (Jimmy/Data/Repositories/GRDBRepositories.swift, GRDBPlaybackStateRepository).
+/// Characterization tests for the EpisodeStatus OptionSet (Jimmy/Models/Episode.swift).
 ///
 /// Note: the "> 95% complete -> mark played" threshold that actually flips an episode's
 /// persisted status lives inside a private closure of AudioPlayerService's periodic time
@@ -16,6 +13,10 @@ import GRDB
 /// exercised here. A second, UI-facing "finished" threshold does exist as a pure static
 /// function — EpisodeWithStatus.deriveStatus in Jimmy/Models/EpisodeWithPlaybackState.swift —
 /// and is covered below. Today: that one uses `>= 0.95`, not `> 0.95` like AudioPlayerService.
+///
+/// The DB-backed "what marking finished does to playback position" tests that used to live here
+/// (against `GRDBPlaybackStateRepository`) were removed along with that repository — the same
+/// rule is covered by JimmyKit's `Store.markPlayed`/`.markUnplayed` tests now.
 final class EpisodeStatusTests: XCTestCase {
     // MARK: - Pure OptionSet rules
 
@@ -104,75 +105,5 @@ final class EpisodeStatusTests: XCTestCase {
             episode: played, playProgress: 0.0, isQueued: false, isCurrentlyPlaying: false
         )
         XCTAssertEqual(status, .played)
-    }
-
-    // MARK: - What marking an episode finished does to playback position (DB-backed rule)
-
-    private func makeIsolatedRepository() async throws -> (DatabaseManager, GRDBPlaybackStateRepository) {
-        let path = FileManager.default.temporaryDirectory
-            .appendingPathComponent("episode-status-tests-\(UUID().uuidString).sqlite").path
-        let dbManager = try await DatabaseManager(path: path)
-        return (dbManager, GRDBPlaybackStateRepository(dbManager: dbManager))
-    }
-
-    private func insertPodcastAndEpisode(dbManager: DatabaseManager, episodeID: UUID) async throws {
-        let podcast = Podcast(title: "Show", author: "Author", feedURL: URL(string: "https://example.com/feed.xml")!)
-        let episode = Episode(id: episodeID, title: "Episode", podcastID: podcast.id)
-        try await dbManager.writeAsync { db in
-            try podcast.save(db)
-            try episode.save(db)
-        }
-    }
-
-    func testMarkFinishedResetsPositionToZeroRegardlessOfPriorProgress() async throws {
-        let (dbManager, repository) = try await makeIsolatedRepository()
-        let episodeID = UUID()
-        try await insertPodcastAndEpisode(dbManager: dbManager, episodeID: episodeID)
-
-        try await repository.savePlaybackState(PlaybackState(episodeID: episodeID, position: 842.5, finished: false))
-        try await repository.markFinished(episodeID: episodeID)
-
-        let state = try await repository.fetchPlaybackState(for: episodeID)
-        // Today: markFinished always resets position to 0, it does not preserve the
-        // last-known playback position the way EpisodeService.updatePlaybackStateAsFinished
-        // does (which keeps currentState.position).
-        XCTAssertEqual(state?.position, 0)
-        XCTAssertEqual(state?.finished, true)
-    }
-
-    func testSavePlaybackStateAlsoSyncsEpisodesPlaybackPositionColumn() async throws {
-        let (dbManager, repository) = try await makeIsolatedRepository()
-        let episodeID = UUID()
-        try await insertPodcastAndEpisode(dbManager: dbManager, episodeID: episodeID)
-
-        try await repository.savePlaybackState(PlaybackState(episodeID: episodeID, position: 123.0, finished: false))
-
-        // Today: saving playback state is not limited to the playback_state table — it also
-        // writes episodes.playbackPosition directly, keeping the two in sync.
-        let storedPosition: Double? = try await dbManager.readAsync { db in
-            try Double.fetchOne(db, sql: "SELECT playbackPosition FROM episodes WHERE id = ?", arguments: [episodeID.uuidString])
-        }
-        XCTAssertEqual(storedPosition, 123.0)
-    }
-
-    func testMarkingFinishedDoesNotTouchEpisodeStatusOrPlayedFlag() async throws {
-        let (dbManager, repository) = try await makeIsolatedRepository()
-        let episodeID = UUID()
-        try await insertPodcastAndEpisode(dbManager: dbManager, episodeID: episodeID)
-
-        try await repository.markFinished(episodeID: episodeID)
-
-        // Today: GRDBPlaybackStateRepository.markFinished only ever touches the
-        // playback_state table (and episodes.playbackPosition via savePlaybackState) — it
-        // never sets episodes.played or episodes.status. Only EpisodeService.setEpisodePlayed
-        // does that, as a separate step.
-        let played: Bool? = try await dbManager.readAsync { db in
-            try Bool.fetchOne(db, sql: "SELECT played FROM episodes WHERE id = ?", arguments: [episodeID.uuidString])
-        }
-        let status: Int? = try await dbManager.readAsync { db in
-            try Int.fetchOne(db, sql: "SELECT status FROM episodes WHERE id = ?", arguments: [episodeID.uuidString])
-        }
-        XCTAssertEqual(played, false)
-        XCTAssertEqual(status, 0)
     }
 }

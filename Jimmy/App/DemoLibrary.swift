@@ -94,16 +94,6 @@ enum DemoLibrary {
         let podcasts = (try? await store.podcasts()) ?? []
         guard !podcasts.isEmpty else { return }
 
-        // Queue (and anything else still reading through `DIContainer.shared.episodeRepository`)
-        // resolves queue membership into richer per-row data from the legacy repository — see
-        // `QueueView`'s doc comment — whose `episodes.podcastID` is a foreign key against the
-        // legacy `podcasts` table. Without these rows, `model.ensureEpisodeIsSaved(_:)` below
-        // would silently fail its own insert (every legacy write goes through `try?`), and every
-        // demo episode would be invisible there despite being enqueued correctly.
-        if needsSeeding {
-            _ = try? await DIContainer.shared.podcastRepository.savePodcasts(podcasts.map { $0.asLegacyPodcast() })
-        }
-
         var nowPlayingEpisode: JimmyKit.Episode?
         var queuedCount = 0
 

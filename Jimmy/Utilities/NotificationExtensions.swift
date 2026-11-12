@@ -21,10 +21,4 @@ extension Notification.Name {
     
     /// Notification sent when the queue needs to be refreshed
     static let queueNeedsRefresh = Notification.Name("queueNeedsRefresh")
-
-    /// Notification sent when an episode's played/queued/playing status changes. Posted by
-    /// `LegacyProgressMirror` (the last remaining poster, now that `EpisodeService` is gone) and
-    /// still read by `QueueView`, `SubscriptionViewModel`, and `ProgressCacheStore` — none of
-    /// which has moved onto `JimmyKit`'s `progress` yet.
-    static let episodeStatusUpdated = Notification.Name("episodeStatusUpdated")
-} 
+}

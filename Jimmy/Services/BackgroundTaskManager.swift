@@ -21,8 +21,6 @@ class BackgroundTaskManager: ObservableObject {
     
     // MARK: - Properties
 
-    private let episodeUpdateService = EpisodeUpdateService.shared
-    
     @Published var lastBackgroundRefresh: Date?
     @Published var backgroundRefreshCount: Int = 0
     
@@ -140,7 +138,6 @@ class BackgroundTaskManager: ObservableObject {
             }
             
             // REDUCED SCOPE: Only refresh podcast data, not episodes, to reduce memory pressure
-            // Episodes will be updated when app is active through EpisodeUpdateService
             let result = await refreshPodcastData()
             
             // PERF-08: Log budget usage
@@ -200,16 +197,6 @@ class BackgroundTaskManager: ObservableObject {
     private func refreshPodcastData() async -> Bool {
         await AppModel.current?.refreshAll()
         return true
-    }
-    
-    private func refreshEpisodeData() async -> Bool {
-        return await withCheckedContinuation { continuation in
-            Task {
-                // Update episodes in background using the public forceUpdate method
-                episodeUpdateService.forceUpdate()
-                continuation.resume(returning: true)
-            }
-        }
     }
     
     private func setupAppStateObservers() {
