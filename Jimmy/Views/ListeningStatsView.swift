@@ -2,96 +2,46 @@ import SwiftUI
 import Charts
 import JimmyKit
 
-/// Dashboard showing listening statistics with weekly chart, streaks, and favorites — computed
+/// Listening statistics as a list: totals, streaks, a weekly chart and most-listened shows — computed
 /// from `AppModel.listeningStatsSummary()` (`Store`'s `listening_stats`/`progress` tables) rather
 /// than a separately maintained JSON aggregate.
 struct ListeningStatsView: View {
     @State private var summary = AppModel.ListeningStatsSummary()
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 24) {
-                // Header
-                VStack(spacing: 8) {
-                    Image(systemName: "headphones.circle.fill")
-                        .font(.system(size: 48))
-                        .foregroundStyle(Color.accentColor)
-
-                    Text("Listening Stats")
-                        .font(.title2.bold())
-
-                    Text(formatDuration(summary.totalSeconds) + " total listening time")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                }
-                .padding(.top, 16)
-
-                // Summary Cards
-                HStack(spacing: 16) {
-                    StatCard(title: "Streak", value: "\(summary.currentStreakDays)", unit: "days", icon: "flame.fill", color: .orange)
-                    StatCard(title: "This Week", value: formatShort(summary.weeklySeconds), unit: "", icon: "calendar", color: .blue)
-                    StatCard(title: "Completed", value: "\(summary.episodesCompleted)", unit: "episodes", icon: "checkmark.circle.fill", color: .green)
-                }
-
-                // Weekly Chart
-                if !summary.dailyLogs.isEmpty {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Last 7 Days")
-                            .font(.headline)
-
-                        Chart(last7Days()) { log in
-                            BarMark(
-                                x: .value("Day", shortDayLabel(log.date)),
-                                y: .value("Minutes", log.seconds / 60)
-                            )
-                            .foregroundStyle(Color.accentColor.gradient)
-                            .cornerRadius(4)
-                        }
-                        .frame(height: 180)
-                        .chartYAxisLabel("Minutes")
-                    }
-                    .padding()
-                    .background(RoundedRectangle(cornerRadius: 16).fill(Color(.secondarySystemBackground)))
-                }
-
-                // Longest Streak
-                if summary.longestStreakDays > 0 {
-                    HStack {
-                        Image(systemName: "trophy.fill")
-                            .foregroundColor(.yellow)
-                        Text("Longest streak: \(summary.longestStreakDays) days")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                        Spacer()
-                    }
-                    .padding(.horizontal)
-                }
-
-                // Top Podcasts
-                if !summary.topPodcasts.isEmpty {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Most Listened")
-                            .font(.headline)
-
-                        ForEach(summary.topPodcasts, id: \.podcastID) { item in
-                            HStack {
-                                Text(podcastName(for: item.podcastID))
-                                    .font(.subheadline)
-                                    .lineLimit(1)
-                                Spacer()
-                                Text(formatDuration(item.seconds))
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-                        }
-                    }
-                    .padding()
-                    .background(RoundedRectangle(cornerRadius: 16).fill(Color(.secondarySystemBackground)))
-                }
-
-                Color.clear.frame(height: 80) // Tab bar spacing
+        List {
+            Section {
+                LabeledContent("Total Listening", value: formatDuration(summary.totalSeconds))
+                LabeledContent("This Week", value: formatDuration(summary.weeklySeconds))
+                LabeledContent("Current Streak", value: days(summary.currentStreakDays))
+                LabeledContent("Longest Streak", value: days(summary.longestStreakDays))
+                LabeledContent("Episodes Completed", value: "\(summary.episodesCompleted)")
             }
-            .padding(.horizontal, 20)
+            .monospacedDigit()
+
+            if !summary.dailyLogs.isEmpty {
+                Section("Last 7 Days") {
+                    Chart(last7Days()) { log in
+                        BarMark(
+                            x: .value("Day", shortDayLabel(log.date)),
+                            y: .value("Minutes", log.seconds / 60)
+                        )
+                        .foregroundStyle(Color.secondary)
+                    }
+                    .chartYAxisLabel("Minutes")
+                    .frame(minHeight: 180)
+                    .padding(.vertical, 8)
+                }
+            }
+
+            if !summary.topPodcasts.isEmpty {
+                Section("Most Listened") {
+                    ForEach(summary.topPodcasts, id: \.podcastID) { item in
+                        LabeledContent(podcastName(for: item.podcastID), value: formatDuration(item.seconds))
+                            .monospacedDigit()
+                    }
+                }
+            }
         }
         .navigationTitle("Listening Stats")
         .task { summary = await AppModel.current?.listeningStatsSummary() ?? summary }
@@ -130,47 +80,16 @@ struct ListeningStatsView: View {
         return "Unknown Podcast"
     }
 
+    private func days(_ count: Int) -> String {
+        count == 1 ? "1 day" : "\(count) days"
+    }
+
     private func formatDuration(_ seconds: TimeInterval) -> String {
         let hours = Int(seconds) / 3600
         let minutes = (Int(seconds) % 3600) / 60
         if hours > 0 {
-            return "\(hours)h \(minutes)m"
+            return "\(hours) h \(minutes) min"
         }
-        return "\(minutes)m"
-    }
-
-    private func formatShort(_ seconds: TimeInterval) -> String {
-        let hours = Int(seconds) / 3600
-        let minutes = (Int(seconds) % 3600) / 60
-        if hours > 0 { return "\(hours)h" }
-        return "\(minutes)m"
-    }
-}
-
-// MARK: - Stat Card
-
-private struct StatCard: View {
-    let title: String
-    let value: String
-    let unit: String
-    let icon: String
-    let color: Color
-
-    var body: some View {
-        VStack(spacing: 6) {
-            Image(systemName: icon)
-                .font(.title3)
-                .foregroundColor(color)
-
-            Text(value)
-                .font(.title2.bold())
-
-            Text(title)
-                .font(.caption2)
-                .foregroundColor(.secondary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 12)
-        .background(RoundedRectangle(cornerRadius: 12).fill(Color(.secondarySystemBackground)))
+        return "\(minutes) min"
     }
 }

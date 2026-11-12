@@ -138,7 +138,7 @@ slop check in `docs/design.md`.
 - [ ] S5. Podcast and Episode: artwork band header, New York show notes (S)
 - [x] S6. Search and Discover: recent searches, Top Shows (S). Categories wait for a genre chart in JimmyKit's
   `PodcastDirectory`.
-- [ ] S7. Settings: `Form` (S)
+- [x] S7. Settings: `Form` (S)
 - [ ] S8. Refresh `docs/screenshots` with `Tools/screenshots.sh` (H)
 
 ## Only Chen
