@@ -19,6 +19,9 @@ All notable changes to Jimmy are recorded here. The format follows
 
 - A calmer look: system backgrounds instead of the gradient backdrop, no card shadows, plain section headers,
   standard empty states, and a new accent color.
+- Discover is a plain list: your recent searches, then Top Shows as a numbered ranking. Search results are rows,
+  and loading shows placeholder rows instead of shimmering cards. The Featured and Trending Episodes rows, which
+  repeated the same chart, are gone.
 - Simplified architecture with a new core package, JimmyKit.
 - Xcode project now generated from `project.yml` via XcodeGen; build with `make build`.
 
