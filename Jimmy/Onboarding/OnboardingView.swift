@@ -74,6 +74,7 @@ struct OnboardingView: View {
             importPendingFiles()
         }
         .onChange(of: onboarding.pendingFiles) { importPendingFiles() }
+        .onChange(of: onboarding.pendingText) { importPendingFiles() }
         // A file shared while an import was running waits for it to finish.
         .onChange(of: onboarding.session.isRunning) { importPendingFiles() }
     }
@@ -96,10 +97,15 @@ struct OnboardingView: View {
 
     /// Files shared to Jimmy, whether the flow was already open or opened for them.
     private func importPendingFiles() {
-        guard !onboarding.pendingFiles.isEmpty, !onboarding.session.isRunning else { return }
-        let files = onboarding.pendingFiles
-        onboarding.pendingFiles = []
-        startImport(files: files)
+        guard !onboarding.session.isRunning else { return }
+        if let text = onboarding.pendingText {
+            onboarding.pendingText = nil
+            start { session, model in await session.run(pastedText: text, model: model) }
+        } else if !onboarding.pendingFiles.isEmpty {
+            let files = onboarding.pendingFiles
+            onboarding.pendingFiles = []
+            startImport(files: files)
+        }
     }
 
     private func startImport(files: [URL]) {

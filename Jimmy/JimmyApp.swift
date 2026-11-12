@@ -232,6 +232,11 @@ struct JimmyApp: App {
     // MARK: - URL Handling
     
     private func handleURL(_ url: URL) {
+        if let text = Onboarding.importText(from: url) {
+            Onboarding.shared.present(text: text)
+            return
+        }
+
         // Try deep link router first
         if let deepLink = DeepLinkRouter.shared.parse(url: url) {
             Task { @MainActor in
