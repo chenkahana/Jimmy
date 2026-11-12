@@ -40,9 +40,14 @@ enum ImportSource: String, CaseIterable, Identifiable, Hashable {
     var summary: String {
         switch self {
         case .applePodcasts:
-            "Apple Podcasts has no export. A shortcut can copy the link to every show you follow, and Jimmy adds them from the clipboard."
+            "Apple Podcasts has no export. A shortcut can copy the link to every show you follow, "
+                + "and Jimmy adds them from the clipboard."
+        case .spotify where SpotifyConfig.isConfigured:
+            "Sign in once and Jimmy adds your saved shows, then puts your saved episodes in the Queue "
+                + "where you left off."
         case .spotify:
-            "Sign in once and Jimmy adds your saved shows, then puts your saved episodes in the Queue where you left off."
+            "Spotify can send you a copy of your library. Jimmy adds your saved shows and puts your "
+                + "saved episodes in the Queue."
         case .overcast:
             "Overcast's website exports your shows with every played episode and where you stopped, in one file."
         case .pocketCasts:
@@ -63,41 +68,41 @@ enum ImportSource: String, CaseIterable, Identifiable, Hashable {
                 "Add Get Podcasts from Library.",
                 "Add Get Details of Podcasts and set it to Store URL.",
                 "Add Copy to Clipboard, then tap Done.",
-                "Run the shortcut, come back to Jimmy and tap Paste.",
+                "Run the shortcut, come back to Jimmy and tap Paste."
             ]
         case .spotify:
             [
                 "On spotify.com, open Account, then Privacy Settings.",
                 "Under Download Your Data, tick Account Data and tap Request Data.",
                 "When Spotify emails you (up to 5 days), download and unzip the file.",
-                "Tap Choose Files and pick YourLibrary.json and any StreamingHistory_podcast files.",
+                "Tap Choose Files and pick YourLibrary.json and any StreamingHistory_podcast files."
             ]
         case .overcast:
             [
                 "In Safari, go to overcast.fm/account and sign in.",
                 "Under Export Your Data, tap All Data.",
                 "Tap Download, so the file lands in Files.",
-                "Come back and tap Choose File.",
+                "Come back and tap Choose File."
             ]
         case .pocketCasts:
             [
                 "Open Pocket Casts and go to the Profile tab.",
-                "Tap the gear, then Import & Export.",
-                "Tap Export OPML and save the file to Files, or share it to Jimmy.",
-                "Come back and tap Choose File.",
+                "Tap Settings, then Import & Export OPML.",
+                "Tap Save File and save it to Files, or share it to Jimmy.",
+                "Come back and tap Choose File."
             ]
         case .castro:
             [
                 "Open Castro and tap Settings.",
                 "Tap User Data, then Export Subscriptions.",
                 "Save the file to Files, or share it to Jimmy.",
-                "Come back and tap Choose File.",
+                "Come back and tap Choose File."
             ]
         case .otherApp:
             [
                 "In your podcast app's settings, find Export, Export OPML or Backup.",
                 "Save the file to Files, or share it to Jimmy.",
-                "Come back and tap Choose File.",
+                "Come back and tap Choose File."
             ]
         }
     }

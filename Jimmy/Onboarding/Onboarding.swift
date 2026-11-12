@@ -25,8 +25,8 @@ final class Onboarding {
     }
 
     /// Pure first-run rule: never for `-skipOnboarding`; always for `-resetOnboarding`; never
-    /// for `-demoLibrary` screenshots; otherwise only until it has been finished once, and never for a library that already
-    /// has shows (someone updating from an older Jimmy).
+    /// for `-demoLibrary` screenshots; otherwise only until it has been finished once, and never
+    /// for a library that already has shows (someone updating from an older Jimmy).
     static func shouldPresent(hasCompleted: Bool, podcastCount: Int, arguments: [String]) -> Bool {
         if arguments.contains(skipArgument) { return false }
         if arguments.contains(resetArgument) { return true }
@@ -49,7 +49,6 @@ final class Onboarding {
 
     /// Opens the flow from Settings, or with files shared to Jimmy.
     func present(files: [URL] = []) {
-        if !session.isRunning { session = LibraryImportSession() }
         pendingFiles = files
         isPresented = true
     }

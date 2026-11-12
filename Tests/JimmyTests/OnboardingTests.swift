@@ -15,9 +15,11 @@ final class OnboardingTests: XCTestCase {
 
     func testLaunchArguments() {
         XCTAssertTrue(Onboarding.shouldPresent(hasCompleted: true, podcastCount: 12, arguments: ["-resetOnboarding"]))
-        XCTAssertFalse(Onboarding.shouldPresent(hasCompleted: false, podcastCount: 0, arguments: ["-skipOnboarding", "-resetOnboarding"]))
+        let skipAndReset = ["-skipOnboarding", "-resetOnboarding"]
+        XCTAssertFalse(Onboarding.shouldPresent(hasCompleted: false, podcastCount: 0, arguments: skipAndReset))
         XCTAssertFalse(Onboarding.shouldPresent(hasCompleted: false, podcastCount: 0, arguments: ["-demoLibrary"]))
-        XCTAssertTrue(Onboarding.shouldPresent(hasCompleted: false, podcastCount: 0, arguments: ["-demoLibrary", "-resetOnboarding"]))
+        let demoAndReset = ["-demoLibrary", "-resetOnboarding"]
+        XCTAssertTrue(Onboarding.shouldPresent(hasCompleted: false, podcastCount: 0, arguments: demoAndReset))
     }
 
     func testExistingLibraryIsMarkedCompletedAndResetClearsIt() throws {

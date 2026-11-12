@@ -22,7 +22,9 @@ struct ImportProgressView: View {
                 }
             }
             .listRowBackground(Color.clear)
-            .listRowInsets(EdgeInsets(top: JimmyDesign.Spacing.sm, leading: 20, bottom: JimmyDesign.Spacing.sm, trailing: 20))
+            .listRowInsets(EdgeInsets(
+                top: JimmyDesign.Spacing.sm, leading: 20, bottom: JimmyDesign.Spacing.sm, trailing: 20
+            ))
             .accessibilityElement(children: .combine)
 
             if !session.rows.isEmpty {
@@ -137,7 +139,7 @@ private struct ImportShowRow: View {
     var body: some View {
         HStack(spacing: JimmyDesign.Spacing.md) {
             BulletproofAsyncImage(url: row.artworkURL) { image in
-                image.resizable().aspectRatio(contentMode: .fill)
+                image.resizable().scaledToFill()
             } placeholder: {
                 Color(uiColor: .secondarySystemFill)
             }

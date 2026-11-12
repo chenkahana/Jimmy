@@ -19,11 +19,10 @@ final class LibraryImportSession {
     }
 
     struct ShowRow: Identifiable, Equatable {
-        enum State: Equatable { case waiting, adding, added, notFound }
         let id: Int
         var title: String
         var artworkURL: URL?
-        var state: State
+        var state: ImportShowState
     }
 
     private(set) var phase: Phase = .idle
@@ -105,38 +104,46 @@ final class LibraryImportSession {
         phase = .importingHistory
         await importHistory(result.history, podcastIDs: podcastIDs, model: model)
         phase = .finished
-        Self.logger.info("Import: \(self.addedCount) added, \(self.notFoundCount) not found, \(self.playedCount) played, \(self.queuedCount) queued")
+        Self.logger.info("Import: \(self.addedCount) added, \(self.notFoundCount) not found")
+        Self.logger.info("Import: \(self.playedCount) played, \(self.queuedCount) queued")
     }
 
     // MARK: - Shows
 
     private struct PendingShow: Sendable {
         let id: Int
-        enum Source: Sendable {
-            case link(ImportedFeed)
-            case name(ImportedShowName)
-        }
-        let source: Source
+        let source: PendingShowSource
 
         var displayTitle: String {
             switch source {
-            case .link(let feed): feed.title ?? feed.feedURL.host ?? feed.feedURL.absoluteString
+            case .link(let feed):
+                feed.title ?? Self.slugTitle(feed.feedURL) ?? feed.feedURL.host ?? feed.feedURL.absoluteString
             case .name(let name): name.title
             }
+        }
+
+        /// "The Daily" from `podcasts.apple.com/us/podcast/the-daily/id1200361736`, until the
+        /// directory answers with the real title.
+        static func slugTitle(_ url: URL) -> String? {
+            guard case .apple = ShowLink(url), url.pathComponents.count >= 2 else { return nil }
+            let slug = url.pathComponents[url.pathComponents.count - 2]
+            guard slug != "podcast" else { return nil }
+            return slug.replacingOccurrences(of: "-", with: " ").capitalized
         }
 
         /// Keys history entries use to find this show: its feed URL or its name.
         var keys: [String] {
             switch source {
-            case .link(let feed): [FeedURLNormalizer.key(for: feed.feedURL)] + (feed.title.map { [TitleNormalizer.key($0)] } ?? [])
+            case .link(let feed):
+                [FeedURLNormalizer.key(for: feed.feedURL)] + (feed.title.map { [TitleNormalizer.key($0)] } ?? [])
             case .name(let name): [TitleNormalizer.key(name.title)]
             }
         }
     }
 
     private func makePending(_ result: ImportResult) -> [PendingShow] {
-        let links = result.feeds.map(PendingShow.Source.link)
-        let names = result.showNames.map(PendingShow.Source.name)
+        let links = result.feeds.map(PendingShowSource.link)
+        let names = result.showNames.map(PendingShowSource.name)
         return (links + names).enumerated().map { PendingShow(id: $0.offset, source: $0.element) }
     }
 
@@ -162,7 +169,8 @@ final class LibraryImportSession {
                     rows[index].title = podcast.title
                     rows[index].artworkURL = podcast.artworkURL
                     rows[index].state = .added
-                    for key in show.keys + [TitleNormalizer.key(podcast.title), FeedURLNormalizer.key(for: podcast.feedURL)] {
+                    let podcastKeys = [TitleNormalizer.key(podcast.title), FeedURLNormalizer.key(for: podcast.feedURL)]
+                    for key in show.keys + podcastKeys {
                         podcastIDs[key] = podcast.id
                     }
                 } else {
@@ -173,7 +181,7 @@ final class LibraryImportSession {
         return podcastIDs
     }
 
-    private func setState(_ state: ShowRow.State, for id: Int) {
+    private func setState(_ state: ImportShowState, for id: Int) {
         guard let index = rows.firstIndex(where: { $0.id == id }) else { return }
         rows[index].state = state
     }
@@ -230,7 +238,8 @@ final class LibraryImportSession {
 
         var statesByPodcast: [UUID: [ImportedEpisodeState]] = [:]
         for state in history {
-            let key = state.feedURL.map { FeedURLNormalizer.key(for: $0) } ?? state.podcastTitle.map(TitleNormalizer.key)
+            let key = state.feedURL.map { FeedURLNormalizer.key(for: $0) }
+                ?? state.podcastTitle.map(TitleNormalizer.key)
             guard let key, let podcastID = podcastIDs[key] else { continue }
             statesByPodcast[podcastID, default: []].append(state)
         }
@@ -250,11 +259,21 @@ final class LibraryImportSession {
             queue += plan.queue
         }
 
-        for candidate in queue.sorted(by: { $0.date > $1.date }).prefix(Self.queueLimit) where !model.isQueued(candidate.episodeID) {
+        let mostRecent = queue.sorted { $0.date > $1.date }.prefix(Self.queueLimit)
+        for candidate in mostRecent where !model.isQueued(candidate.episodeID) {
             await model.enqueue(candidate.episodeID)
             queuedCount += 1
         }
     }
+}
+
+/// Where one show in an import stands.
+enum ImportShowState: Equatable { case waiting, adding, added, notFound }
+
+/// A show as the import found it: a link (feed, Apple Podcasts or Spotify page) or only a name.
+private enum PendingShowSource: Sendable {
+    case link(ImportedFeed)
+    case name(ImportedShowName)
 }
 
 private extension Optional {

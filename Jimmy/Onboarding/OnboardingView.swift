@@ -49,7 +49,11 @@ struct OnboardingView: View {
                 }
             }
             .safeAreaInset(edge: .bottom) { primaryButton }
-            .fileImporter(isPresented: $isChoosingFile, allowedContentTypes: ImportFileTypes.all, allowsMultipleSelection: true) { result in
+            .fileImporter(
+                isPresented: $isChoosingFile,
+                allowedContentTypes: ImportFileTypes.all,
+                allowsMultipleSelection: true
+            ) { result in
                 if case .success(let files) = result { startImport(files: files) }
             }
             .navigationDestination(for: OnboardingRoute.self) { route in
@@ -64,14 +68,12 @@ struct OnboardingView: View {
         .interactiveDismissDisabled()
         .onAppear {
             sources = ImportSource.ordered()
-            if !onboarding.pendingFiles.isEmpty {
-                let files = onboarding.pendingFiles
-                onboarding.pendingFiles = []
-                startImport(files: files)
-            } else if onboarding.session.phase != .idle {
+            if onboarding.pendingFiles.isEmpty, onboarding.session.isRunning {
                 path = [.progress]
             }
+            importPendingFiles()
         }
+        .onChange(of: onboarding.pendingFiles) { importPendingFiles() }
     }
 
     @ViewBuilder
@@ -88,6 +90,14 @@ struct OnboardingView: View {
         .frame(maxWidth: .infinity)
         .padding(.horizontal, JimmyDesign.Spacing.lg)
         .padding(.bottom, JimmyDesign.Spacing.sm)
+    }
+
+    /// Files shared to Jimmy, whether the flow was already open or opened for them.
+    private func importPendingFiles() {
+        guard !onboarding.pendingFiles.isEmpty, !onboarding.session.isRunning else { return }
+        let files = onboarding.pendingFiles
+        onboarding.pendingFiles = []
+        startImport(files: files)
     }
 
     private func startImport(files: [URL]) {
@@ -189,7 +199,11 @@ struct ImportSourceView: View {
         .navigationTitle(source.name)
         .navigationBarTitleDisplayMode(.inline)
         .safeAreaInset(edge: .bottom) { primaryAction }
-        .fileImporter(isPresented: $isChoosingFile, allowedContentTypes: ImportFileTypes.all, allowsMultipleSelection: true) { result in
+        .fileImporter(
+            isPresented: $isChoosingFile,
+            allowedContentTypes: ImportFileTypes.all,
+            allowsMultipleSelection: true
+        ) { result in
             guard case .success(let files) = result else { return }
             onStart { session, model in await session.run(files: files, model: model) }
         }
@@ -208,6 +222,7 @@ struct ImportSourceView: View {
                     onStart { session, model in await session.run(pastedText: text, model: model) }
                 }
                 .labelStyle(.titleAndIcon)
+                .buttonBorderShape(.capsule)
             } else if source == .spotify, SpotifyConfig.isConfigured {
                 Button("Choose Files") { isChoosingFile = true }
                     .buttonStyle(.glass)
@@ -226,7 +241,8 @@ struct ImportSourceView: View {
         guard let api = SpotifyConfig.api() else { return }
         let verifier = SpotifyWebAPI.makeCodeVerifier()
         let state = UUID().uuidString
-        guard let url = api.authorizationURL(codeChallenge: SpotifyWebAPI.codeChallenge(for: verifier), state: state) else { return }
+        let challenge = SpotifyWebAPI.codeChallenge(for: verifier)
+        guard let url = api.authorizationURL(codeChallenge: challenge, state: state) else { return }
         do {
             let callback = try await webAuthenticationSession.authenticate(
                 using: url,

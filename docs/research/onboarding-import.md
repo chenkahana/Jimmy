@@ -183,4 +183,60 @@ The "All data" download is limited to about 10 a day (Marco Arment via [IndieWeb
 
 ## Recommended Flow
 
-TBD
+This is what `Jimmy/Onboarding/` builds. Screenshots in light and dark are in `docs/screenshots/onboarding/`.
+
+**Principles taken from the research**
+- No sign-up wall and no permission prompt at launch. The first screen is the import itself, and **Skip** is always in the toolbar.
+- One primary action per screen. If a source app is installed, it is "Import from Overcast". If none is, it is "Choose an Export File", and Jimmy works out the format itself (`ImportFile.kind(of:)`: OPML, Spotify data download, Google Takeout, Apple bulk JSON, or plain text with links).
+- Each source gets the shortest path it allows: a sign-in where an API exists (Spotify, when a client ID is configured), a file with exact steps where it doesn't, and the clipboard for Apple Podcasts.
+- The import is visible while it runs. Rows appear at once, and each show's artwork fills in as its feed arrives. Six shows are added at a time.
+- At the end, Jimmy says what came over and opens the Queue if anything was in progress, otherwise the Library.
+
+**Wireframes**
+
+```
+1 Start                       2 Source (Overcast)           3 Importing                   4 Done
++-------------------------+   +-------------------------+   +-------------------------+   +-------------------------+
+| Welcome to Jimmy   Skip |   | < Overcast              |   | Found 42 shows          |   | 41 shows added          |
+| Bring your shows, played|   | Overcast's website      |   | Adding 12 of 42...      |   | 318 episodes marked     |
+| episodes and progress...|   | exports your shows with |   | [=======-------------]  |   |   played.               |
+|                         |   | every played episode... |   |                         |   | 3 episodes to pick up,  |
+| ON THIS IPHONE          |   | STEPS                   |   | [art] Planet Money    v |   |   now in your Queue.    |
+|  Overcast             > |   | 1 In Safari, go to      |   | [art] Hard Fork       v |   | 1 show couldn't be      |
+| OTHER APPS              |   |   overcast.fm/account   |   | [   ] Radiolab        o |   |   found.                |
+|  Apple Podcasts       > |   | 2 Under Export Your     |   | [   ] Search Engine     |   | [art] Planet Money    v |
+|  Spotify              > |   |   Data, tap All Data    |   |  ...                    |   | [   ] Gone Show Not Found|
+|  Pocket Casts         > |   | 3 Tap Download          |   |                         |   |                         |
+|  Castro / Another App > |   | 4 Come back, Choose File|   |                         |   |                         |
+| START FRESH             |   | [Open overcast.fm]      |   |                         |   |                         |
+|  Browse Top Shows       |   |                         |   |                         |   |                         |
+|  ( Import from Overcast)|   |     ( Choose File )     |   | (Continue in Background)|   |     ( Open Queue )      |
++-------------------------+   +-------------------------+   +-------------------------+   +-------------------------+
+```
+
+**Per source in Jimmy**
+
+| Source | Path in Jimmy | What comes over |
+|---|---|---|
+| Overcast | Steps to overcast.fm/account, All Data, then Choose File (or share the file to Jimmy) | Shows, played episodes, progress. In-progress episodes go to the Queue. |
+| Spotify | Sign In with Spotify (PKCE) when `SPOTIFY_CLIENT_ID` is set; otherwise the data-download steps and Choose Files (several files at once) | Saved shows, matched by name. Saved episodes go to the Queue with their resume point. Streaming history adds progress; under a minute is ignored. |
+| Apple Podcasts | Steps for a four-action shortcut that copies each show's Store URL, then the system Paste button (no clipboard prompt) | Shows, resolved through the iTunes Lookup API by Apple ID. |
+| Pocket Casts, Castro, others | Steps to export OPML, then Choose File (or share the file to Jimmy) | Shows. |
+| Start fresh | Browse Top Shows opens Discover | Nothing to import. |
+
+**Matching**
+- Shows: a feed URL is used as is. An Apple Podcasts link goes through iTunes Lookup by id. A Spotify show link gets its title from Spotify's public oEmbed. A name is searched in the directory, and only an exact title (preferring the same publisher), or a near title from the same publisher, counts (`DirectoryMatcher`).
+- Episodes: the enclosure URL with tracking prefixes (Podtrac, Chartable, pdst.fm and similar) and the query stripped. If that fails, the title within three days of the publish date. If that fails, the title alone when exactly one episode has it (`EpisodeMatcher`). An episode at 95% or more counts as played, the same rule as playback.
+- The Queue gets at most 10 episodes, most recently touched first.
+
+**Re-entry and testing**
+- Shown once, on a launch with an empty library. Anyone updating with shows already in their library never sees it.
+- **Settings > Import & Export > Import from Another App** opens the same flow.
+- Sharing an `.opml` file to Jimmy (from Overcast, Files or Mail) opens the flow and starts the import.
+- `-resetOnboarding` shows it again. `-skipOnboarding` hides it. `-demoLibrary` hides it unless `-resetOnboarding` is also passed.
+
+**Next steps, not built**
+- A hosted iCloud shortcut link for Apple Podcasts, which would make it two taps: Add Shortcut, then Run. This needs Chen to publish the shortcut.
+- A `jimmy://import` App Intent, so the shortcut can hand Jimmy the list without the clipboard.
+- Spotify Extended Quota, needed before sign-in can work for the public.
+- Reading the privacy.apple.com Podcasts files, once their exact file names are confirmed from a real download.
