@@ -1,17 +1,27 @@
 import SwiftUI
 
+private enum DiscoverRowMetrics {
+    static let artworkSize: CGFloat = 56
+    /// Artwork corners are 0.18 of the side (docs/design.md).
+    static let artworkRadius: CGFloat = artworkSize * 0.18
+}
+
 /// Subscribe control used across Discover: a plus that becomes a checkmark.
 private struct DiscoverSubscribeButton: View {
     let title: String
     let isSubscribed: Bool
     var isProcessing: Bool = false
     let onSubscribe: () -> Void
+    @Environment(\.redactionReasons) private var redactionReasons
 
     var body: some View {
         Button {
             if !isSubscribed && !isProcessing { onSubscribe() }
         } label: {
-            if isProcessing {
+            if !redactionReasons.isEmpty {
+                // A loading placeholder row has nothing to subscribe to.
+                Color.clear
+            } else if isProcessing {
                 ProgressView()
             } else {
                 Image(systemName: isSubscribed ? "checkmark.circle.fill" : "plus.circle")
@@ -26,90 +36,80 @@ private struct DiscoverSubscribeButton: View {
     }
 }
 
-struct EnhancedFeaturedPodcastCard: View {
-    let result: PodcastSearchResult
-    let isSubscribed: Bool
-    let isProcessing: Bool
-    let onSubscribe: () -> Void
+/// The shared row shape: leading artwork, the titles, and a trailing control. At accessibility text sizes the
+/// titles move under the artwork so they keep the full width.
+private struct DiscoverRow<Leading: View, Titles: View, Trailing: View>: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    private let leading: Leading
+    private let titles: Titles
+    private let trailing: Trailing
+
+    init(
+        @ViewBuilder leading: () -> Leading,
+        @ViewBuilder titles: () -> Titles,
+        @ViewBuilder trailing: () -> Trailing
+    ) {
+        self.leading = leading()
+        self.titles = titles()
+        self.trailing = trailing()
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: JimmyDesign.Spacing.sm) {
-            PodcastArtworkView(
-                artworkURL: result.artworkURL,
-                size: 160,
-                cornerRadius: JimmyDesign.Radius.lg
-            )
-
-            HStack(alignment: .top, spacing: JimmyDesign.Spacing.xs) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(result.title)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.primary)
-                        .lineLimit(2)
-                        .multilineTextAlignment(.leading)
-
-                    Text(result.author)
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: JimmyDesign.Spacing.sm) {
+                    HStack(spacing: JimmyDesign.Spacing.md) {
+                        leading
+                        Spacer(minLength: 0)
+                        trailing
+                    }
+                    titles
+                        .alignmentGuide(.listRowSeparatorLeading) { $0[.leading] }
                 }
-
-                Spacer(minLength: 0)
-
-                DiscoverSubscribeButton(
-                    title: result.title,
-                    isSubscribed: isSubscribed,
-                    isProcessing: isProcessing,
-                    onSubscribe: onSubscribe
-                )
+            } else {
+                HStack(spacing: JimmyDesign.Spacing.md) {
+                    leading
+                    titles
+                        .alignmentGuide(.listRowSeparatorLeading) { $0[.leading] }
+                    Spacer(minLength: 0)
+                    trailing
+                }
             }
         }
-        .frame(width: 160)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(result.title) by \(result.author). \(isSubscribed ? "Subscribed" : "Not subscribed").")
+        .padding(.vertical, JimmyDesign.Spacing.xs)
+        .contentShape(Rectangle())
     }
 }
 
-struct EnhancedTrendingEpisodeCard: View {
-    let episode: TrendingEpisode
-    let onSubscribe: () -> Void
+private struct DiscoverRowTitles: View {
+    let title: String
+    let subtitle: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: JimmyDesign.Spacing.sm) {
-            PodcastArtworkView(
-                artworkURL: episode.artworkURL,
-                size: 140,
-                cornerRadius: JimmyDesign.Radius.md
-            )
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+                .font(.body.weight(.semibold))
+                .foregroundStyle(.primary)
+                .lineLimit(2)
+                .multilineTextAlignment(.leading)
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(episode.title)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.primary)
-                    .lineLimit(2)
-                    .multilineTextAlignment(.leading)
-
-                Text(episode.podcastName)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
+            Text(subtitle)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
         }
-        .frame(width: 140)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(episode.title) from \(episode.podcastName)")
-        .accessibilityHint("Double tap to view episode details")
     }
 }
 
-struct EnhancedTopChartRow: View {
+/// A Top Shows row: rank, artwork, title and author. The chart is a ranking, so the number is shown.
+struct DiscoverTopShowRow: View {
     let index: Int
     let result: PodcastSearchResult
     let isSubscribed: Bool
     let onSubscribe: () -> Void
 
     var body: some View {
-        HStack(spacing: JimmyDesign.Spacing.md) {
+        DiscoverRow {
             Text("\(index)")
                 .font(.headline)
                 .monospacedDigit()
@@ -118,31 +118,18 @@ struct EnhancedTopChartRow: View {
 
             PodcastArtworkView(
                 artworkURL: result.artworkURL,
-                size: 56,
-                cornerRadius: JimmyDesign.Radius.sm
+                size: DiscoverRowMetrics.artworkSize,
+                cornerRadius: DiscoverRowMetrics.artworkRadius
             )
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(result.title)
-                    .font(.body.weight(.semibold))
-                    .foregroundStyle(.primary)
-                    .lineLimit(2)
-                    .multilineTextAlignment(.leading)
-
-                Text(result.author)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
-
-            Spacer(minLength: 0)
-
+        } titles: {
+            DiscoverRowTitles(title: result.title, subtitle: result.author)
+        } trailing: {
             DiscoverSubscribeButton(title: result.title, isSubscribed: isSubscribed, onSubscribe: onSubscribe)
         }
-        .padding(.vertical, JimmyDesign.Spacing.xs)
-        .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Number \(index): \(result.title) by \(result.author). \(isSubscribed ? "Subscribed" : "Not subscribed").")
+        .accessibilityLabel(
+            "Number \(index): \(result.title) by \(result.author). \(isSubscribed ? "Subscribed" : "Not subscribed")."
+        )
     }
 }
 
@@ -153,28 +140,15 @@ struct DiscoverSearchResultRow: View {
     let onSubscribe: () -> Void
 
     var body: some View {
-        HStack(spacing: JimmyDesign.Spacing.md) {
+        DiscoverRow {
             PodcastArtworkView(
                 artworkURL: result.artworkURL,
-                size: 56,
-                cornerRadius: JimmyDesign.Radius.sm
+                size: DiscoverRowMetrics.artworkSize,
+                cornerRadius: DiscoverRowMetrics.artworkRadius
             )
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(result.title)
-                    .font(.body.weight(.semibold))
-                    .foregroundStyle(.primary)
-                    .multilineTextAlignment(.leading)
-                    .lineLimit(2)
-
-                Text("\(result.author) · \(result.genre)")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
-
-            Spacer(minLength: 0)
-
+        } titles: {
+            DiscoverRowTitles(title: result.title, subtitle: "\(result.author) · \(result.genre)")
+        } trailing: {
             DiscoverSubscribeButton(
                 title: result.title,
                 isSubscribed: isSubscribed,
@@ -182,56 +156,9 @@ struct DiscoverSearchResultRow: View {
                 onSubscribe: onSubscribe
             )
         }
-        .padding(.vertical, JimmyDesign.Spacing.xs)
-        .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(result.title) by \(result.author), \(result.genre). \(isSubscribed ? "Subscribed" : "Not subscribed").")
-    }
-}
-
-struct TrendingEpisodeDetailView: View {
-    let episode: TrendingEpisode
-    @Environment(\.dismiss) var dismiss
-
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                PodcastArtworkView(
-                    artworkURL: episode.artworkURL,
-                    size: 300,
-                    cornerRadius: JimmyDesign.Radius.xl
-                )
-                .frame(maxWidth: .infinity)
-
-                VStack(alignment: .leading, spacing: 12) {
-                    Text(episode.title)
-                        .font(.title2.weight(.bold))
-                        .foregroundStyle(.primary)
-                        .multilineTextAlignment(.leading)
-
-                    Text(episode.podcastName)
-                        .font(.title3)
-                        .foregroundStyle(.secondary)
-
-                    HStack(spacing: 16) {
-                        Button("Play Episode") {
-                        }
-                        .buttonStyle(.borderedProminent)
-
-                        Button("Subscribe to Podcast") {
-                        }
-                        .buttonStyle(.bordered)
-                    }
-                    .padding(.top, 8)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-                Spacer()
-            }
-            .padding(20)
-        }
-        .background(JimmyScreenBackground())
-        .navigationTitle("Episode")
-        .navigationBarTitleDisplayMode(.inline)
+        .accessibilityLabel(
+            "\(result.title) by \(result.author), \(result.genre). \(isSubscribed ? "Subscribed" : "Not subscribed")."
+        )
     }
 }
