@@ -139,7 +139,7 @@ slop check in `docs/design.md`.
 - [x] S6. Search and Discover: recent searches, Top Shows (S). Categories wait for a genre chart in JimmyKit's
   `PodcastDirectory`.
 - [x] S7. Settings: `Form` (S)
-- [ ] S8. Refresh `docs/screenshots` with `Tools/screenshots.sh` (H)
+- [x] S8. Refresh `docs/screenshots` with `Tools/screenshots.sh` (H)
 
 ## Only Chen
 - Export `jimmy.db` from the phone (PR 7).

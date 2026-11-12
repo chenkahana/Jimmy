@@ -167,6 +167,10 @@ struct JimmyApp: App {
     // MARK: - Initialization
 
     private func configureTips() {
+        // Screenshots for the README show the screens, not first-run tips.
+        if ProcessInfo.processInfo.environment["JIMMY_SCREENSHOT_ROUTE"] != nil {
+            Tips.hideAllTipsForTesting()
+        }
         do {
             try Tips.configure([
                 .displayFrequency(.daily),
