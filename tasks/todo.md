@@ -137,7 +137,7 @@ slop check in `docs/design.md`.
 - [ ] S4. Library: artwork grid, `.searchable`, no overview card (S)
 - [ ] S5. Podcast and Episode: artwork band header, New York show notes (S)
 - [ ] S6. Search and Discover: recent searches, Top Shows, categories (S)
-- [ ] S7. Settings: `Form` (S)
+- [x] S7. Settings: `Form` (S)
 - [ ] S8. Refresh `docs/screenshots` with `Tools/screenshots.sh` (H)
 
 ## Only Chen

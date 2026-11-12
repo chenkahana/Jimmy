@@ -2,6 +2,8 @@ import SwiftUI
 import UniformTypeIdentifiers
 import os
 
+/// Settings as a grouped `Form`. It has no `NavigationStack` of its own, so it works as a tab root
+/// and inside a sheet's `NavigationStack`.
 struct SettingsView: View {
     private let logger = Logger(subsystem: "com.chenkahana.Jimmy", category: "SettingsView")
     @StateObject private var viewModel = SettingsViewModel.shared
@@ -10,258 +12,35 @@ struct SettingsView: View {
     @State private var backupFileURL: URL?
     @State private var showingAssistant = false
 
+    private static let playbackSpeeds: [Double] = [0.75, 1.0, 1.25, 1.5, 2.0]
+    private static let skipBackIntervals: [Double] = [10, 15, 30, 45]
+    private static let skipForwardIntervals: [Double] = [10, 15, 30, 45, 60]
+
+    private static let appVersion: String = {
+        let info = Bundle.main.infoDictionary
+        let version = info?["CFBundleShortVersionString"] as? String ?? "Unknown"
+        guard let build = info?["CFBundleVersion"] as? String, build != version else { return version }
+        return "\(version) (\(build))"
+    }()
+
     var body: some View {
-        ZStack {
-            JimmyScreenBackground()
-
-            ScrollView {
-                LazyVStack(spacing: 20) { // Reduced spacing for better performance
-                // Playback Section
-                SettingsCard(title: "Playback") {
-                    VStack(spacing: 16) {
-                        HStack {
-                            Text("Playback Speed")
-                                .font(.body.weight(.medium))
-                            Spacer()
-                            Picker("", selection: $viewModel.playbackSpeed) {
-                                Text("0.75x").tag(0.75)
-                                Text("1x").tag(1.0)
-                                Text("1.25x").tag(1.25)
-                                Text("1.5x").tag(1.5)
-                                Text("2x").tag(2.0)
-                            }
-                            .pickerStyle(MenuPickerStyle())
-                        }
-                        
-                        SettingsToggle(
-                            title: "Auto-Load Last Episode",
-                            subtitle: "Loads your last episode when the app opens",
-                            isOn: $viewModel.autoRestoreLastEpisode
-                        )
-
-                        Divider()
-
-                        // Skip Controls
-                        HStack {
-                            Text("Skip Back")
-                                .font(.body.weight(.medium))
-                            Spacer()
-                            Picker("", selection: $viewModel.skipBackwardDuration) {
-                                Text("10s").tag(10.0)
-                                Text("15s").tag(15.0)
-                                Text("30s").tag(30.0)
-                                Text("45s").tag(45.0)
-                            }
-                            .pickerStyle(MenuPickerStyle())
-                        }
-
-                        HStack {
-                            Text("Skip Forward")
-                                .font(.body.weight(.medium))
-                            Spacer()
-                            Picker("", selection: $viewModel.skipForwardDuration) {
-                                Text("10s").tag(10.0)
-                                Text("15s").tag(15.0)
-                                Text("30s").tag(30.0)
-                                Text("45s").tag(45.0)
-                                Text("60s").tag(60.0)
-                            }
-                            .pickerStyle(MenuPickerStyle())
-                        }
-                    }
-                }
-
-                // Appearance Section
-                SettingsCard(title: "Appearance") {
-                    VStack(spacing: 12) {
-                        HStack {
-                            Text("Color Scheme")
-                                .foregroundColor(.primary)
-                            Spacer()
-                            Picker("Color Scheme", selection: $viewModel.appearanceMode) {
-                                ForEach(AppearanceMode.allCases, id: \.self) { mode in
-                                    Text(mode.displayName).tag(mode)
-                                }
-                            }
-                            .pickerStyle(.segmented)
-                            .fixedSize()
-                        }
-
-                        SettingsToggle(
-                            title: "High Contrast Mode",
-                            isOn: $viewModel.highContrastMode
-                        )
-                    }
-                }
-
-                // Data & Sync Section
-                SettingsCard(title: "Data & Sync") {
-                    VStack(spacing: 12) {
-                        SettingsToggle(
-                            title: "iCloud Sync",
-                            subtitle: "Sync your data across devices",
-                            isOn: $viewModel.iCloudSyncEnabled
-                        )
-                        
-                        SettingsButton(
-                            title: "Export App Data",
-                            subtitle: "Backup your podcasts and settings",
-                            action: {
-                                Task {
-                                    await viewModel.exportAppData()
-                                }
-                            }
-                        )
-
-                        Divider()
-
-                        SettingsButton(
-                            title: "Export Full Backup",
-                            subtitle: "Backup all data including playback state and bookmarks",
-                            action: {
-                                Task {
-                                    do {
-                                        let url = try await BackupService.shared.exportBackup()
-                                        await MainActor.run {
-                                            backupFileURL = url
-                                            showingBackupShare = true
-                                        }
-                                    } catch {
-                                        logger.error("Backup export failed: \(error)")
-                                    }
-                                }
-                            }
-                        )
-
-                        SettingsButton(
-                            title: "Import Backup",
-                            subtitle: "Restore from a Jimmy backup file",
-                            action: { showingBackupImport = true }
-                        )
-                    }
-                }
-
-                // Podcast Import Section
-                SettingsCard(title: "Podcast Import") {
-                    VStack(spacing: 16) {
-                        // JSON import - primary option
-                        ImportButton(
-                            title: "Import from JSON File",
-                            subtitle: viewModel.isJSONImporting ? (viewModel.jsonImportMessage ?? "Processing...") : "Import podcasts from a JSON file with title, publisher, and url fields",
-                            isLoading: viewModel.isJSONImporting,
-                            action: { 
-                                viewModel.isJSONImporting = true
-                            }
-                        )
-                        
-                        Divider()
-                            .padding(.vertical, 8)
-                        
-                        // Other import methods
-                        ImportButton(
-                            title: "Import from Spotify",
-                            subtitle: "Import from Spotify playlist export",
-                            action: { 
-                                Task {
-                                    await viewModel.importFromSpotify()
-                                }
-                            }
-                        )
-                        
-                        ImportButton(
-                            title: "Import from Apple Podcasts",
-                            subtitle: "Get all your Apple Podcasts subscriptions",
-                            isLoading: viewModel.isImportingFromApplePodcasts,
-                            action: { 
-                                Task {
-                                    await viewModel.performComprehensiveApplePodcastsImport()
-                                }
-                            }
-                        )
-                        
-                        ImportButton(
-                            title: "Add Single Podcast by URL",
-                            subtitle: "Import one podcast by RSS feed URL",
-                            action: { viewModel.showingManualImport = true }
-                        )
-                    }
-                }
-
-                // Assistant Section
-                SettingsCard(title: "Assistant") {
-                    SettingsButton(
-                        title: "Assistant",
-                        subtitle: "Ask Jimmy to play, queue, search, subscribe, or set a sleep timer",
-                        action: { showingAssistant = true }
-                    )
-                }
-
-                // Management Section
-                SettingsCard(title: "Management") {
-                    VStack(spacing: 12) {
-                        SettingsButton(
-                            title: "Clear All Subscriptions",
-                            subtitle: "Remove all podcasts and episodes",
-                            isDestructive: true,
-                            action: { viewModel.showClearSubscriptionsConfirmation = true }
-                        )
-
-                        SettingsButton(
-                            title: "Submit Feedback",
-                            subtitle: "Report bugs or request features",
-                            action: { viewModel.showingFeedbackForm = true }
-                        )
-                    }
-                }
-
-                #if DEBUG
-                // Debug Section (Developer Mode)
-                SettingsCard(title: "Developer Tools") {
-                    VStack(spacing: 12) {
-                        SettingsButton(
-                            title: "View Analytics",
-                            subtitle: "App usage statistics",
-                            action: { viewModel.showingAnalytics = true }
-                        )
-                        
-                        SettingsButton(
-                            title: "Clear Episode Cache",
-                            subtitle: "Free up storage space",
-                            isDestructive: true,
-                            action: {
-                                Task {
-                                    await viewModel.clearEpisodeCache()
-                                }
-                            }
-                        )
-                        
-                        SettingsButton(
-                            title: "Reset All Data",
-                            subtitle: "Complete app reset",
-                            isDestructive: true,
-                            action: { viewModel.showAlert(.resetData) }
-                        )
-                    }
-                }
-                #endif
-
-                // Footer spacing for tab bar
-                Color.clear
-                    .frame(height: TabBarSpacing.totalSpacing)
-                }
-                .padding(.horizontal, 20)
-                .padding(.top, 20)
-            }
+        Form {
+            playbackSection
+            appearanceSection
+            syncSection
+            importSection
+            assistantSection
+            aboutSection
+            #if DEBUG
+            developerSection
+            #endif
+            destructiveSection
         }
-        .scrollContentBackground(.hidden) // Improve scrolling performance
         .navigationTitle("Settings")
-        .onAppear {
-            // ViewModel handles all initialization
-        }
         .fileExporter(
-            isPresented: $viewModel.isExporting, 
-            document: AppDataDocument(), 
-            contentType: .json, 
+            isPresented: $viewModel.isExporting,
+            document: AppDataDocument(),
+            contentType: .json,
             defaultFilename: "JimmyBackup"
         ) { result in
             if case .failure(let error) = result {
@@ -269,28 +48,11 @@ struct SettingsView: View {
             }
         }
         .fileImporter(
-            isPresented: $viewModel.isImporting, 
-            allowedContentTypes: [.json]
-        ) { result in
-            switch result {
-            case .success(let url):
-                Task {
-                    do {
-                        try await viewModel.importSubscriptions(from: url, progressHandler: { _ in })
-                    } catch {
-                        // Handle error
-                    }
-                }
-            case .failure(let error):
-                viewModel.importError = error.localizedDescription
-            }
-        }
-        .fileImporter(
-            isPresented: $viewModel.isSpotifyImporting, 
+            isPresented: $viewModel.isSpotifyImporting,
             allowedContentTypes: [.text, .data]
         ) { result in
             switch result {
-            case .success(let url):
+            case .success:
                 Task {
                     await viewModel.importFromSpotify()
                 }
@@ -299,7 +61,7 @@ struct SettingsView: View {
             }
         }
         .fileImporter(
-            isPresented: $viewModel.isJSONImporting, 
+            isPresented: $viewModel.isJSONImporting,
             allowedContentTypes: [.json, .plainText, .data, .text]
         ) { result in
             switch result {
@@ -312,9 +74,23 @@ struct SettingsView: View {
                 viewModel.showAlert(.jsonImport(viewModel.jsonImportMessage ?? "Unknown error"))
             }
         }
-        .sheet(isPresented: $viewModel.showingAnalytics) {
-            NavigationStack {
-                ListeningStatsView()
+        .fileImporter(
+            isPresented: $showingBackupImport,
+            allowedContentTypes: [.json]
+        ) { result in
+            switch result {
+            case .success(let url):
+                Task {
+                    do {
+                        let counts = try await BackupService.shared.importBackup(from: url)
+                        let message = "Restored \(counts.podcasts) podcasts and \(counts.episodes) episodes."
+                        viewModel.showAlert(.jsonImport(message))
+                    } catch {
+                        viewModel.showAlert(.jsonImport("Import failed: \(error.localizedDescription)"))
+                    }
+                }
+            case .failure(let error):
+                viewModel.showAlert(.jsonImport("Error selecting file: \(error.localizedDescription)"))
             }
         }
         .sheet(isPresented: $showingAssistant) {
@@ -328,6 +104,11 @@ struct SettingsView: View {
         .sheet(isPresented: $viewModel.showingManualImport) {
             ManualImportView()
         }
+        .sheet(isPresented: $showingBackupShare) {
+            if let url = backupFileURL {
+                ShareSheet(items: [url])
+            }
+        }
         .alert(
             alertTitle(),
             isPresented: Binding(
@@ -340,7 +121,7 @@ struct SettingsView: View {
             alertMessage()
         }
         .alert(
-            "Clear Subscriptions",
+            "Clear All Subscriptions?",
             isPresented: $viewModel.showClearSubscriptionsConfirmation
         ) {
             Button("Cancel", role: .cancel) { }
@@ -350,378 +131,337 @@ struct SettingsView: View {
                 }
             }
         } message: {
-            Text("This will remove all podcast subscriptions and clear your episode queue. This action cannot be undone.")
+            Text("This removes all podcast subscriptions and clears your queue. It can't be undone.")
         }
-        .sheet(isPresented: $showingBackupShare) {
-            if let url = backupFileURL {
-                ShareSheet(items: [url])
-            }
-        }
-        .fileImporter(
-            isPresented: $showingBackupImport,
-            allowedContentTypes: [.json]
-        ) { result in
-            switch result {
-            case .success(let url):
-                Task {
-                    do {
-                        let counts = try await BackupService.shared.importBackup(from: url)
-                        await MainActor.run {
-                            viewModel.showAlert(.jsonImport("Restored \(counts.podcasts) podcasts and \(counts.episodes) episodes"))
-                        }
-                    } catch {
-                        await MainActor.run {
-                            viewModel.showAlert(.jsonImport("Import failed: \(error.localizedDescription)"))
-                        }
-                    }
+    }
+
+    // MARK: - Sections
+
+    private var playbackSection: some View {
+        Section {
+            Picker("Playback Speed", selection: $viewModel.playbackSpeed) {
+                ForEach(Self.playbackSpeeds, id: \.self) { speed in
+                    Text(speed.formatted(.number) + "×").tag(speed)
                 }
-            case .failure(let error):
-                viewModel.showAlert(.jsonImport("Error selecting file: \(error.localizedDescription)"))
+            }
+            Picker("Skip Back", selection: $viewModel.skipBackwardDuration) {
+                ForEach(Self.skipBackIntervals, id: \.self) { seconds in
+                    Text("\(Int(seconds)) seconds").tag(seconds)
+                }
+            }
+            Picker("Skip Forward", selection: $viewModel.skipForwardDuration) {
+                ForEach(Self.skipForwardIntervals, id: \.self) { seconds in
+                    Text("\(Int(seconds)) seconds").tag(seconds)
+                }
+            }
+            Toggle("Auto-Load Last Episode", isOn: $viewModel.autoRestoreLastEpisode)
+        } header: {
+            Text("Playback")
+        } footer: {
+            Text("Auto-Load Last Episode opens your last episode when Jimmy starts.")
+        }
+        .pickerStyle(.menu)
+    }
+
+    private var appearanceSection: some View {
+        Section("Appearance") {
+            Picker("Color Scheme", selection: $viewModel.appearanceMode) {
+                ForEach(AppearanceMode.allCases, id: \.self) { mode in
+                    Text(mode.displayName).tag(mode)
+                }
+            }
+            .pickerStyle(.menu)
+            Toggle("High Contrast Mode", isOn: $viewModel.highContrastMode)
+        }
+    }
+
+    private var syncSection: some View {
+        Section {
+            Toggle("iCloud Sync", isOn: $viewModel.iCloudSyncEnabled)
+            Button("Export Full Backup") {
+                exportFullBackup()
+            }
+            Button("Import Backup") {
+                showingBackupImport = true
+            }
+        } header: {
+            Text("Sync & Backup")
+        } footer: {
+            Text("A full backup also includes playback state and bookmarks.")
+        }
+    }
+
+    private var importSection: some View {
+        Section {
+            Button("Add Podcast by URL") {
+                viewModel.showingManualImport = true
+            }
+            progressButton("Import JSON File", isLoading: viewModel.isJSONImporting) {
+                viewModel.isJSONImporting = true
+            }
+            progressButton("Import from Apple Podcasts", isLoading: viewModel.isImportingFromApplePodcasts) {
+                Task {
+                    await viewModel.performComprehensiveApplePodcastsImport()
+                }
+            }
+            Button("Import from Spotify") {
+                Task {
+                    await viewModel.importFromSpotify()
+                }
+            }
+            Button("Export App Data") {
+                Task {
+                    await viewModel.exportAppData()
+                }
+            }
+        } header: {
+            Text("Import & Export")
+        } footer: {
+            Text("A JSON file lists each show with title, publisher and url fields.")
+        }
+    }
+
+    private var assistantSection: some View {
+        Section {
+            Button("Assistant") {
+                showingAssistant = true
+            }
+        } footer: {
+            Text("Ask Jimmy to play, queue, search, subscribe or set a sleep timer.")
+        }
+    }
+
+    private var aboutSection: some View {
+        Section("About") {
+            LabeledContent("Version", value: Self.appVersion)
+            Button("Submit Feedback") {
+                viewModel.showingFeedbackForm = true
             }
         }
     }
 
-    
-    // MARK: - Alert Helper Methods
+    #if DEBUG
+    private var developerSection: some View {
+        Section("Developer") {
+            NavigationLink("Listening Stats") {
+                ListeningStatsView()
+            }
+        }
+    }
+    #endif
+
+    private var destructiveSection: some View {
+        Section {
+            Button("Clear All Subscriptions", role: .destructive) {
+                viewModel.showClearSubscriptionsConfirmation = true
+            }
+            #if DEBUG
+            Button("Clear Episode Cache", role: .destructive) {
+                Task {
+                    await viewModel.clearEpisodeCache()
+                }
+            }
+            Button("Reset All Data", role: .destructive) {
+                viewModel.showAlert(.resetData)
+            }
+            #endif
+        } footer: {
+            Text("Clearing subscriptions removes every show and empties your queue.")
+        }
+    }
+
+    // MARK: - Rows
+
+    private func progressButton(_ title: String, isLoading: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack {
+                Text(title)
+                Spacer()
+                if isLoading {
+                    ProgressView()
+                }
+            }
+        }
+        .disabled(isLoading)
+    }
+
+    private func exportFullBackup() {
+        Task {
+            do {
+                backupFileURL = try await BackupService.shared.exportBackup()
+                showingBackupShare = true
+            } catch {
+                logger.error("Backup export failed: \(error)")
+            }
+        }
+    }
+
+    // MARK: - Alerts
+
     private func alertTitle() -> String {
         switch viewModel.activeAlert {
         case .resetData:
-            return "Reset All Data"
-        case .appleImport(_):
-            return "Apple Podcasts Import"
-        case .subscriptionImport(_):
+            return "Reset All Data?"
+        case .appleImport:
+            return "Import from Apple Podcasts"
+        case .subscriptionImport:
             return "Subscription Import"
-        case .spotifyImport(_):
-            return "Spotify Import"
-        case .jsonImport(_):
-            return "JSON Import"
+        case .spotifyImport:
+            return "Import from Spotify"
+        case .jsonImport:
+            return "Import"
         case .clearSubscriptions:
-            return "Clear Subscriptions"
+            return "Clear All Subscriptions?"
         case .none:
             return ""
         }
     }
-    
-    private func alertButtons() -> AnyView {
+
+    @ViewBuilder
+    private func alertButtons() -> some View {
         switch viewModel.activeAlert {
         case .resetData:
-            return AnyView(
-                HStack {
-                    Button("Cancel", role: .cancel) { 
-                        viewModel.dismissAlert()
-                    }
-                    Button("Reset", role: .destructive) {
-                        Task {
-                            await viewModel.resetAllData()
-                        }
-                        viewModel.dismissAlert()
-                    }
+            Button("Cancel", role: .cancel) {
+                viewModel.dismissAlert()
+            }
+            Button("Reset", role: .destructive) {
+                Task {
+                    await viewModel.resetAllData()
                 }
-            )
+                viewModel.dismissAlert()
+            }
         case .clearSubscriptions:
-            return AnyView(
-                HStack {
-                    Button("Cancel", role: .cancel) { 
-                        viewModel.dismissAlert()
-                    }
-                    Button("Clear", role: .destructive) {
-                        Task {
-                            await viewModel.clearAllSubscriptions()
-                        }
-                        viewModel.dismissAlert()
-                    }
+            Button("Cancel", role: .cancel) {
+                viewModel.dismissAlert()
+            }
+            Button("Clear", role: .destructive) {
+                Task {
+                    await viewModel.clearAllSubscriptions()
                 }
-            )
-        case .appleImport(_), .subscriptionImport(_), .spotifyImport(_), .jsonImport(_), .none:
-            return AnyView(
-                Button("OK") {
-                    viewModel.dismissAlert()
-                }
-            )
+                viewModel.dismissAlert()
+            }
+        case .appleImport, .subscriptionImport, .spotifyImport, .jsonImport, .none:
+            Button("OK") {
+                viewModel.dismissAlert()
+            }
         }
     }
-    
+
     private func alertMessage() -> Text {
         switch viewModel.activeAlert {
         case .resetData:
-            return Text("This will delete all subscriptions, queue, and settings. This action cannot be undone.")
-        case .appleImport(let message):
-            return Text(message)
-        case .subscriptionImport(let message):
-            return Text(message)
-        case .spotifyImport(let message):
-            return Text(message)
-        case .jsonImport(let message):
+            return Text("This deletes all subscriptions, your queue and settings. It can't be undone.")
+        case .appleImport(let message),
+             .subscriptionImport(let message),
+             .spotifyImport(let message),
+             .jsonImport(let message):
             return Text(message)
         case .clearSubscriptions:
-            return Text("This will remove all podcast subscriptions and clear your episode queue. This action cannot be undone.")
+            return Text("This removes all podcast subscriptions and clears your queue. It can't be undone.")
         case .none:
             return Text("")
         }
     }
 }
 
-// MARK: - Supporting Views
+// MARK: - Add by URL
 
 struct ManualImportView: View {
     private let logger = Logger(subsystem: "com.chenkahana.Jimmy", category: "ManualImportView")
     @Environment(\.dismiss) private var dismiss
     @State private var urlText = ""
     @State private var isImporting = false
-    @State private var importMessage = ""
-    @State private var showingAlert = false
-    
+    @State private var resultMessage = ""
+    @State private var didImport = false
+    @State private var showingResult = false
+
     var body: some View {
-        NavigationView {
-            ZStack {
-                JimmyScreenBackground()
-
-                VStack(spacing: 20) {
-                    JimmyCard(padding: JimmyDesign.Spacing.lg) {
-                        VStack(alignment: .leading, spacing: JimmyDesign.Spacing.lg) {
-                            JimmySectionHeader(
-                                "Add by Feed URL",
-                                subtitle: "Paste a podcast's RSS feed address to subscribe."
-                            )
-
-                            JimmySearchField(
-                                text: $urlText,
-                                placeholder: "https://example.com/feed.xml",
-                                prompt: "Enter RSS feed URL",
-                                accessibilityLabel: "Podcast feed URL"
-                            )
-                            .keyboardType(.URL)
-                            .textInputAutocapitalization(.never)
-
-                            if !importMessage.isEmpty {
-                                Text(importMessage)
-                                    .font(.caption)
-                                    .foregroundColor(importMessage.contains("Error") ? .red : .green)
-                                    .multilineTextAlignment(.center)
-                            }
-
-                            JimmyPrimaryButton(
-                                title: isImporting ? "Importing..." : "Add Podcast",
-                                systemImage: "plus.circle.fill",
-                                isLoading: isImporting
-                            ) {
-                                Task {
-                                    await importPodcast()
-                                }
-                            }
-                            .disabled(urlText.isEmpty || isImporting)
-                        }
-                    }
-                    
-                    Spacer()
+        NavigationStack {
+            Form {
+                Section {
+                    TextField("Feed URL", text: $urlText, prompt: Text("https://example.com/feed.xml"))
+                        .keyboardType(.URL)
+                        .textContentType(.URL)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .submitLabel(.done)
+                        .onSubmit(startImport)
+                        .disabled(isImporting)
+                } footer: {
+                    Text("Paste a podcast's RSS feed address to subscribe.")
                 }
-                .padding()
             }
+            .navigationTitle("Add by URL")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
                         dismiss()
                     }
                     .disabled(isImporting)
                 }
+                ToolbarItem(placement: .confirmationAction) {
+                    if isImporting {
+                        ProgressView()
+                    } else {
+                        Button("Add", action: startImport)
+                            .disabled(trimmedURL.isEmpty)
+                    }
+                }
             }
         }
-        .alert("Import Result", isPresented: $showingAlert) {
+        .alert(didImport ? "Podcast Added" : "Couldn't Add Podcast", isPresented: $showingResult) {
             Button("OK") {
-                if !importMessage.contains("Error") {
+                if didImport {
                     dismiss()
                 }
             }
         } message: {
-            Text(importMessage)
+            Text(resultMessage)
         }
     }
-    
+
+    private var trimmedURL: String {
+        urlText.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func startImport() {
+        guard !trimmedURL.isEmpty, !isImporting else { return }
+        Task {
+            await importPodcast()
+        }
+    }
+
     private func importPodcast() async {
-        let trimmedURL = urlText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedURL = trimmedURL
         logger.info("Manual Import: Attempting to import URL: \(trimmedURL)")
-        
+
         guard let url = URL(string: trimmedURL) else {
             logger.error("Manual Import: Invalid URL format: \(trimmedURL)")
-            importMessage = "Error: Invalid URL format"
-            showingAlert = true
+            finish(success: false, message: "That isn't a valid URL.")
             return
         }
-        
+
         isImporting = true
-        importMessage = "Importing podcast..."
         logger.info("Manual Import: Starting import from URL: \(url.absoluteString)")
-        
+
         do {
             guard let podcast = try await AppModel.current?.subscribe(feedURL: url) else {
                 throw AppModelError.storeNotReady
             }
             let episodeCount = (try? await AppModel.current?.readyStore?.episodes(podcastID: podcast.id).count) ?? 0
             logger.info("Manual Import: Successfully imported \(podcast.title) with \(episodeCount) episodes")
-
-            await MainActor.run {
-                importMessage = "Successfully imported '\(podcast.title)' with \(episodeCount) episodes"
-                isImporting = false
-                showingAlert = true
-            }
+            finish(success: true, message: "Subscribed to \(podcast.title), with \(episodeCount) episodes.")
         } catch {
             logger.error("Manual Import: Failed to import podcast: \(error.localizedDescription)")
-            await MainActor.run {
-                importMessage = "Error: \(error.localizedDescription)"
-                isImporting = false
-                showingAlert = true
-            }
+            finish(success: false, message: error.localizedDescription)
         }
     }
-}
 
-// MARK: - Helper Components
-
-struct SettingsCard<Content: View>: View {
-    let title: String
-    let content: Content
-
-    init(title: String, @ViewBuilder content: () -> Content) {
-        self.title = title
-        self.content = content()
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: JimmyDesign.Spacing.sm) {
-            Text(title)
-                .font(.headline)
-                .foregroundStyle(.primary)
-                .padding(.horizontal, JimmyDesign.Spacing.lg)
-                .accessibilityAddTraits(.isHeader)
-
-            JimmyCard(padding: JimmyDesign.Spacing.lg) {
-                VStack(alignment: .leading, spacing: JimmyDesign.Spacing.lg) {
-                    content
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-        }
+    private func finish(success: Bool, message: String) {
+        didImport = success
+        resultMessage = message
+        isImporting = false
+        showingResult = true
     }
 }
-
-struct SettingsToggle: View {
-    let title: String
-    let subtitle: String?
-    @Binding var isOn: Bool
-    
-    init(title: String, subtitle: String? = nil, isOn: Binding<Bool>) {
-        self.title = title
-        self.subtitle = subtitle
-        self._isOn = isOn
-    }
-    
-    var body: some View {
-        HStack(spacing: JimmyDesign.Spacing.md) {
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.body.weight(.medium))
-                    .foregroundColor(.primary)
-                
-                if let subtitle = subtitle {
-                    Text(subtitle)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-            }
-            
-            Spacer()
-            
-            Toggle("", isOn: $isOn)
-        }
-    }
-}
-
-struct SettingsButton: View {
-    let title: String
-    let subtitle: String?
-    let isDestructive: Bool
-    let action: () -> Void
-    
-    init(title: String, subtitle: String? = nil, isDestructive: Bool = false, action: @escaping () -> Void) {
-        self.title = title
-        self.subtitle = subtitle
-        self.isDestructive = isDestructive
-        self.action = action
-    }
-    
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: JimmyDesign.Spacing.md) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title)
-                        .font(.body.weight(.medium))
-                        .foregroundColor(isDestructive ? .red : .primary)
-                    
-                    if let subtitle = subtitle {
-                        Text(subtitle)
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                }
-                
-                Spacer()
-
-                Image(systemName: "chevron.right")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(.tertiary)
-            }
-        }
-        .buttonStyle(.plain)
-    }
-}
-
-struct ImportButton: View {
-    let title: String
-    let subtitle: String
-    let isLoading: Bool
-    let action: () -> Void
-    
-    init(title: String, subtitle: String, isLoading: Bool = false, action: @escaping () -> Void) {
-        self.title = title
-        self.subtitle = subtitle
-        self.isLoading = isLoading
-        self.action = action
-    }
-    
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: JimmyDesign.Spacing.md) {
-                
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title)
-                        .font(.body.weight(.medium))
-                        .foregroundColor(.primary)
-                    
-                    Text(subtitle)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-                
-                Spacer()
-
-                if isLoading {
-                    ProgressView()
-                } else {
-                    Image(systemName: "chevron.right")
-                        .font(.footnote.weight(.semibold))
-                        .foregroundStyle(.tertiary)
-                }
-            }
-        }
-        .buttonStyle(.plain)
-        .disabled(isLoading)
-    }
-}
-
-// MARK: - Document Type for Export
-// AppDataDocument is defined in Jimmy/Utilities/AppDataDocument.swift
-
-// MARK: - 120fps ProMotion Scroll Optimizer (Shared)
-// Note: ProMotionScrollOptimizer and HighPerformanceScrollModifier are defined in LibraryView.swift
