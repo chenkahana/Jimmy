@@ -19,6 +19,7 @@ All notable changes to Jimmy are recorded here. The format follows
 
 - A calmer look: system backgrounds instead of the gradient backdrop, no card shadows, plain section headers,
   standard empty states, and a new accent color.
+- The queue is a plain list with artwork rows, drag to reorder, and swipe or long-press for Play Next, Played, Download and Remove.
 - Simplified architecture with a new core package, JimmyKit.
 - Xcode project now generated from `project.yml` via XcodeGen; build with `make build`.
 

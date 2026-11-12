@@ -132,7 +132,7 @@ slop check in `docs/design.md`.
 - [ ] D1. Foundation: tokens, shared components, Signal accent, motion, copy; `docs/design.md` (S)
 - [ ] D3. App icon in Icon Composer: default, dark, clear, tinted (S)
 - [ ] S1. Shell: SwiftUI `TabView`, Search tab, mini player as `tabViewBottomAccessory`, Settings out of the tab bar (S)
-- [ ] S2. Queue: plain `List`, native reorder and swipe actions (S)
+- [x] S2. Queue: plain `List`, native reorder and swipe actions (S)
 - [ ] S3. Now Playing: artwork backdrop, glass transport, one bottom panel for speed, sleep and chapters (S)
 - [ ] S4. Library: artwork grid, `.searchable`, no overview card (S)
 - [ ] S5. Podcast and Episode: artwork band header, New York show notes (S)

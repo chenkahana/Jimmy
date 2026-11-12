@@ -1,5 +1,4 @@
 import SwiftUI
-import UniformTypeIdentifiers
 import TipKit
 import JimmyKit
 
@@ -9,26 +8,22 @@ import JimmyKit
 struct QueueView: View {
     @Environment(AppModel.self) private var appModel
     @State private var editMode: EditMode = .inactive
-    @State private var allPodcasts: [Podcast] = []
     @State private var allEpisodeItems: [JimmyKit.EpisodeListItem] = []
     @State private var episodes: [Episode] = []
-    @State private var draggedEpisode: Episode?
     @Namespace private var queueNamespace
     @State private var selectedEpisodeDestination: QueueNavigationDestination?
     @State private var showingSuggestions = false
 
-    private var currentPlayingEpisodeID: UUID? {
-        appModel.playback?.currentEpisode?.id
-    }
-
     var body: some View {
-        ZStack {
-            JimmyScreenBackground()
-            queueContent
-        }
+        queueContent
             .navigationTitle("Queue")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayMode(.large)
             .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    if !episodes.isEmpty {
+                        moreMenu
+                    }
+                }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     if !episodes.isEmpty {
                         EditButton()
@@ -48,9 +43,6 @@ struct QueueView: View {
                     SuggestionsView()
                 }
             }
-            .onAppear {
-                loadPodcasts()
-            }
             .task {
                 guard let stream = appModel.observeQueueItems() else { return }
                 do {
@@ -69,249 +61,249 @@ struct QueueView: View {
                 EpisodeDetailView(episodeWithState: destination.episode)
                     .navigationTransition(.zoom(sourceID: destination.sourceID, in: queueNamespace))
             }
+            .environment(\.editMode, $editMode)
     }
 
     // MARK: - View Components
 
+    @ViewBuilder
     private var queueContent: some View {
-        Group {
-            if episodes.isEmpty {
-                emptyStateView
-            } else {
-                queueList
-            }
-        }
-    }
-
-    private var emptyStateView: some View {
-        EmptyStateView(
-            icon: "list.bullet",
-            title: "Queue Is Empty",
-            subtitle: "Episodes you add to your queue appear here.",
-            primaryAction: .init(label: "Browse Shows", systemImage: "magnifyingglass") {
-                DeepLinkRouter.shared.navigate(to: .discover)
-            },
-            secondaryAction: .init(label: "Open Library", systemImage: "books.vertical") {
-                DeepLinkRouter.shared.navigate(to: .library)
-            }
-        )
-    }
-
-    private var queueList: some View {
-        ScrollView {
-            VStack(spacing: 0) {
-                // Stats header
-                QueueStatsHeader(
-                    episodeCount: episodes.count,
-                    totalRemainingTime: totalRemainingTime
-                )
-
-                LazyVStack(spacing: 8) {
-                    // "Up Next" section (first 3 episodes)
-                    if !upNextEpisodes.isEmpty {
-                        sectionHeader("Up Next")
-                        ForEach(Array(upNextEpisodes.enumerated()), id: \.element.id) { index, episode in
-                            draggableEpisodeRow(episode: episode, index: index, isProminent: true)
-                        }
-                    }
-
-                    // "Later" section (remaining episodes)
-                    if !laterEpisodes.isEmpty {
-                        sectionHeader("Later")
-                            .padding(.top, 8)
-                        ForEach(Array(laterEpisodes.enumerated()), id: \.element.id) { offset, episode in
-                            let index = upNextEpisodes.count + offset
-                            draggableEpisodeRow(episode: episode, index: index, isProminent: false)
-                        }
-                    }
+        if episodes.isEmpty {
+            EmptyStateView(
+                icon: "list.bullet",
+                title: "Queue Is Empty",
+                subtitle: "Episodes you add appear here.",
+                primaryAction: .init(label: "Browse Shows", systemImage: "magnifyingglass") {
+                    DeepLinkRouter.shared.navigate(to: .discover)
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-            }
-        }
-        .environment(\.editMode, $editMode)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarLeading) {
-                if !episodes.isEmpty {
-                    Menu {
-                        Button(action: { Task { await clearPlayedEpisodes() } }) {
-                            Label("Clear Played", systemImage: "checkmark.circle")
-                        }
-                        Button(action: { Task { await appModel.shuffleQueue() } }) {
-                            Label("Shuffle", systemImage: "shuffle")
-                        }
-                        Button(role: .destructive, action: { Task { await appModel.clearQueue() } }) {
-                            Label("Clear All", systemImage: "trash")
-                        }
-                    } label: {
-                        Label("More", systemImage: "ellipsis.circle")
-                    }
-                }
-            }
-        }
-    }
-
-    // MARK: - Section Helpers
-
-    private var upNextEpisodes: [Episode] {
-        Array(episodes.prefix(3))
-    }
-
-    private var laterEpisodes: [Episode] {
-        Array(episodes.dropFirst(3))
-    }
-
-    private var totalRemainingTime: String {
-        let totalSeconds = episodes.reduce(0) { $0 + $1.remainingTime }
-        let hours = Int(totalSeconds) / 3600
-        let minutes = Int(totalSeconds) % 3600 / 60
-
-        if hours > 0 {
-            return "\(hours)h \(minutes)m"
+            )
         } else {
-            return "\(minutes)m"
+            queueList
         }
     }
 
-    private func sectionHeader(_ title: String) -> some View {
-        JimmySectionHeader(title)
-            .padding(.horizontal, 4)
-            .padding(.top, 8)
-    }
-
-    private func draggableEpisodeRow(episode: Episode, index: Int, isProminent: Bool = false) -> some View {
-        queueEpisodeRow(episode: episode, index: index, isProminent: isProminent)
-            .id(episode.id)
-            .onDrag {
-                draggedEpisode = episode
-                return NSItemProvider(object: episode.id.uuidString as NSString)
-            }
-            .onDrop(of: [.text], delegate: QueueDropDelegate(
-                item: episode,
-                items: $episodes,
-                draggedItem: $draggedEpisode,
-                onDrop: { fromIndex, toIndex in
-                    guard fromIndex != toIndex, episodes.indices.contains(fromIndex) else { return }
-                    let movedEpisodeID = episodes[fromIndex].id
-                    let adjustedIndex = toIndex > fromIndex ? toIndex - 1 : toIndex
-                    withAnimation(.motion) {
-                        let moved = episodes.remove(at: fromIndex)
-                        episodes.insert(moved, at: min(adjustedIndex, episodes.count))
-                    }
-                    Motion.mediumHaptic()
-                    Task {
-                        await QueueReorderTip.reorderedQueue.donate()
-                        await appModel.moveInQueue(movedEpisodeID, to: adjustedIndex + 1)
-                    }
-                    draggedEpisode = nil
+    /// One plain list in play order. Long-press and drag (or Edit) reorders; swipes and the context
+    /// menu hold the per-episode actions. The summary is a row after the last episode rather than a
+    /// section footer, because plain-list footers stick to the bottom edge over a long queue.
+    private var queueList: some View {
+        List {
+            Section {
+                ForEach(episodes) { episode in
+                    row(for: episode)
                 }
-            ))
+                .onMove(perform: move)
+                .onDelete { offsets in
+                    for episodeID in offsets.map({ episodes[$0].id }) {
+                        remove(episodeID)
+                    }
+                }
+
+                Text(summary)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+                    .listRowSeparator(.hidden)
+            }
+            .listSectionSeparator(.hidden)
+        }
+        .listStyle(.plain)
     }
 
-    private func queueEpisodeRow(episode: Episode, index: Int, isProminent: Bool = false) -> some View {
-        let episodeWithStatus = convertToEpisodeWithStatus(episode, index: index)
-        let isCurrentlyPlaying = currentPlayingEpisodeID == episode.id
+    private var moreMenu: some View {
+        Menu {
+            Button {
+                Task { await clearPlayedEpisodes() }
+            } label: {
+                Label("Clear Played", systemImage: "checkmark.circle")
+            }
+            Button {
+                Task { await appModel.shuffleQueue() }
+            } label: {
+                Label("Shuffle", systemImage: "shuffle")
+            }
+            Button(role: .destructive) {
+                Task { await appModel.clearQueue() }
+            } label: {
+                Label("Clear All", systemImage: "trash")
+            }
+        } label: {
+            Label("More", systemImage: "ellipsis.circle")
+        }
+    }
+
+    private func row(for episode: Episode) -> some View {
+        let podcast = episode.podcastID.flatMap { podcastsByID[$0] }
+        let isCurrent = appModel.playback?.currentEpisode?.id == episode.id
+        let isPlaying = isCurrent && (appModel.playback?.isPlaying ?? false)
         let sourceID = "queue-episode-\(episode.id.uuidString)"
-
-        return QueueEpisodeCard(
-            episode: episodeWithStatus,
-            isCurrentlyPlaying: isCurrentlyPlaying,
-            isEditMode: editMode == .active,
-            isProminent: isProminent,
-            downloadState: appModel.downloadState(for: episode.id),
-            onTap: {
-                if editMode == .inactive {
-                    let episodeWithState = EpisodeWithPlaybackState(
-                        episode: episode,
-                        playbackState: PlaybackState(
-                            episodeID: episode.id,
-                            position: episode.playbackPosition,
-                            finished: episode.status.contains(.played),
-                            updatedAt: Date()
-                        )
-                    )
-                    selectedEpisodeDestination = QueueNavigationDestination(
-                        episode: episodeWithState,
-                        sourceID: sourceID
-                    )
-                }
-            },
-            onPlay: {
-                if editMode == .inactive {
-                    Task { await appModel.play(episode.asPlaybackEpisode()) }
-                }
-            },
-            onRemove: {
-                Task { await appModel.dequeue(episode.id) }
-            },
-            onMoveToTop: {
-                Task { await appModel.moveToTop(episode.id) }
-            },
-            onMoveToBottom: {
-                Task { await appModel.moveToBottom(episode.id) }
-            },
-            onToggleFinished: {
-                Task {
-                    // Toggle finished state using the episode from queue
-                    let isCurrentlyPlayed = episode.status.contains(.played)
-                    if isCurrentlyPlayed {
-                        await appModel.markUnplayed(episode.id)
-                    } else {
-                        await appModel.markPlayed(episode.id)
-                    }
-                }
-            },
-            onDownload: {
-                appModel.download(episode.asPlaybackEpisode())
-            },
-            onCancelDownload: {
-                appModel.cancelDownload(episode.id)
-            },
-            onDeleteDownload: {
-                appModel.deleteDownload(episode.id)
-            }
+        let row = QueueEpisodeRow(
+            episode: episode,
+            showTitle: podcast?.title,
+            showArtworkURL: podcast?.artworkURL,
+            isCurrent: isCurrent,
+            isPlaying: isPlaying,
+            isEditing: editMode.isEditing,
+            onPlay: { play(episode, isCurrent: isCurrent) }
         )
+
+        return Button {
+            showDetail(for: episode, sourceID: sourceID)
+        } label: {
+            row
+        }
         .matchedTransitionSource(id: sourceID, in: queueNamespace)
+        .accessibilityLabel(row.accessibilityText)
+        .accessibilityHint("Shows episode details")
+        .accessibilityAction(named: isPlaying ? "Pause" : "Play") {
+            play(episode, isCurrent: isCurrent)
+        }
+        .swipeActions(edge: .leading) {
+            playNextButton(episode)
+                .tint(.accentColor)
+            playedButton(episode)
+        }
+        .swipeActions(edge: .trailing) {
+            removeButton(episode)
+            downloadButton(episode)
+        }
+        .contextMenu {
+            Button {
+                play(episode, isCurrent: isCurrent)
+            } label: {
+                Label(isPlaying ? "Pause" : "Play", systemImage: isPlaying ? "pause" : "play")
+            }
+            playNextButton(episode)
+            Button {
+                Task { await appModel.moveToBottom(episode.id) }
+            } label: {
+                Label("Move to End", systemImage: "arrow.down.to.line")
+            }
+            playedButton(episode)
+            downloadButton(episode)
+            Divider()
+            removeButton(episode)
+        }
     }
 
-    // MARK: - Helper Methods
+    // MARK: - Row Actions
 
-    /// Convert Episode to EpisodeWithStatus for EpisodeCard
-    private func convertToEpisodeWithStatus(_ episode: Episode, index: Int) -> EpisodeWithStatus {
-        let podcast = getPodcast(for: episode)
+    private func playNextButton(_ episode: Episode) -> some View {
+        Button {
+            Task { await appModel.playNext(episode.id) }
+        } label: {
+            Label("Play Next", systemImage: "text.line.first.and.arrowtriangle.forward")
+        }
+    }
 
-        // `episode.playbackPosition`/`.duration` already carry the Store's `progress` row (see
-        // `syncEpisodesWithQueue`), so no separate cache lookup is needed.
-        let playProgress: Double = episode.duration.map { $0 > 0 ? episode.playbackPosition / $0 : 0.0 } ?? 0.0
+    private func playedButton(_ episode: Episode) -> some View {
+        let isPlayed = episode.status.contains(.played)
+        return Button {
+            Task {
+                if isPlayed {
+                    await appModel.markUnplayed(episode.id)
+                } else {
+                    await appModel.markPlayed(episode.id)
+                }
+            }
+        } label: {
+            Label(isPlayed ? "Mark Unplayed" : "Mark Played", systemImage: isPlayed ? "circle" : "checkmark.circle")
+        }
+    }
 
-        // Determine status using the derivation rules
-        let isCurrentlyPlaying = (appModel.playback?.isPlaying ?? false) && appModel.playback?.currentEpisode?.id == episode.id
-        let isQueued = true // Always queued since this is QueueView
+    private func removeButton(_ episode: Episode) -> some View {
+        Button(role: .destructive) {
+            remove(episode.id)
+        } label: {
+            Label("Remove", systemImage: "minus.circle")
+        }
+    }
 
-        let status = EpisodeWithStatus.deriveStatus(
-            episode: episode,
-            playProgress: playProgress,
-            isQueued: isQueued,
-            isCurrentlyPlaying: isCurrentlyPlaying
+    /// The download action from PR #22, now a native swipe action: Download, Cancel Download while it
+    /// runs, Remove Download once it's on the device.
+    @ViewBuilder
+    private func downloadButton(_ episode: Episode) -> some View {
+        switch appModel.downloadState(for: episode.id) {
+        case nil, .failed:
+            Button {
+                appModel.download(episode.asPlaybackEpisode())
+            } label: {
+                Label("Download", systemImage: "arrow.down.circle")
+            }
+        case .queued, .downloading:
+            Button {
+                appModel.cancelDownload(episode.id)
+            } label: {
+                Label("Cancel Download", systemImage: "xmark.circle")
+            }
+        case .done:
+            Button {
+                appModel.deleteDownload(episode.id)
+            } label: {
+                Label("Remove Download", systemImage: "trash")
+            }
+        }
+    }
+
+    private func showDetail(for episode: Episode, sourceID: String) {
+        guard !editMode.isEditing else { return }
+        selectedEpisodeDestination = QueueNavigationDestination(
+            episode: EpisodeWithPlaybackState(
+                episode: episode,
+                playbackState: PlaybackState(
+                    episodeID: episode.id,
+                    position: episode.playbackPosition,
+                    finished: episode.status.contains(.played),
+                    updatedAt: Date()
+                )
+            ),
+            sourceID: sourceID
         )
-
-        return EpisodeWithStatus(
-            episode: episode,
-            podcastTitle: podcast?.title ?? "Unknown Podcast",
-            playProgress: playProgress,
-            status: status,
-            podcastArtworkURL: podcast?.artworkURL
-        )
     }
 
-    private func loadPodcasts() {
-        // Load all podcasts for artwork lookup
-        allPodcasts = (AppModel.current?.podcasts ?? []).map { $0.asLegacyPodcast() }
+    /// Plays the episode, or pauses and resumes it when it's the one already in the player.
+    private func play(_ episode: Episode, isCurrent: Bool) {
+        guard !editMode.isEditing else { return }
+        Task {
+            if isCurrent {
+                await appModel.playback?.togglePlayPause()
+            } else {
+                await appModel.play(episode.asPlaybackEpisode())
+            }
+        }
     }
 
-    private func getPodcast(for episode: Episode) -> Podcast? {
-        // Use preloaded podcasts for fast lookup
-        return allPodcasts.first { $0.id == episode.podcastID }
+    private func remove(_ episodeID: UUID) {
+        Motion.lightHaptic()
+        Task { await appModel.dequeue(episodeID) }
+    }
+
+    /// Applies a drop locally right away, then persists it with the same `moveInQueue` call the old
+    /// drag and drop used. The haptic fires on the drop, not during the drag.
+    private func move(from source: IndexSet, to destination: Int) {
+        guard let fromIndex = source.first, episodes.indices.contains(fromIndex) else { return }
+        let movedEpisodeID = episodes[fromIndex].id
+        let newIndex = destination > fromIndex ? destination - 1 : destination
+        guard newIndex != fromIndex else { return }
+        episodes.move(fromOffsets: source, toOffset: destination)
+        Motion.mediumHaptic()
+        Task {
+            await QueueReorderTip.reorderedQueue.donate()
+            await appModel.moveInQueue(movedEpisodeID, to: newIndex + 1)
+        }
+    }
+
+    // MARK: - Data
+
+    private var podcastsByID: [UUID: JimmyKit.Podcast] {
+        Dictionary(appModel.podcasts.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+    }
+
+    /// "4 episodes · 2 h 14 min left"
+    private var summary: String {
+        let count = episodes.count == 1 ? "1 episode" : "\(episodes.count) episodes"
+        let remaining = episodes.reduce(0) { $0 + $1.remainingTime }
+        guard remaining > 0 else { return count }
+        return "\(count) · \(QueueTimeFormat.duration(remaining)) left"
     }
 
     /// Resolves `appModel`'s queue (ids and order) into the rich old `Episode` model this view
@@ -350,41 +342,4 @@ private struct QueueNavigationDestination: Identifiable, Hashable {
 
 #Preview {
     QueueView()
-}
-
-// MARK: - Drop Delegate for Drag and Drop Reordering
-struct QueueDropDelegate: DropDelegate {
-    let item: Episode
-    @Binding var items: [Episode]
-    @Binding var draggedItem: Episode?
-    let onDrop: (Int, Int) -> Void
-
-    func performDrop(info: DropInfo) -> Bool {
-        guard let draggedItem = draggedItem,
-              let fromIndex = items.firstIndex(where: { $0.id == draggedItem.id }),
-              let toIndex = items.firstIndex(where: { $0.id == item.id }) else {
-            return false
-        }
-
-        if fromIndex != toIndex {
-            onDrop(fromIndex, toIndex)
-        }
-
-        return true
-    }
-
-    func dropEntered(info: DropInfo) {
-        guard let draggedItem = draggedItem,
-              draggedItem.id != item.id,
-              let fromIndex = items.firstIndex(where: { $0.id == draggedItem.id }),
-              let toIndex = items.firstIndex(where: { $0.id == item.id }) else {
-            return
-        }
-
-        if fromIndex != toIndex {
-            withAnimation(.motion) { // spring animation refactored
-                items.move(fromOffsets: IndexSet([fromIndex]), toOffset: toIndex > fromIndex ? toIndex + 1 : toIndex)
-            }
-        }
-    }
 }
