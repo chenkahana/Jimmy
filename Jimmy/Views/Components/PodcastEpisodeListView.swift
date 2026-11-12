@@ -1,125 +1,117 @@
 import SwiftUI
 import JimmyKit
-import os
 
-/// The episode list embedded in `PodcastDetailView`. Reads `podcastID`'s episodes — joined with
-/// progress, queue membership, and download state — straight from `AppModel`'s `Store`, staying
-/// current automatically as any of that changes (no notification plumbing needed).
+/// The episode rows of `PodcastDetailView`, inside its `List`. `items` is `podcastID`'s episodes, joined
+/// with progress, queue membership and download state, as `AppModel`'s `Store` publishes them; `nil`
+/// while the first batch loads.
 struct PodcastEpisodeListView: View {
-    private let logger = Logger(subsystem: "com.chenkahana.Jimmy", category: "PodcastEpisodeListView")
     @Environment(AppModel.self) private var appModel
-    let podcastID: UUID
+    let items: [EpisodeListItem]?
     let podcastTitle: String
     let podcastArtworkURL: URL?
     let filterOption: PodcastDetailViewModel.EpisodeFilter
     let sortOrder: PodcastDetailViewModel.EpisodeSortOrder
     let onEpisodeTap: (EpisodeWithPlaybackState) -> Void
 
-    @State private var items: [EpisodeListItem] = []
-
     var body: some View {
-        Group {
-            if items.isEmpty {
-                emptyView
+        if let items {
+            let visible = filteredAndSorted(items)
+            if visible.isEmpty {
+                ContentUnavailableView(
+                    items.isEmpty ? "No Episodes" : "No \(filterOption.rawValue) Episodes",
+                    systemImage: "list.bullet",
+                    description: items.isEmpty ? Text("Episodes appear here when the show publishes them.") : nil
+                )
+                .listRowSeparator(.hidden)
             } else {
-                episodesList
-            }
-        }
-        .task(id: podcastID) {
-            guard let stream = appModel.observeEpisodes(podcastID: podcastID) else { return }
-            do {
-                for try await newItems in stream {
-                    items = newItems
+                ForEach(visible) { item in
+                    row(item)
                 }
-            } catch {
-                logger.error("PodcastEpisodeListView: observeEpisodes stopped: \(error)")
+            }
+        } else {
+            EpisodePlaceholderRows()
+        }
+    }
+
+    private func row(_ item: EpisodeListItem) -> some View {
+        let legacyEpisode = item.asLegacyEpisode()
+        let isFinished = item.progress?.isFinished ?? false
+        let downloadState = appModel.downloadState(for: item.episode.id)
+        let toggleFinished = {
+            Task {
+                if isFinished {
+                    await appModel.markUnplayed(item.episode.id)
+                } else {
+                    await appModel.markPlayed(item.episode.id)
+                }
             }
         }
-    }
 
-    private var emptyView: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "antenna.radiowaves.left.and.right")
-                .font(.system(size: 32))
-                .foregroundColor(.secondary)
-            Text("No Episodes Found")
-                .font(.headline)
-                .foregroundColor(.secondary)
-            Text("This podcast may not have any episodes yet.")
-                .font(.caption)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-        }
-        .padding()
-    }
-
-    private var episodesList: some View {
-        LazyVStack(spacing: 8) {
-            ForEach(filteredAndSortedItems) { item in
-                let legacyEpisode = item.asLegacyEpisode()
-                let episodeWithStatus = episodeWithStatus(item, legacyEpisode: legacyEpisode)
-
-                EpisodeCard(
-                    episode: episodeWithStatus,
-                    onTap: {
-                        let episodeWithState = EpisodeWithPlaybackState(
-                            episode: legacyEpisode,
-                            playbackState: PlaybackState(
-                                episodeID: item.episode.id,
-                                position: item.progress?.position ?? 0,
-                                finished: item.progress?.isFinished ?? false,
-                                updatedAt: Date()
-                            )
-                        )
-                        onEpisodeTap(episodeWithState)
-                    },
-                    onPlay: {
-                        Task { await appModel.play(item.episode) }
-                    },
-                    onAddToQueue: {
-                        Task { await appModel.enqueue(item.episode.id) }
-                    },
-                    onToggleFinished: {
-                        Task {
-                            if item.progress?.isFinished == true {
-                                await appModel.markUnplayed(item.episode.id)
-                            } else {
-                                await appModel.markPlayed(item.episode.id)
-                            }
-                        }
-                    }
-                )
-                .episodeContextMenu(
+        return EpisodeCard(
+            episode: episodeWithStatus(item, legacyEpisode: legacyEpisode),
+            onTap: {
+                onEpisodeTap(EpisodeWithPlaybackState(
                     episode: legacyEpisode,
-                    downloadState: appModel.downloadState(for: item.episode.id),
-                    onAddToQueue: {
-                        Task { await appModel.enqueue(item.episode.id) }
-                    },
-                    onMarkAsPlayed: {
-                        Task {
-                            if item.progress?.isFinished == true {
-                                await appModel.markUnplayed(item.episode.id)
-                            } else {
-                                await appModel.markPlayed(item.episode.id)
-                            }
-                        }
-                    },
-                    onPlayNext: {
-                        Task { await appModel.playNext(item.episode.id) }
-                    },
-                    onShare: {},
-                    onDownload: { appModel.download(item.episode) },
-                    onCancelDownload: { appModel.cancelDownload(item.episode.id) },
-                    onDeleteDownload: { appModel.deleteDownload(item.episode.id) }
-                )
+                    playbackState: PlaybackState(
+                        episodeID: item.episode.id,
+                        position: item.progress?.position ?? 0,
+                        finished: isFinished,
+                        updatedAt: Date()
+                    )
+                ))
+            },
+            showsArtwork: false
+        )
+        .swipeActions(edge: .leading) {
+            queueButtons(item.episode)
+        }
+        .swipeActions(edge: .trailing) {
+            Button(isFinished ? "Unplayed" : "Played", systemImage: isFinished ? "circle" : "checkmark.circle") {
+                toggleFinished()
+            }
+            downloadButton(item.episode, state: downloadState)
+        }
+        .contextMenu {
+            Button("Play", systemImage: "play") {
+                Task { await appModel.play(item.episode) }
+            }
+            queueButtons(item.episode)
+            Button(isFinished ? "Mark as Unplayed" : "Mark as Played",
+                   systemImage: isFinished ? "circle" : "checkmark.circle") {
+                toggleFinished()
+            }
+            downloadButton(item.episode, state: downloadState)
+            if let audioURL = legacyEpisode.audioURL {
+                ShareLink(item: audioURL)
             }
         }
-        .padding(.horizontal, 16)
+    }
+
+    @ViewBuilder
+    private func queueButtons(_ episode: JimmyKit.Episode) -> some View {
+        Button("Play Next", systemImage: "text.line.first.and.arrowtriangle.forward") {
+            Task { await appModel.playNext(episode.id) }
+        }
+        Button("Add to Queue", systemImage: "text.append") {
+            Task { await appModel.enqueue(episode.id) }
+        }
+    }
+
+    @ViewBuilder
+    private func downloadButton(_ episode: JimmyKit.Episode, state: JimmyKit.DownloadState?) -> some View {
+        switch state {
+        case nil, .failed:
+            Button("Download", systemImage: "arrow.down.circle") { appModel.download(episode) }
+        case .queued, .downloading:
+            Button("Cancel Download", systemImage: "xmark.circle") { appModel.cancelDownload(episode.id) }
+        case .done:
+            Button("Remove Download", systemImage: "trash", role: .destructive) { appModel.deleteDownload(episode.id) }
+        }
     }
 
     // MARK: - Data processing
 
-    private var filteredAndSortedItems: [EpisodeListItem] {
+    private func filteredAndSorted(_ items: [EpisodeListItem]) -> [EpisodeListItem] {
         var filtered = items
 
         switch filterOption {
@@ -148,7 +140,8 @@ struct PodcastEpisodeListView: View {
     }
 
     private func episodeWithStatus(_ item: EpisodeListItem, legacyEpisode: Jimmy.Episode) -> EpisodeWithStatus {
-        let isCurrentlyPlaying = (appModel.playback?.isPlaying ?? false) && appModel.playback?.currentEpisode?.id == item.episode.id
+        let isCurrentlyPlaying = (appModel.playback?.isPlaying ?? false)
+            && appModel.playback?.currentEpisode?.id == item.episode.id
         let duration = item.progress?.duration ?? item.episode.duration
         let playProgress: Double
         if let duration, duration > 0 {
@@ -171,5 +164,30 @@ struct PodcastEpisodeListView: View {
             status: status,
             podcastArtworkURL: podcastArtworkURL
         )
+    }
+}
+
+/// Rows shaped like episodes, redacted, while a show's episodes load.
+struct EpisodePlaceholderRows: View {
+    var body: some View {
+        ForEach(0..<5, id: \.self) { _ in
+            EpisodeCard(
+                episode: EpisodeWithStatus(
+                    episode: Jimmy.Episode(
+                        id: UUID(),
+                        title: "An episode title that runs to two lines",
+                        publishedDate: Date(),
+                        duration: 2700,
+                        artworkURL: nil,
+                        description: nil
+                    ),
+                    podcastTitle: ""
+                ),
+                onTap: {},
+                showsArtwork: false
+            )
+            .redacted(reason: .placeholder)
+            .disabled(true)
+        }
     }
 }

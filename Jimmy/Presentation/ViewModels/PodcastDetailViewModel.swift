@@ -1,12 +1,11 @@
 import Foundation
 
-/// Filter and sort options for a podcast's episode list, shared by `PodcastDetailView`, the
-/// episode-row list it embeds, and `StickyCompactHeader`'s filter/sort menu.
+/// Filter and sort options for a podcast's episode list, shared by `PodcastDetailView` and the
+/// episode rows it embeds.
 ///
 /// This is all that's left of the old `PodcastDetailViewModel` class: PR 18 moved
 /// `PodcastDetailView` onto `AppModel`/`Store` directly, so there's no view model left — just the
-/// two enums it used to define. Kept under this name so none of those three files needed to change
-/// their `PodcastDetailViewModel.EpisodeFilter`/`.EpisodeSortOrder` references.
+/// two enums it used to define.
 public enum PodcastDetailViewModel {
     public enum EpisodeSortOrder: String, CaseIterable, Identifiable {
         case newestFirst = "Newest First"
