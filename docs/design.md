@@ -43,7 +43,7 @@ from Library's `ellipsis.circle` menu.
 
 **Queue.** A plain `List`. Row: artwork (56–64 pt), title in two lines, then "Show · 42 min left · 3d" in footnote
 secondary, a thin accent progress line. The playing episode is first, marked by an animated `waveform`. Native
-reorder and swipe actions (Play Next, Remove, Played), `contextMenu`. Footer: "4 episodes · 2 h 10 min". Empty:
+reorder and swipe actions (Play Next, Remove, Played), `contextMenu`. Footer: "4 episodes · 2 h 10 min left". Empty:
 "Queue Is Empty" / "Episodes you add appear here." / Browse Shows.
 
 **Now Playing.** Large artwork with a soft shadow on a flat backdrop sampled from it. Title (title3 semibold, two

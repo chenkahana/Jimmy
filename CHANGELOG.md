@@ -26,6 +26,7 @@ All notable changes to Jimmy are recorded here. The format follows
 - Discover is a plain list: your recent searches, then Top Shows as a numbered ranking. Search results are rows,
   and loading shows placeholder rows instead of shimmering cards. The Featured and Trending Episodes rows, which
   repeated the same chart, are gone.
+- The queue is a plain list with artwork rows, drag to reorder, and swipe or long-press for Play Next, Played, Download and Remove.
 - Simplified architecture with a new core package, JimmyKit.
 - Xcode project now generated from `project.yml` via XcodeGen; build with `make build`.
 
