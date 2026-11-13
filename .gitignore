@@ -33,8 +33,10 @@ rollback_snapshots/
 ehthumbs.db
 Thumbs.db
 
-# OMC (oh-my-claudecode) state
+# Local tool state
 .omc/
+.claude/
+.codex/
 
 # Validation result directories
 *_results/
