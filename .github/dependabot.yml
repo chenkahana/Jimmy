@@ -1,6 +1,12 @@
+# Dependency updates, grouped into one pull request per ecosystem each week. They merge on their own once CI is
+# green (.github/workflows/dependabot-auto-merge.yml). GRDB is pinned in both project.yml and JimmyKit's
+# Package.swift, so it is updated by hand in both places rather than by Dependabot.
 version: 2
 updates:
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+    groups:
+      github-actions:
+        patterns: ["*"]
