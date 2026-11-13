@@ -9,14 +9,16 @@
 One queue drives everything: save an episode from anywhere and it's the next thing that plays. Subscriptions,
 progress, downloads and listening stats live on your device, and nothing is uploaded anywhere.
 
-[![CI](https://github.com/chenkahana/Jimmy/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/chenkahana/Jimmy/actions/workflows/ci.yml)
 ![iOS 27+](https://img.shields.io/badge/iOS-27%2B-000000?logo=apple)
 ![watchOS 27+](https://img.shields.io/badge/watchOS-27%2B-000000?logo=apple)
 ![Swift 6](https://img.shields.io/badge/Swift-6-F05138?logo=swift&logoColor=white)
-[![License](https://img.shields.io/badge/license-MPL--2.0-brightgreen)](LICENSE)
-[![PRs welcome](https://img.shields.io/badge/PRs-welcome-3A46F5)](CONTRIBUTING.md)
+[![License: MPL-2.0](https://img.shields.io/badge/license-MPL--2.0-blue)](LICENSE)
+[![CI](https://github.com/chenkahana/Jimmy/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/chenkahana/Jimmy/actions/workflows/ci.yml)
+[![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen)](CONTRIBUTING.md)
 
-[Website](https://chenkahana.com/jimmy) · [Features](#features) · [Screenshots](#screenshots) · [Architecture](#architecture) · [Getting started](#getting-started) · [Roadmap](#roadmap) · [Contributing](#contributing)
+[![Build from source](https://img.shields.io/badge/Build_from_source-Xcode_27-3A46F5?style=for-the-badge&logo=xcode&logoColor=white)](#getting-started) [![Website](https://img.shields.io/badge/Website-chenkahana.com%2Fjimmy-111111?style=for-the-badge&logo=safari&logoColor=white)](https://chenkahana.com/jimmy)
+
+[Features](#features) · [Screenshots](#screenshots) · [Architecture](#architecture) · [Getting started](#getting-started) · [Roadmap](#roadmap) · [Contributing](#contributing)
 
 <table>
   <tr>
@@ -153,6 +155,21 @@ Contributions are welcome, from a typo fix to a new feature.
 
 Everyone taking part follows the [Code of Conduct](CODE_OF_CONDUCT.md). Changes are recorded in
 [CHANGELOG.md](CHANGELOG.md).
+
+## The family
+
+Boaz, Jimmy and Edison are made by one independent developer, on the same principles: native Swift and SwiftUI,
+private by design (no accounts, analytics or tracking), and open source under the Mozilla Public License 2.0.
+
+<table>
+  <tr>
+    <td align="center" width="33%"><a href="https://github.com/chenkahana/Boaz"><img src="https://raw.githubusercontent.com/chenkahana/Boaz/master/docs/assets/icon.png" width="88" alt="Boaz app icon"></a><br><b><a href="https://github.com/chenkahana/Boaz">Boaz</a></b><br><sub>A calm web browser for iPhone and Mac</sub></td>
+    <td align="center" width="33%"><a href="https://github.com/chenkahana/Jimmy"><img src="https://raw.githubusercontent.com/chenkahana/Jimmy/main/docs/assets/icon.png" width="88" alt="Jimmy app icon"></a><br><b><a href="https://github.com/chenkahana/Jimmy">Jimmy</a></b><br><sub>A queue-centric podcast player for iPhone</sub></td>
+    <td align="center" width="33%"><a href="https://github.com/chenkahana/Edison"><img src="https://raw.githubusercontent.com/chenkahana/Edison/main/docs/assets/icon.png" width="88" alt="Edison app icon"></a><br><b><a href="https://github.com/chenkahana/Edison">Edison</a></b><br><sub>Clipboard history and screenshots for Mac</sub></td>
+  </tr>
+</table>
+
+<p align="center"><sub>More at <a href="https://chenkahana.com">chenkahana.com</a></sub></p>
 
 ## License
 
