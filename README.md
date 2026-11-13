@@ -16,7 +16,7 @@ progress, downloads and listening stats live on your device, and nothing is uplo
 [![License](https://img.shields.io/badge/license-MPL--2.0-brightgreen)](LICENSE)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-3A46F5)](CONTRIBUTING.md)
 
-[Features](#features) · [Screenshots](#screenshots) · [Architecture](#architecture) · [Getting started](#getting-started) · [Roadmap](#roadmap) · [Contributing](#contributing)
+[Website](https://chenkahana.com/jimmy) · [Features](#features) · [Screenshots](#screenshots) · [Architecture](#architecture) · [Getting started](#getting-started) · [Roadmap](#roadmap) · [Contributing](#contributing)
 
 <table>
   <tr>
