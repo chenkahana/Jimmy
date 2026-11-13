@@ -4,7 +4,7 @@ How to ship a new version of Jimmy to the App Store.
 
 ## 1. Before a release
 
-- Run the checklist in [`docs/qa.md`](../qa.md) on a real device and record the round in its log. No P1 or P2 issue may be open.
+- Run the checklist in [`docs/qa.md`](qa.md) on a real device and record the round in its log. No P1 or P2 issue may be open.
 - Run these locally, all green:
 
   ```bash
@@ -65,4 +65,4 @@ It seeds the `-demoLibrary` demo data on an iOS 27 simulator. It captures Queue,
 
 ## History
 
-Older release notes stay here for reference: [v1](v1.md), [v2](v2.md), [v2 release notes](RELEASE_NOTES_v2.md).
+Every change is recorded in [CHANGELOG.md](../CHANGELOG.md).

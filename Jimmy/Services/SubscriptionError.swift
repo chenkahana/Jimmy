@@ -2,7 +2,7 @@ import Foundation
 
 /// Errors from a subscribe/unsubscribe attempt, surfaced by `AppModel.subscribe(feedURL:)` and
 /// mapped here for the screens (Discover, Search, podcast detail) that show them. Factored out of
-/// the old `SubscriptionStateManager` (deleted in PR 17 — see `tasks/todo.md`), which is gone, but
+/// the old `SubscriptionStateManager`, which is gone, but
 /// these types are still what every subscribe UI shows on failure.
 enum SubscriptionError: Error, LocalizedError, Equatable {
     case networkError(String)
