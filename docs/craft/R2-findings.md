@@ -23,3 +23,18 @@ strips and contact sheets), `video/`.
 
 Passes: native `TabView` with `Tab(role: .search)`, bottom accessory with inline and expanded placements, tab bar
 minimizes on scroll, mini player has a hint ("Opens Now Playing") and Play/Pause labels.
+
+## R2.2 Queue
+
+| ID | Finding | Evidence | Check | Sev | Reach | Effort | Score | Constraint |
+|---|---|---|---|---|---|---|---|---|
+| J-06 | Row Play button is **32.7 pt**, below 44 pt. | `run-light/01-queue.ax.txt` (`play.circle.fill` {32.7, 32.7}); `Jimmy/Views/Components/QueueEpisodeRow.swift:122-131` | 4 | S2 | every session | S | **12** | — |
+| J-07 | Swipe actions are untinted gray capsules (Play Next, Mark Played, Remove's sibling Download); they read as disabled next to the tinted context menu and next to Library's blue "Played" swipe. | `run-light/q-01-swipe-leading.png`, `run-dark/q-01-*`; `run/s-00-library-episode-swipe-left.png`; `QueueView.swift:156-163` | 4, 7 | S3 | daily | S | 6 | Needs Chen: `docs/design.md` "one accent, three jobs" rules out per-action tints |
+| J-08 | Long-press then drag on a row opens the context menu; the row doesn't lift into a reorder, though the code comment says "Long-press and drag (or Edit) reorders". Reorder works only in Edit mode. | `sheets/reorder.png`; `QueueView.swift:78-80` | 4 | S2 | daily | M | 4.5 | Q. Verify on device (synthetic drag) |
+| J-09 | Remove (swipe and menu) and Clear All act immediately with no Undo; Clear All has no confirmation. A mistaken full swipe loses the episode's place in the queue. | `QueueView.swift:113-118, 270-274` | 8 | S2 | occasional | M | 3 | Q |
+| J-10 | Suggestions opens a sheet with only a centered spinner, no Done button and no title content until it loads. | `run-light/q-10-suggestions.png`; `Jimmy/Suggestions/SuggestionsView.swift:28-40` | 8 | S3 | occasional | S | 4 | — |
+| J-11 | VoiceOver stops twice per row: the row (with value "32%") and its nested Play button. | `run-light/01-queue.ax.txt` | 12 | S3 | daily | S | 6 | — |
+
+Passes: plain `List` in play order, current episode marked by an animated waveform that honors Reduce Motion,
+progress line, `monospacedDigit` metadata, AX-size layout that stacks artwork above text (`run/ax5-00-queue.png`),
+summary footer, context menu matches swipes, edit mode with reorder handles, a drop haptic.
