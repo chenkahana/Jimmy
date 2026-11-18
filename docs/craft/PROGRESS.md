@@ -1,4 +1,4 @@
-RESUME HERE: R0.4 Instruments traces: App Launch, scroll, player open/close, scrub (driver Perf/testPerfLoop + xctrace attach)
+RESUME HERE: R0.5 finish R0-baseline.md (summary, driver source appendix)
 
 # Progress log
 

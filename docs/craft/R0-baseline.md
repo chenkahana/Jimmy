@@ -117,3 +117,22 @@ simulator window, paired Apple Watch). Record each with the screen recorder; 20 
 8. Watch: open Jimmy on the Watch with the phone app closed, then open. Expect Now Playing to fill within two
    seconds; check whether the skip glyphs match your phone's Skip settings (they're hard-coded to 15) and whether
    the Digital Crown changes volume.
+
+## R0.4 Instruments and timing
+
+All traces and strips under `~/tmp/codex/jimmy-craft/`. Debug build in the simulator: use for *shape* (what happens
+in what order, where the main thread goes), not for absolute device numbers.
+
+| Measure | How | Result |
+|---|---|---|
+| Cold launch, video | `simctl launch` with the screen recording running; strip `sheets/launch-cold.png` (4 fps), video `video/launch-cold.mov` | Tap at 0.75 s → **blank white window until ~2.5 s** → **"Queue Is Empty" with Browse Shows flashes for one frame (~2.75 s)** → queue rows at 3.0 s with three of four artworks still placeholders → mini player at 3.0 s. |
+| Cold launch, XCUITest (5 runs) | `driver Flows/Extra.swift LaunchTiming` (`run/launch-timing.txt`) | First queue row 5.6–8.4 s, mini player +1.05 s every run. Includes XCUITest's wait-for-idle and the demo library re-seeding on every `-demoLibrary` launch, so it overstates; the order (rows, then the mini player a second later) is real. |
+| App Launch template | `xctrace record --template 'App Launch' --launch` (`traces/launch.trace`) | The simulator records no lifecycle periods (table empty). Time profile: `JimmyApp.init` 390 ms of main-thread work, of which `AppModel.open` (store open) ~305 ms, `AudioSessionController.activate` ~90 ms, `RemoteCommandController.configure` ~40 ms and `AVPlayerItem.init` ~120 ms run on the main thread before the first frame. |
+| Animation Hitches | `xctrace --template 'Animation Hitches' --attach Jimmy` during `Perf/testPerfLoop` | **Not supported in the simulator** ("Trace is malformed - run data is missing"). Needs Chen's device; see below. |
+| Scroll / player / scrub, Time Profiler | `traces/perf-timeprofile.trace` during `Perf/testPerfLoop` (Library Episodes ×6 fast swipes each way, Planet Money ×6, player open/close ×3, 5 scrubs) | Main-thread app frames are SwiftUI view-list rebuilds of `EpisodeCard` and `EpisodeArtwork`, `LibraryView.viewModePicker` and `LibraryView.body`, plus `EpisodeCard.dateText` (date formatting in the row body). No single hot spot; numbers aren't trustworthy in the simulator. |
+
+**Needs Chen device (10 minutes, Release build from `main` on a ProMotion iPhone):** in Instruments choose
+*Animation Hitches*, attach to Jimmy, then: scroll Library → Episodes top to bottom and back fast; open a show with
+500+ episodes and fling to the end; open and close Now Playing three times (tap, then drag); scrub back and forth for
+5 s. Save as `jimmy-hitches.trace`. Then *App Launch* with Jimmy killed: record a cold launch to the queue. Targets
+from the rubric: zero hitches > 1 frame in those flows; first frame with real content ≤ 400 ms.
