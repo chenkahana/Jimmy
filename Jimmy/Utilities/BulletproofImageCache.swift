@@ -65,6 +65,11 @@ final class BulletproofImageCache: ObservableObject {
     
     // MARK: - Public API
     
+    /// The image if it's already in memory, so a view can show it on its first frame.
+    func memoryCachedImage(for url: URL) -> UIImage? {
+        memoryCache.object(forKey: cacheKeyForURL(url))
+    }
+
     /// Load image with bulletproof caching and retry logic
     func loadImage(from url: URL) async -> UIImage? {
         // 1. Check memory cache first (fastest)
@@ -283,6 +288,8 @@ struct BulletproofAsyncImage<Content: View, Placeholder: View>: View {
         self.url = url
         self.content = content
         self.placeholder = placeholder
+        // An image already in memory shows on the first frame instead of fading in over a placeholder.
+        _image = State(initialValue: url.flatMap { BulletproofImageCache.shared.memoryCachedImage(for: $0) })
     }
     
     var body: some View {
