@@ -31,7 +31,7 @@ approves the backlog. Resume point and log: [`PROGRESS.md`](PROGRESS.md).
 - [x] R2.3 Library (Shows, Episodes, Downloads)
 - [x] R2.4 Discover and Search
 - [x] R2.5 Podcast and episode detail
-- [ ] R2.6 Now Playing (full player, scrub, speed, sleep, chapters)
+- [x] R2.6 Now Playing (full player, scrub, speed, sleep, chapters)
 - [ ] R2.7 Settings, Stats, Import, Feedback
 - [ ] R2.8 Onboarding
 - [ ] R2.9 CarPlay, Watch, widgets, system integration
