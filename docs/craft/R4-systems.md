@@ -34,3 +34,24 @@ helpers):
    `matchedTransitionSource`/`navigationTransition(.zoom)` or a matched geometry pair, so open and close run the same
    path. The unused `NowPlayingNamespace` is the hook. (J-24)
 5. Every `repeatForever` checks Reduce Motion. (J-42)
+
+## R4.2 Haptic map
+
+**Today:** queue remove (light), queue reorder drop (medium), scrubber release (selection), error banner taps; a
+`FeedbackManager` with impact/notification/selection exists but is barely used (`sweeps/haptics.txt`). Nothing on
+play/pause, skips, speed, sleep, follow, or downloads.
+
+| Moment | Feedback | Why |
+|---|---|---|
+| Swipe passes full-swipe threshold | system (comes with `.swipeActions`) | already free |
+| Queue reorder lift / drop | `.sensoryFeedback(.selection)` on lift, `.impact(weight: .medium)` on drop | physical object |
+| Remove from queue, Clear Played | `.impact(weight: .light)` plus Undo | committed and reversible |
+| Skip back / forward | `.impact(weight: .light, intensity: 0.5)` | a detent you feel with eyes off the screen |
+| Scrubber crosses a chapter start | `.selection` | detent (J-27) |
+| Speed or sleep value changes | `.selection` per step | dial (J-25) |
+| Sleep timer set / cancelled | `.success` / none | commit |
+| Follow a show | `.success` | commit |
+| Download finished (app in foreground) / failed | `.success` / `.error` with a VoiceOver announcement | outcome (J-41) |
+| Play / pause | none | the audio is the feedback; Apple does the same |
+
+All through `.sensoryFeedback(_:trigger:)`; retire `Motion.lightHaptic()` etc. and `FeedbackManager` once moved.
