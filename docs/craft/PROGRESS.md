@@ -15,3 +15,4 @@ Append-only. One line per completed step: date, step, what was done, commit.
 | 2026-11-18 | R1.1 | Surfaces x states table (20 surfaces) with file and capture per row | 449df8a |
 | 2026-11-18 | R1.2 | Transitions (10) and per-surface gestures, verified with Swipes flow captures | 9ad6f40 |
 | 2026-11-18 | R1.3 | VoiceOver reading order for Queue, Now Playing, Podcast, Discover, Settings from AX trees; announce() unused | 5816aeb |
+| 2026-11-18 | R1.4 | R1-inventory.md complete with coverage gaps | 6310364 |
