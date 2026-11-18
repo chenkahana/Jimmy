@@ -51,3 +51,13 @@ summary footer, context menu matches swipes, edit mode with reorder handles, a d
 Passes: `.searchable` in the nav bar drawer with the prompt following the segment, adaptive grid that becomes one
 column at AX sizes, "Couldn't refresh N shows. Try Again." with automatic grammar agreement (`inflect: true`),
 pull to refresh, empty state "No Shows Yet" with Browse Shows and Add Sample Shows (`run/os-01-after-skip.png`).
+
+## R2.4 Discover and Search
+
+| ID | Finding | Evidence | Check | Sev | Reach | Effort | Score | Constraint |
+|---|---|---|---|---|---|---|---|---|
+| J-16 | Top Shows aren't cached between launches. When the chart fetch fails (2 of 4 launches here, on a working connection) the tab replaces its skeleton with "Couldn't Load Top Shows. Check your connection and try again." and no recent results. | `sheets/d-tab.png`; `run-light/d-00-immediate.png`; `Jimmy/Presentation/ViewModels/DiscoveryViewModel.swift:71-99` | 8 | S2 | daily | M | 4.5 | P (cache stays on device) |
+
+Passes: native `.searchable` with recent searches, skeleton rows with `redacted(.placeholder)` while loading
+(`run-light/d-03-typing.png`), `ContentUnavailableView.search` for no results (`d-06-no-results.png`), zoom into a
+result, follow button turns into a checkmark.

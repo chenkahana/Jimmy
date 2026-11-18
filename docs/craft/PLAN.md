@@ -29,7 +29,7 @@ approves the backlog. Resume point and log: [`PROGRESS.md`](PROGRESS.md).
 - [x] R2.1 Shell: tab bar, mini player, navigation
 - [x] R2.2 Queue
 - [x] R2.3 Library (Shows, Episodes, Downloads)
-- [ ] R2.4 Discover and Search
+- [x] R2.4 Discover and Search
 - [ ] R2.5 Podcast and episode detail
 - [ ] R2.6 Now Playing (full player, scrub, speed, sleep, chapters)
 - [ ] R2.7 Settings, Stats, Import, Feedback
