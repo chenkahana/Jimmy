@@ -1,4 +1,4 @@
-RESUME HERE: R1.2 transitions and gestures (draft in ~/tmp/codex/jimmy-craft/hold/R1-inventory.md)
+RESUME HERE: R1.3 VoiceOver paths (draft in hold/R1-inventory.md)
 
 # Progress log
 

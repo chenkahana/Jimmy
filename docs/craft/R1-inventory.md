@@ -29,3 +29,28 @@ answers to, and the VoiceOver path through it. "Seen" points at the capture unde
 | Watch | `JimmyWatch/` | Not reachable ("Open Jimmy on your iPhone"); vertical pages Now Playing / Queue / Recent; Nothing Playing; Queue Is Empty. | code, needs device |
 | Lock Screen / Control Center | `Packages/JimmyKit/.../NowPlayingController.swift`, `RemoteCommandController.swift` | Title, show (artist and album), duration, elapsed, rate, artwork; play, pause, toggle, skip ± (preferred intervals from Settings), change position; next track disabled. | code, needs device |
 | Widgets, Live Activity, Controls, App Intents, Spotlight, Handoff | — | None on `main` (`WidgetData.swift` model exists, no widget extension). | sweep |
+
+## R1.2 Transitions and gestures
+
+| From → to | Mechanism | Seen |
+|---|---|---|
+| Mini player → Now Playing | `fullScreenCover` (slide up). `NowPlayingNamespace` and `NowPlayingGeometryID` are defined but unused. | `sheets/p-open.png` |
+| Now Playing → back | Chevron (`closePlayer`), or drag down past 100 pt (rubber band, no velocity), or system cover swipe. | `sheets/p-dismiss.png` |
+| Now Playing panels | `BottomPanel` slides up with `.snappy(0.3)` (fade under Reduce Motion); dismiss by tapping the dimmed player, dragging down > 80 pt or flicking (`predictedEndTranslation` > 220), VoiceOver escape. | `run-light/p-04..08` |
+| Queue row → Episode detail | Push with `.navigationTransition(.zoom)` from the row. | `run-light/q-07-*` |
+| Library tile → Podcast | Push with zoom from the tile; hero artwork and backdrop color load after the push. | `sheets/l-zoom.png` |
+| Library episode → Episode detail | Push with zoom. | `run-light/l-05-episode.png` |
+| Discover row/result → Podcast | Push with zoom (`matchedTransitionSource`). | `run-light/d-05-*` |
+| Tabs | System `TabView`; tab bar minimizes on scroll down. | all |
+| Sheets (Settings, Stats, Add by URL, Feedback, Suggestions) | System sheets, swipe down to dismiss. Settings and Stats have Done; Suggestions has none. | `run-light/l-09`, `q-10` |
+| Onboarding | `fullScreenCover`, `interactiveDismissDisabled`; Skip → Library; Browse Top Shows → Search. | `run/o-*` |
+
+| Surface | Gestures |
+|---|---|
+| Queue row | Tap → detail; play button; leading swipe (Play Next, Mark Played/Unplayed); trailing swipe (Remove, Download/Cancel/Remove Download); long-press context menu (Play/Pause, Play Next, Move to End, Mark Played, Download, Remove); Edit → drag handles and delete. |
+| Library Episodes card | Tap → detail; play; trailing swipe shows one blue "Played" action (no Remove, no Add to Queue on the leading edge unless wired); context menu Play, Add to Queue, Mark as Played (`Components/EpisodeCard.swift:50-66`). Seen: `run/s-00..02`. |
+| Podcast episode row | Tap; leading/trailing swipe; context menu (`PodcastEpisodeListView.swift:65-74`). Filter and Sort menu: All Episodes / Unplayed / Played, Newest / Oldest First (`run/s-07-filter-sort.png`). |
+| Show tile | Tap → podcast (zoom); context menu with only "Unsubscribe" (plus a DEBUG-only "Unsubscribe from All") and an "Unsubscribe" VoiceOver action (`LibraryView.swift:296-309`). Seen: `run/s-03-show-context.png`. |
+| Now Playing | Scrubber drag (plain `Slider`); transport taps; drag down anywhere on the player; panels drag down. |
+| Discover | Pull nothing (no refresh on charts); swipe to delete recent searches. |
+| Library | Pull to refresh. |
