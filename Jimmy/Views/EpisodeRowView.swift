@@ -202,7 +202,7 @@ struct EpisodeRowView: View {
             // Mark as Played/Unplayed Action
             SwipeActionButton(
                 icon: episodeWithState.playbackState.finished ? "circle" : "checkmark.circle.fill",
-                title: episodeWithState.playbackState.finished ? "Unplayed" : "Played",
+                title: episodeWithState.playbackState.finished ? "Mark Unplayed" : "Mark Played",
                 width: actionWidth,
                 color: .orange
             ) {
