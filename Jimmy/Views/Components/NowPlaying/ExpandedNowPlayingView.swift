@@ -27,6 +27,9 @@ struct ExpandedNowPlayingView: View {
     /// The scrubber's position while it is being dragged.
     @State private var scrubPosition: TimeInterval?
     @State private var scrubsEnded = 0
+    /// Counts skips, so each one bounces its glyph and ticks once.
+    @State private var skipsBack = 0
+    @State private var skipsForward = 0
     private let onClose: (() -> Void)?
 
     private enum Panel { case speed, sleep, chapters }
@@ -221,9 +224,13 @@ struct ExpandedNowPlayingView: View {
         let forward = Int(settings.skipForwardDuration)
         let isPlaying = appModel.playback?.isPlaying ?? false
         return HStack(spacing: JimmyDesign.Spacing.xl) {
-            Button(action: viewModel.skipBackward) {
+            Button {
+                viewModel.skipBackward()
+                skipsBack += 1
+            } label: {
                 Image(systemName: "gobackward.\(back)")
                     .font(.system(size: min(skipGlyph, 40), weight: .semibold))
+                    .symbolEffect(.bounce, value: skipsBack)
                     .frame(width: 56, height: 56)
             }
             .accessibilityLabel("Skip back \(back) seconds")
@@ -238,14 +245,20 @@ struct ExpandedNowPlayingView: View {
             }
             .accessibilityLabel(isPlaying ? "Pause" : "Play")
 
-            Button(action: viewModel.skipForward) {
+            Button {
+                viewModel.skipForward()
+                skipsForward += 1
+            } label: {
                 Image(systemName: "goforward.\(forward)")
                     .font(.system(size: min(skipGlyph, 40), weight: .semibold))
+                    .symbolEffect(.bounce, value: skipsForward)
                     .frame(width: 56, height: 56)
             }
             .accessibilityLabel("Skip forward \(forward) seconds")
         }
         .buttonStyle(BounceButtonStyle())
+        .sensoryFeedback(.impact(weight: .light, intensity: 0.5), trigger: skipsBack)
+        .sensoryFeedback(.impact(weight: .light, intensity: 0.5), trigger: skipsForward)
         .padding(JimmyDesign.Spacing.sm)
         .glassEffect(.regular.interactive(), in: .capsule)
     }
@@ -286,11 +299,15 @@ struct ExpandedNowPlayingView: View {
                     }
                 }
                 .pickerStyle(.segmented)
+                .sensoryFeedback(.selection, trigger: settings.playbackSpeed)
             }
             .padding(JimmyDesign.Spacing.xl)
         case .sleep:
             SleepTimerView()
                 .padding(JimmyDesign.Spacing.xl)
+                .sensoryFeedback(trigger: appModel.playback?.sleepTimerMode) { _, mode in
+                    mode == nil ? nil : .success
+                }
         case .chapters:
             if let episode = viewModel.currentPlayingEpisode {
                 NowPlayingChaptersPanel(episodeID: episode.id, duration: appModel.playback?.duration) { start in

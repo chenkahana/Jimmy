@@ -18,6 +18,7 @@ All notable changes to Jimmy are recorded here. The format follows
 
 ### Changed
 
+- Now Playing's skip buttons bounce and tick when tapped, a speed change ticks, and setting a sleep timer gives a success tap.
 - Now Playing sits on a flat color sampled from the artwork, with transport in one glass capsule. Speed, Sleep and
   Chapters open one bottom panel, and chapters show their lengths. Download moves to the More menu.
 - Tabs are Queue, Library and Search. The mini player sits above the tab bar, which shrinks as you scroll, and
