@@ -18,6 +18,7 @@ All notable changes to Jimmy are recorded here. The format follows
 
 ### Changed
 
+- One name per action: Follow and Unfollow everywhere (Library, Search, Settings' Unfollow All Shows), Send Feedback in both places, and in-progress text ends with a real ellipsis.
 - Now Playing sits on a flat color sampled from the artwork, with transport in one glass capsule. Speed, Sleep and
   Chapters open one bottom panel, and chapters show their lengths. Download moves to the More menu.
 - Tabs are Queue, Library and Search. The mini player sits above the tab bar, which shrinks as you scroll, and

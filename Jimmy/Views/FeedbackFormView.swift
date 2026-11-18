@@ -39,7 +39,7 @@ struct FeedbackFormView: View {
                               isSubmitting)
                 }
             }
-            .navigationTitle("Submit Feedback")
+            .navigationTitle("Send Feedback")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {

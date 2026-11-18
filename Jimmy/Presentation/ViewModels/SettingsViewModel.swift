@@ -63,7 +63,7 @@ class SettingsViewModel: ObservableObject {
     @Published var showingFeedbackForm = false
     
     // Cache Management (KEEP @Published - displayed in UI)
-    @Published var cacheSize: String = "Calculating..."
+    @Published var cacheSize: String = "Calculating…"
     @Published var isCalculatingCache: Bool = false
     @Published var isClearingCache: Bool = false
     
@@ -484,7 +484,7 @@ class SettingsViewModel: ObservableObject {
         
         await MainActor.run {
             self.isJSONImporting = true
-            self.jsonImportMessage = "Reading JSON file..."
+            self.jsonImportMessage = "Reading JSON file…"
         }
         
         defer { 
@@ -505,7 +505,7 @@ class SettingsViewModel: ObservableObject {
             // Read the file data
             let data = try await Self.readFile(fileURL)
             await MainActor.run {
-                self.jsonImportMessage = "Parsing JSON data..."
+                self.jsonImportMessage = "Parsing JSON data…"
             }
 
             let outcome = try await SubscriptionImporter.importSubscriptions(from: data, format: .appleBulkJSON)

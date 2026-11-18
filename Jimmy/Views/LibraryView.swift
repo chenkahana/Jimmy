@@ -85,7 +85,7 @@ struct LibraryView: View {
                 }
             }
             .alert(
-                "Unsubscribe from \(podcastToUnsubscribe?.title ?? "Show")?",
+                "Unfollow \(podcastToUnsubscribe?.title ?? "Show")?",
                 isPresented: Binding(
                     get: { podcastToUnsubscribe != nil },
                     set: { if !$0 { podcastToUnsubscribe = nil } }
@@ -93,7 +93,7 @@ struct LibraryView: View {
                 presenting: podcastToUnsubscribe
             ) { podcast in
                 Button("Cancel", role: .cancel) {}
-                Button("Unsubscribe", role: .destructive) {
+                Button("Unfollow", role: .destructive) {
                     Task { await unsubscribe(podcast.id) }
                 }
             } message: { _ in
@@ -294,17 +294,17 @@ struct LibraryView: View {
                 }
                 .buttonStyle(.plain)
                 .contextMenu {
-                    Button("Unsubscribe", systemImage: "minus.circle", role: .destructive) {
+                    Button("Unfollow", systemImage: "minus.circle", role: .destructive) {
                         podcastToUnsubscribe = podcast
                     }
                     #if DEBUG
-                    Button("Unsubscribe from All", systemImage: "trash", role: .destructive) {
+                    Button("Unfollow All", systemImage: "trash", role: .destructive) {
                         Task { await deleteAllPodcasts() }
                     }
                     #endif
                 }
                 .accessibilityElement(children: .combine)
-                .accessibilityAction(named: "Unsubscribe") {
+                .accessibilityAction(named: "Unfollow") {
                     podcastToUnsubscribe = podcast
                 }
             }
