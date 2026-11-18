@@ -1,6 +1,4 @@
-RESUME HERE: R0.1 build and run in the simulator. Simulator "Jimmy Craft" (iPhone Duo, iOS 27.1, udid
-D3613924-57ED-4C71-8721-BA0DA2666DDA); the iPhone 17 Pro device type has no iOS 27 runtime on this Mac. Build log in
-~/tmp/codex/jimmy-craft/build.log.
+RESUME HERE: R0.2 record flows (queue, library, discover/search, podcast+episode detail, mini↔full player, scrub/speed/sleep, downloads, settings, onboarding) Light+Dark with ~/tmp/codex/jimmy-craft/driver/run.sh; videos to ~/tmp/codex/jimmy-craft/video. Sim 'Jimmy Craft' udid D3613924-57ED-4C71-8721-BA0DA2666DDA, demo DB id in ~/tmp/codex/jimmy-craft/demo-db-id.
 
 # Progress log
 
