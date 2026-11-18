@@ -114,3 +114,13 @@ About.
 
 Passes: one screen, installed apps first, what each source brings over, Skip in the toolbar, Start Fresh with a
 footer, Skip lands on an empty Library with Browse Shows and Add Sample Shows (`run/os-01-after-skip.png`).
+
+## R2.9 CarPlay, Watch, widgets, system integration
+
+| ID | Finding | Evidence | Check | Sev | Reach | Effort | Score | Constraint |
+|---|---|---|---|---|---|---|---|---|
+| J-35 | Jimmy isn't a system citizen yet: **0** App Intents, widgets, Control Center controls, Live Activities, Spotlight items, `NSUserActivity` (Handoff) or `SceneStorage`. "Play my queue" from Siri or a Lock Screen widget isn't possible. | `PLAN.md` starting-evidence table (sweep on `main`) | 10 | S2 | daily | L | 2.25 | P (Handoff and Spotlight stay on device; needs Chen for Handoff) |
+| J-36 | State restoration covers the player but not the place: after the app is killed on Planet Money's episode list in Library, relaunch opens the Queue tab at the top. The loaded episode and position do come back. | `run/r-00-before-kill.png`, `run/r-01-after-relaunch.png` | 10 | S3 | daily | M | 3 | — |
+| J-37 | Lock Screen / Control Center: no chapter info in Now Playing info, no playback-rate command, next-track disabled (so AirPods "next" and CarPlay's next do nothing). | `Packages/JimmyKit/Sources/JimmyKit/Playback/NowPlayingController.swift:21-32`, `RemoteCommandController.swift:45`; device steps in R0.3 | 3 | S3 | daily | M | 3 | Q (what "next" means in a queue), needs Chen device |
+| J-38 | CarPlay lists are text only (no artwork, no progress) and Now Playing has no rate button. | `Jimmy/CarPlay/CarPlayManager.swift:60-115` | 3 | S3 | daily | M | 3 | Needs Chen device |
+| J-39 | Watch: skip glyphs hard-coded to 15 s whatever the phone's Settings say; queue rows use `onTapGesture` (VoiceOver doesn't call them buttons); "Nothing Playing" vs the phone's "Nothing Is Playing"; no artwork. | `JimmyWatch/Views/NowPlayingView.swift:24-36`, `QueueView.swift:14-18` | 3, 9, 12 | S3 | occasional | S | 4 | Needs Chen device |
