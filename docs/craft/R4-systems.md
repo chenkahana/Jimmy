@@ -92,3 +92,28 @@ All through `.sensoryFeedback(_:trigger:)`; retire `Motion.lightHaptic()` etc. a
 | Mini player | `.subheadline.semibold` title; at AX sizes hide skip and keep play, let the title take two lines | (J-05) |
 
 Rule: no `.system(size:)` outside glyphs that have a `@ScaledMetric` and a cap.
+
+## R4.5 Copy rules and the English String Catalog
+
+English only (Chen, 2026-11-18). The catalog exists for review, plurals and consistency, not for translation.
+
+1. **One name per concept.** Follow / Following / Unfollow (not Subscribe); Queue (not Up Next); Mark Played /
+   Mark Unplayed everywhere (not "Played", "Mark as Played"); Send Feedback; Back Up Library / Restore Library /
+   Export Shows (OPML) / Import Shows to replace the four backup items; Listening Stats out of "Developer".
+   (J-13, J-14, J-32)
+2. **Title case** for buttons, menu items, section titles and navigation titles; **sentence case** for
+   descriptions, footers and alert messages (already the habit; the tip "Jump back into now playing" is a title and
+   should be title case).
+3. **Real ellipsis** "…" for in-progress text and for items that open a further step ("Choose File…"); never "...".
+   (J-32)
+4. **One formatter per kind**, through `FormatStyle`: durations via `Duration.formatted(.units(allowed: [.hours,
+   .minutes], width: .abbreviated))` with a single rounding rule (round up while listening: "1 min left", never
+   "0 min"); dates via one `EpisodeDate.format` with relative ("Today", "Yesterday", "3d") for the last week and
+   "Nov 17" otherwise, everywhere. (J-20, J-21)
+5. **Plurals and agreement** through the catalog (`^[\(count) episode](inflect: true)` already appears once in
+   `LibraryView.swift`; the queue footer builds "1 episode/episodes" by hand in `QueueView.swift:299`).
+6. **Errors** say what happened and the next step in plain words, and don't blame the connection unless it's down:
+   "Couldn't load Top Shows. Try Again." (J-16)
+7. **Adoption:** add `Localizable.xcstrings` with "Use Compiler to Extract Strings" on; SwiftUI `Text("…")` and
+   `Button("…")` literals flow in automatically; convert string building in view models to `String(localized:)`.
+   No translation targets.
