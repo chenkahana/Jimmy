@@ -54,3 +54,15 @@ Boaz and Edison. **Needs Chen** = changes a product constraint, a written design
 | 42 | J-34 | Onboarding button floats over the last row | 5 | S4 | rare | S | 1 | |
 
 **Top 10** (by score, ties broken by reach): J-01, J-22, J-06, J-23, J-30, J-26, J-02, J-07, J-11, J-13.
+
+## R5.2 Workstreams
+
+| Workstream | Findings | Systems (R4) | Why this order |
+|---|---|---|---|
+| **W1 Touch** | J-01, J-22, J-06, J-30, J-11, J-05 | R4.3 `.hitTarget()` | Highest scores, all effort S, no design debate. |
+| **W2 Player feel** | J-23, J-26, J-28, J-29, J-31, J-25, J-27, J-03, J-24 | R4.1 gesture + emphasized, R4.2 | The surface people touch most; quick wins first, morph (L) last. |
+| **W3 Launch and states** | J-02, J-16, J-10, J-15, J-09, J-04, J-41, J-42 | R4.6 state kit | Every session starts here; the empty flash is the first impression. |
+| **W4 Words and type** | J-13, J-20, J-21, J-14, J-32, J-33, J-40, J-17 | R4.4, R4.5 String Catalog | Mostly small; the catalog PR makes the rest reviewable. |
+| **W5 Artwork and geometry** | J-18, J-19, J-34, J-07 | R4.1 reveal, R4.3 radius | Needs one device check (J-19) and Chen's call on J-07. |
+| **W6 Library and queue** | J-12, J-08, J-36 | R4.6 | Downloads view is a scope decision. |
+| **W7 System citizen** | J-37, J-38, J-39, J-35 | — | Needs Chen's devices first; App Intents are the cheapest entry. |

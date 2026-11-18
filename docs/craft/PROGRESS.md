@@ -1,4 +1,4 @@
-RESUME HERE: R5.2 workstreams (draft in hold/R5-backlog.md)
+RESUME HERE: R5.3 PR slices + questions for Chen
 
 # Progress log
 
