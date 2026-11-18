@@ -41,3 +41,4 @@ Append-only. One line per completed step: date, step, what was done, commit.
 | 2026-11-18 | R4.6 | Copy rules and English String Catalog | 9e02bc9 |
 | 2026-11-18 | R5.1 | All 42 findings scored and ordered; top 10 listed | 7a44872 |
 | 2026-11-18 | R5.2 | Seven workstreams with systems and order | a6f3952 |
+| 2026-11-18 | R5.3 | 31 one-visible-change PR slices, needs-Chen marks, questions with defaults | 41ac2f9 |
