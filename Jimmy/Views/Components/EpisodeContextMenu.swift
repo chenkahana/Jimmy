@@ -47,7 +47,7 @@ struct EpisodeContextMenu: View {
 
         Button(action: onMarkAsPlayed) {
             Label(
-                isPlayed ? "Mark as Unplayed" : "Mark as Played",
+                isPlayed ? "Mark Unplayed" : "Mark Played",
                 systemImage: isPlayed ? "circle" : "checkmark.circle.fill"
             )
         }

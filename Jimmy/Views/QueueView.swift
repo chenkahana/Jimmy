@@ -9,6 +9,8 @@ struct QueueView: View {
     @Environment(AppModel.self) private var appModel
     @State private var editMode: EditMode = .inactive
     @State private var episodes: [Episode] = []
+    /// False until the store's first answer, so launch never flashes "Queue Is Empty" over a full queue.
+    @State private var hasLoaded = false
     @Namespace private var queueNamespace
     @State private var selectedEpisodeDestination: QueueNavigationDestination?
     @State private var showingSuggestions = false
@@ -43,11 +45,15 @@ struct QueueView: View {
                 }
             }
             .task {
-                guard let stream = appModel.observeQueueItems() else { return }
+                guard let stream = appModel.observeQueueItems() else {
+                    hasLoaded = true
+                    return
+                }
                 do {
                     // The observation already returns queue order, so it is the list's only source.
                     for try await items in stream {
                         episodes = items.map { $0.asLegacyEpisode() }
+                        hasLoaded = true
                     }
                 } catch {
                     // The observation stopped (e.g. the store closed); the queue just stops updating.
@@ -64,7 +70,9 @@ struct QueueView: View {
 
     @ViewBuilder
     private var queueContent: some View {
-        if episodes.isEmpty {
+        if !hasLoaded {
+            Color.clear
+        } else if episodes.isEmpty {
             EmptyStateView(
                 icon: "list.bullet",
                 title: "Queue Is Empty",
