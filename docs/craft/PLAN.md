@@ -15,7 +15,7 @@ approves the backlog. Resume point and log: [`PROGRESS.md`](PROGRESS.md).
 - [x] R0.1 Build and run in the simulator
 - [x] R0.2 Recordings per flow: launch, queue, library, discover/search, podcast + episode detail, mini ↔ full
       player, scrub/speed/sleep, downloads, settings, onboarding (Light and Dark)
-- [ ] R0.3 System checks: Lock Screen / Control Center (Now Playing), CarPlay, Watch
+- [x] R0.3 System checks: Lock Screen / Control Center (Now Playing), CarPlay, Watch
 - [ ] R0.4 Instruments traces: launch, list scroll, player open/close, scrubbing
 - [ ] R0.5 Write `R0-baseline.md`
 

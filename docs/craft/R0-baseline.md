@@ -75,3 +75,45 @@ Frame strips: `sheets/p-open.png` (mini → full player), `sheets/p-dismiss.png`
 - **Show notes** render as one run-on block: paragraphs and link text from the feed HTML are glued together
   ("…climate changeInside the insurance industry's destruction labEpisode 797…", "InstagramTikTokYouTubeFacebook").
 
+## R0.3 System surfaces: Lock Screen, Control Center, CarPlay, Watch
+
+None of these can be exercised from this Mac without hardware or GUI-only simulator controls (`simctl` can't lock
+the device, open Control Center or attach the CarPlay window, and no watchOS runtime is installed). What the code
+publishes is below, with the exact device steps for Chen. Each "expect" line is what an Apple-quality podcast app
+does; anything that differs becomes an R2 finding once seen on the device.
+
+**What the code publishes** (`Packages/JimmyKit/Sources/JimmyKit/Playback/`):
+
+- `NowPlayingController.swift:21-32`: title, show as both artist and album, duration, elapsed time, rate,
+  artwork. No chapter number/count, no `MPNowPlayingInfoPropertyMediaType`, no current chapter title.
+- `RemoteCommandController.swift:16-75`: play, pause, toggle, skip forward/back with `preferredIntervals` from
+  Settings, change playback position. `nextTrackCommand` is explicitly disabled (line 45); no
+  `changePlaybackRateCommand`, no bookmark/like command.
+- Interruptions and route changes: `AudioSessionLogic.swift` (pure decisions, unit tested) and
+  `CurrentPlayViewModel.swift:65-97` (route change observer).
+- CarPlay (`Jimmy/CarPlay/CarPlayManager.swift`): `CPTabBarTemplate` with Queue, Library (→ show list) and
+  `CPNowPlayingTemplate.shared`. List items carry title and detail text only (no artwork image, no progress); no
+  now-playing buttons (rate, chapters).
+- Watch (`JimmyWatch/`): vertical pages Now Playing (show, title, progress bar, ±15 and play/pause), Queue (tap to
+  play, swipe to remove), Recent; "Open Jimmy on your iPhone" when the phone hasn't been reached yet.
+
+**Needs Chen device: exact steps** (iPhone with Jimmy from `main`, AirPods, a CarPlay head unit or Xcode's CarPlay
+simulator window, paired Apple Watch). Record each with the screen recorder; 20 minutes in total.
+
+1. Lock Screen: play an episode with chapters at 1.5×, lock. Expect artwork, episode title, show, elapsed advancing
+   at 1.5× rate, chapter title if any, skip buttons showing your Settings intervals. Scrub the Lock Screen bar;
+   expect the app's position to match after unlocking.
+2. Control Center: open the Now Playing tile, skip back, skip forward, pause. Expect the tile to update within one
+   second and the AirPlay route button to show the current route.
+3. Dynamic Island (iPhone with one): expect the compact player with artwork and waveform while playing.
+4. AirPods: remove one bud (expect pause), put it back (expect resume only if your AirPods setting says so),
+   double-tap / press (expect skip forward or play/pause per AirPods settings; next-track is disabled in Jimmy, so a
+   "next track" gesture should skip forward rather than do nothing; note what happens).
+5. Interruptions: during playback, trigger Siri ("What time is it?"), then a phone call (decline). Expect playback
+   to pause and resume on its own after each.
+6. Route change: play on Bluetooth speaker/car, disconnect it. Expect pause, no blast from the phone speaker.
+7. CarPlay: open Jimmy. Time from tap to a populated Queue list; are there artwork thumbnails; does Now Playing
+   show rate and skip buttons; does choosing an episode from Library start it without touching the phone.
+8. Watch: open Jimmy on the Watch with the phone app closed, then open. Expect Now Playing to fill within two
+   seconds; check whether the skip glyphs match your phone's Skip settings (they're hard-coded to 15) and whether
+   the Digital Crown changes volume.

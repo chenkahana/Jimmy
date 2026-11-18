@@ -1,4 +1,4 @@
-RESUME HERE: R0.3 system checks (Lock Screen/Control Center/CarPlay/Watch): code evidence + needs-Chen-device steps
+RESUME HERE: R0.4 Instruments traces: App Launch, scroll, player open/close, scrub (driver Perf/testPerfLoop + xctrace attach)
 
 # Progress log
 
