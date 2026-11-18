@@ -36,7 +36,7 @@ private struct DiscoverSubscribeButton: View {
         }
         .buttonStyle(.plain)
         .disabled(isSubscribed || isProcessing)
-        .accessibilityLabel(isSubscribed ? "Subscribed to \(title)" : "Subscribe to \(title)")
+        .accessibilityLabel(isSubscribed ? "Following \(title)" : "Follow \(title)")
     }
 }
 
@@ -141,7 +141,7 @@ struct DiscoverTopShowRow: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(
-            "Number \(index): \(result.title) by \(result.author). \(isSubscribed ? "Subscribed" : "Not subscribed")."
+            "Number \(index): \(result.title) by \(result.author). \(isSubscribed ? "Following" : "Not following")."
         )
     }
 }
@@ -171,7 +171,7 @@ struct DiscoverSearchResultRow: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(
-            "\(result.title) by \(result.author), \(result.genre). \(isSubscribed ? "Subscribed" : "Not subscribed")."
+            "\(result.title) by \(result.author), \(result.genre). \(isSubscribed ? "Following" : "Not following")."
         )
     }
 }

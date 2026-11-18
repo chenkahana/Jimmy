@@ -57,7 +57,7 @@ struct DiscoverView: View {
                 await viewModel.loadDataIfNeeded()
             }
             // The checkmark confirms a subscribe; only a failure interrupts.
-            .alert("Couldn’t Subscribe", isPresented: Binding(
+            .alert("Couldn’t Follow", isPresented: Binding(
                 get: { viewModel.subscribeFailure != nil },
                 set: { if !$0 { viewModel.subscribeFailure = nil } }
             )) {
@@ -155,7 +155,7 @@ struct DiscoverView: View {
                         .buttonStyle(.plain)
                         .accessibilityActions {
                             if !isSubscribed {
-                                Button("Subscribe") { Task { await viewModel.subscribe(to: result) } }
+                                Button("Follow") { Task { await viewModel.subscribe(to: result) } }
                             }
                         }
                     }
@@ -264,7 +264,7 @@ struct DiscoverView: View {
                         .buttonStyle(.plain)
                         .accessibilityActions {
                             if !isSubscribed {
-                                Button("Subscribe") { Task { await viewModel.subscribe(to: result) } }
+                                Button("Follow") { Task { await viewModel.subscribe(to: result) } }
                             }
                         }
                     }

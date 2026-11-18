@@ -48,7 +48,7 @@ struct SuggestionsView: View {
             ContentUnavailableView {
                 Label("Nothing to Suggest Yet", systemImage: "sparkles")
             } description: {
-                Text("Subscribe to a few shows and start listening — suggestions build up from there.")
+                Text("Follow a few shows and start listening — suggestions build up from there.")
             }
         }
     }

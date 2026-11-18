@@ -26,6 +26,7 @@ All notable changes to Jimmy are recorded here. The format follows
 
 ### Changed
 
+- One name per action: Follow and Unfollow everywhere (Library, Search, Settings' Unfollow All Shows), Send Feedback in both places, and in-progress text ends with a real ellipsis.
 - Now Playing's skip buttons bounce and tick when tapped, a speed change ticks, and setting a sleep timer gives a success tap.
 - Marking an episode played is called Mark Played (and Mark Unplayed) in every swipe and menu, and Add to Queue uses one icon everywhere.
 - Now Playing sits on a flat color sampled from the artwork, with transport in one glass capsule. Speed, Sleep and

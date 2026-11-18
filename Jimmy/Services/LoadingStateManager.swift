@@ -98,7 +98,7 @@ class LoadingStateManager: ObservableObject {
     // MARK: - Convenience Methods for Common Operations
     
     func setEpisodeLoading(_ episodeID: UUID) {
-        setLoading("episode_\(episodeID)", message: "Loading episode...")
+        setLoading("episode_\(episodeID)", message: "Loading episode…")
     }
     
     func setEpisodeLoaded(_ episodeID: UUID) {
@@ -118,7 +118,7 @@ class LoadingStateManager: ObservableObject {
     }
     
     func setPodcastLoading(_ podcastID: UUID) {
-        setLoading("podcast_\(podcastID)", message: "Loading podcast...")
+        setLoading("podcast_\(podcastID)", message: "Loading podcast…")
     }
     
     func setPodcastLoaded(_ podcastID: UUID) {
@@ -138,7 +138,7 @@ class LoadingStateManager: ObservableObject {
     }
     
     func setSearchLoading() {
-        setLoading("search", message: "Searching...")
+        setLoading("search", message: "Searching…")
     }
     
     func setSearchLoaded() {
@@ -158,7 +158,7 @@ class LoadingStateManager: ObservableObject {
     }
     
     func setDiscoverLoading() {
-        setLoading("discover", message: "Loading recommendations...")
+        setLoading("discover", message: "Loading recommendations…")
     }
     
     func setDiscoverLoaded() {
@@ -178,7 +178,7 @@ class LoadingStateManager: ObservableObject {
     }
     
     func setLibraryLoading() {
-        setLoading("library", message: "Loading library...")
+        setLoading("library", message: "Loading library…")
     }
     
     func setLibraryLoaded() {
@@ -284,7 +284,7 @@ struct LoadingStateView<Content: View>: View {
                     
                     if canRetry {
                         Button("Retry") {
-                            manager.setLoading(key, message: "Retrying...")
+                            manager.setLoading(key, message: "Retrying…")
                             // The retry action should be handled by the parent view
                         }
                         .buttonStyle(.bordered)

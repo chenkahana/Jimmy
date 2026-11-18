@@ -112,7 +112,7 @@ struct SettingsView: View {
             alertMessage()
         }
         .alert(
-            "Clear All Subscriptions?",
+            "Unfollow All Shows?",
             isPresented: $viewModel.showClearSubscriptionsConfirmation
         ) {
             Button("Cancel", role: .cancel) { }
@@ -122,7 +122,7 @@ struct SettingsView: View {
                 }
             }
         } message: {
-            Text("This removes all podcast subscriptions and clears your queue. It can't be undone.")
+            Text("This unfollows every show and clears your queue. It can't be undone.")
         }
     }
 
@@ -211,14 +211,14 @@ struct SettingsView: View {
                 showingAssistant = true
             }
         } footer: {
-            Text("Ask Jimmy to play, queue, search, subscribe or set a sleep timer.")
+            Text("Ask Jimmy to play, queue, search, follow or set a sleep timer.")
         }
     }
 
     private var aboutSection: some View {
         Section("About") {
             LabeledContent("Version", value: Self.appVersion)
-            Button("Submit Feedback") {
+            Button("Send Feedback") {
                 viewModel.showingFeedbackForm = true
             }
         }
@@ -236,7 +236,7 @@ struct SettingsView: View {
 
     private var destructiveSection: some View {
         Section {
-            Button("Clear All Subscriptions", role: .destructive) {
+            Button("Unfollow All Shows", role: .destructive) {
                 viewModel.showClearSubscriptionsConfirmation = true
             }
             #if DEBUG
@@ -250,7 +250,7 @@ struct SettingsView: View {
             }
             #endif
         } footer: {
-            Text("Clearing subscriptions removes every show and empties your queue.")
+            Text("Unfollowing all shows removes every show and empties your queue.")
         }
     }
 
@@ -291,7 +291,7 @@ struct SettingsView: View {
         case .jsonImport:
             return "Import"
         case .clearSubscriptions:
-            return "Clear All Subscriptions?"
+            return "Unfollow All Shows?"
         case .none:
             return ""
         }
@@ -335,7 +335,7 @@ struct SettingsView: View {
              .jsonImport(let message):
             return Text(message)
         case .clearSubscriptions:
-            return Text("This removes all podcast subscriptions and clears your queue. It can't be undone.")
+            return Text("This unfollows every show and clears your queue. It can't be undone.")
         case .none:
             return Text("")
         }
@@ -366,7 +366,7 @@ struct ManualImportView: View {
                         .onSubmit(startImport)
                         .disabled(isImporting)
                 } footer: {
-                    Text("Paste a podcast's RSS feed address to subscribe.")
+                    Text("Paste a podcast's RSS feed address to follow it.")
                 }
             }
             .navigationTitle("Add by URL")
@@ -430,7 +430,7 @@ struct ManualImportView: View {
             }
             let episodeCount = (try? await AppModel.current?.readyStore?.episodes(podcastID: podcast.id).count) ?? 0
             logger.info("Manual Import: Successfully imported \(podcast.title) with \(episodeCount) episodes")
-            finish(success: true, message: "Subscribed to \(podcast.title), with \(episodeCount) episodes.")
+            finish(success: true, message: "Following \(podcast.title), with \(episodeCount) episodes.")
         } catch {
             logger.error("Manual Import: Failed to import podcast: \(error.localizedDescription)")
             finish(success: false, message: error.localizedDescription)
