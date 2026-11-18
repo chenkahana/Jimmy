@@ -8,6 +8,7 @@ All notable changes to Jimmy are recorded here. The format follows
 
 ### Fixed
 
+- Show notes keep their paragraphs, line breaks and list items, and linked text links to its page instead of running together as plain text.
 - The mini player's Play and Skip Forward buttons take taps across a full 44-point target instead of just the glyph.
 - Download buttons on Now Playing, episode detail, and episode rows now download the episode.
 
