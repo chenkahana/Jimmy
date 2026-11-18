@@ -37,3 +37,4 @@ Append-only. One line per completed step: date, step, what was done, commit.
 | 2026-11-18 | R4.2 | Motion tokens (quick, standard, emphasized, gesture, reveal) and rules | d9b8fe5 |
 | 2026-11-18 | R4.3 | Haptic map | ee2edf1 |
 | 2026-11-18 | R4.4 | Layout tokens: spacing, artwork radius, concentric shapes, 44 pt hitTarget | 5d184d8 |
+| 2026-11-18 | R4.5 | Type ramp | a5e83e3 |
