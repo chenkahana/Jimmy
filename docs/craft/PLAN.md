@@ -23,7 +23,7 @@ approves the backlog. Resume point and log: [`PROGRESS.md`](PROGRESS.md).
 - [x] R1.1 Surfaces × states
 - [x] R1.2 Entry/exit transitions and gestures
 - [x] R1.3 VoiceOver paths
-- [ ] R1.4 Write `R1-inventory.md`
+- [x] R1.4 Write `R1-inventory.md`
 
 ### R2 Audit → [`R2-findings.md`](R2-findings.md)
 - [ ] R2.1 Shell: tab bar, mini player, navigation

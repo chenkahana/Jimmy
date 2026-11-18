@@ -78,3 +78,8 @@ From the accessibility trees (`*.ax.txt`), in reading order:
 - No custom rotors (headings exist on `JimmySectionHeader` and the Now Playing panel titles). No announcements:
   `AccessibilityService.announce(_:)` (`Services/AccessibilityService.swift:30`) exists but nothing calls it, so
   downloads finishing or failing, a sleep timer ending and errors are silent.
+
+## R1.4 Coverage gaps in this inventory
+
+Not reachable in the simulator and listed as "needs Chen device" in R0.3: CarPlay, Watch, Lock Screen / Control
+Center / Dynamic Island, AirPods gestures and route changes, interruptions (calls, Siri), and 120 Hz smoothness.

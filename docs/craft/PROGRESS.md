@@ -1,4 +1,4 @@
-RESUME HERE: R1.4 write coverage gaps and finish R1-inventory.md
+RESUME HERE: R2.1 audit Shell (tab bar, mini player, launch) into R2-findings.md
 
 # Progress log
 
