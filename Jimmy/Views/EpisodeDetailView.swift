@@ -102,19 +102,19 @@ struct EpisodeDetailView: View {
         }
     }
 
-    /// "Nov 3, 2026 · 38 min left".
+    /// "3d · 38 min left".
     private var details: String {
         var parts: [String] = []
         if let date = episode.publishedDate {
-            parts.append(date.formatted(date: .abbreviated, time: .omitted))
+            parts.append(QueueTimeFormat.age(of: date))
         }
         let position = episodeWithState.playbackState.position
         if episodeWithState.playbackState.finished {
             parts.append("Played")
         } else if let duration = episode.duration, duration > 0 {
             parts.append(position > 0
-                ? "\(EpisodeCard.durationText(max(duration - position, 0))) left"
-                : EpisodeCard.durationText(duration))
+                ? "\(QueueTimeFormat.duration(max(duration - position, 0))) left"
+                : QueueTimeFormat.duration(duration))
         }
         return parts.joined(separator: " · ")
     }
@@ -281,23 +281,57 @@ struct EpisodeDetailView: View {
 }
 
 extension EpisodeDetailView {
-    /// The description as plain text, with web links and "12:34" / "1:02:03" timestamps as links. A
-    /// timestamp link seeks this episode.
+    /// The description as text that keeps its paragraphs, list items and links, with bare web links
+    /// and "12:34" / "1:02:03" timestamps as links too. A timestamp link seeks this episode.
     static func showNotes(from description: String?) -> AttributedString? {
         guard let description, !description.isEmpty else { return nil }
-        let text = description.cleanedDescription
-        var notes = AttributedString(text)
 
+        // Block tags become line breaks; each <a> becomes its text between two private-use markers,
+        // so its target can be put back after the rest of the HTML is stripped.
+        var links: [URL?] = []
+        let html = description
+            .replacing(#/(?i)<br\s*/?>/#, with: "\n")
+            .replacing(#/(?i)</(p|div|h[1-6]|ul|ol|blockquote)>/#, with: "\n\n")
+            .replacing(#/(?i)<li[^>]*>/#, with: "\n• ")
+            .replacing(#/(?is)<a\s[^>]*?href\s*=\s*["']([^"']*)["'][^>]*>(.*?)</a>/#) { match in
+                links.append(URL(string: String(match.1).cleanedDescription))
+                return "\u{E000}\(match.2)\u{E001}"
+            }
+        let text = html
+            .split(separator: "\n", omittingEmptySubsequences: false)
+            .map { String($0).cleanedDescription }
+            .joined(separator: "\n")
+            .replacing(#/\n{3,}/#, with: "\n\n")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        var notes = AttributedString()
+        for (index, chunk) in text.split(separator: "\u{E000}", omittingEmptySubsequences: false).enumerated() {
+            guard index > 0 else {
+                notes += AttributedString(String(chunk))
+                continue
+            }
+            let parts = chunk.split(separator: "\u{E001}", maxSplits: 1, omittingEmptySubsequences: false)
+            var link = AttributedString(String(parts[0]))
+            if links.indices.contains(index - 1), let url = links[index - 1],
+               ["http", "https", "mailto"].contains(url.scheme?.lowercased()) {
+                link.link = url
+            }
+            notes += link
+            if parts.count > 1 { notes += AttributedString(String(parts[1])) }
+        }
+
+        let plain = String(notes.characters)
         if let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue) {
-            for match in detector.matches(in: text, range: NSRange(text.startIndex..., in: text)) {
+            for match in detector.matches(in: plain, range: NSRange(plain.startIndex..., in: plain)) {
                 guard let url = match.url,
-                      let range = Range(match.range, in: text),
-                      let linkRange = Range(range, in: notes) else { continue }
+                      let range = Range(match.range, in: plain),
+                      let linkRange = Range(range, in: notes),
+                      notes[linkRange].link == nil else { continue }
                 notes[linkRange].link = url
             }
         }
 
-        for match in text.matches(of: #/\b(?:(\d{1,2}):)?(\d{1,2}):(\d{2})\b/#) {
+        for match in plain.matches(of: #/\b(?:(\d{1,2}):)?(\d{1,2}):(\d{2})\b/#) {
             let hours = match.1.flatMap { Int($0) } ?? 0
             guard let minutes = Int(match.2), let seconds = Int(match.3), minutes < 60, seconds < 60,
                   let linkRange = Range(match.range, in: notes),
