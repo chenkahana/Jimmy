@@ -124,3 +124,21 @@ footer, Skip lands on an empty Library with Browse Shows and Add Sample Shows (`
 | J-37 | Lock Screen / Control Center: no chapter info in Now Playing info, no playback-rate command, next-track disabled (so AirPods "next" and CarPlay's next do nothing). | `Packages/JimmyKit/Sources/JimmyKit/Playback/NowPlayingController.swift:21-32`, `RemoteCommandController.swift:45`; device steps in R0.3 | 3 | S3 | daily | M | 3 | Q (what "next" means in a queue), needs Chen device |
 | J-38 | CarPlay lists are text only (no artwork, no progress) and Now Playing has no rate button. | `Jimmy/CarPlay/CarPlayManager.swift:60-115` | 3 | S3 | daily | M | 3 | Needs Chen device |
 | J-39 | Watch: skip glyphs hard-coded to 15 s whatever the phone's Settings say; queue rows use `onTapGesture` (VoiceOver doesn't call them buttons); "Nothing Playing" vs the phone's "Nothing Is Playing"; no artwork. | `JimmyWatch/Views/NowPlayingView.swift:24-36`, `QueueView.swift:14-18` | 3, 9, 12 | S3 | occasional | S | 4 | Needs Chen device |
+
+## R2.10 Accessibility pass
+
+Dynamic Type at AX5 (`-UIPreferredContentSizeCategoryName UICTContentSizeCategoryAccessibilityXXXL`,
+`run/ax5-*`), VoiceOver order from the accessibility trees, Reduce Motion and Reduce Transparency from code.
+Increase Contrast via `simctl ui increase_contrast` wasn't captured separately; Jimmy also has its own "High
+Contrast Mode" toggle (`HighContrastModifier.swift`).
+
+| ID | Finding | Evidence | Check | Sev | Reach | Effort | Score | Constraint |
+|---|---|---|---|---|---|---|---|---|
+| J-40 | 22 fixed `.font(.system(size:))` sizes that don't scale, including status badges at 10 pt and the error banner at 12–16 pt. | `sweeps/fixedfont.txt`; `Components/StatusBadge.swift:21,38,54`; `Components/ErrorBannerView.swift:29-112` | 6 | S2 | occasional | S | 6 | — |
+| J-41 | No VoiceOver announcements: `AccessibilityService.announce(_:)` exists but nothing calls it, so downloads finishing or failing, the sleep timer ending and errors are silent. | `Jimmy/Services/AccessibilityService.swift:30`; `rg announce` | 12 | S2 | occasional | S | 6 | — |
+| J-42 | The loading shimmer (`LiquidSkeletonView`) runs `repeatForever` animations without checking Reduce Motion. | `Views/Components/LiquidSkeletonView.swift:277-282` | 1, 12 | S3 | occasional | S | 4 | — |
+
+Passes: queue rows and Library reflow at AX5; Now Playing glyphs use `@ScaledMetric` with caps; the scrubber is
+adjustable; panels are modal with escape; Reduce Motion handled for the waveform and panels; system glass handles
+Reduce Transparency on its own (no custom blur to replace). See J-05 (mini player at AX5), J-11 and J-30
+(VoiceOver).

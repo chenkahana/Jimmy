@@ -35,7 +35,7 @@ approves the backlog. Resume point and log: [`PROGRESS.md`](PROGRESS.md).
 - [x] R2.7 Settings, Stats, Import, Feedback
 - [x] R2.8 Onboarding
 - [x] R2.9 CarPlay, Watch, widgets, system integration
-- [ ] R2.10 Accessibility pass: Dynamic Type AX5, VoiceOver, Reduce Motion, Reduce Transparency, Increase Contrast
+- [x] R2.10 Accessibility pass: Dynamic Type AX5, VoiceOver, Reduce Motion, Reduce Transparency, Increase Contrast
 - [ ] R2.11 Mark coverage by the existing polish docs
 - [ ] R2.12 Craft score table (surface × check, 0–3)
 
