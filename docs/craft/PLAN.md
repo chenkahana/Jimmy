@@ -32,7 +32,7 @@ approves the backlog. Resume point and log: [`PROGRESS.md`](PROGRESS.md).
 - [x] R2.4 Discover and Search
 - [x] R2.5 Podcast and episode detail
 - [x] R2.6 Now Playing (full player, scrub, speed, sleep, chapters)
-- [ ] R2.7 Settings, Stats, Import, Feedback
+- [x] R2.7 Settings, Stats, Import, Feedback
 - [ ] R2.8 Onboarding
 - [ ] R2.9 CarPlay, Watch, widgets, system integration
 - [ ] R2.10 Accessibility pass: Dynamic Type AX5, VoiceOver, Reduce Motion, Reduce Transparency, Increase Contrast

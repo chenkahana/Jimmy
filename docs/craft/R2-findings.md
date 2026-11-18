@@ -95,3 +95,13 @@ Passes: artwork-color backdrop that drops to the system background when it can't
 full strength on color, Play/Pause `contentTransition(.symbolEffect(.replace))`, 72 pt play button, glass
 transport capsule, adjustable scrubber for VoiceOver ("12:00 of 37:01"), AirPlay route picker, shared bottom panel
 with tap-out, drag-to-dismiss and VoiceOver escape, Reduce Motion fade for panels.
+
+## R2.7 Settings, Stats, Import, Feedback
+
+| ID | Finding | Evidence | Check | Sev | Reach | Effort | Score | Constraint |
+|---|---|---|---|---|---|---|---|---|
+| J-32 | Names drift: "Send Feedback" (menu) vs "Submit Feedback" (Settings); "Follow/Following" vs "Clear All Subscriptions", "Couldn't Subscribe", "Subscribe to a few shows"; four overlapping backup/export items (Export Full Backup, Import Backup, Export App Data, Import JSON File); "Listening Stats" under a "Developer" section and in the More menu; three-dot "..." in progress strings ("Calculating...", "Reading JSON file..."). | `run-light/l-08-more-menu.png`, `l-09..12-settings*.png`; `AppShell.swift:76`; `DiscoverView.swift:61`; `Suggestions/SuggestionsView.swift:51`; `Presentation/ViewModels/SettingsViewModel.swift:66, 487, 508` | 9 | S3 | occasional | S | 4 | — |
+| J-33 | Feedback form closes itself on a 1.5 s timer after sending. | `Jimmy/Views/FeedbackFormView.swift:61` | 11 | S4 | rare | S | 1 | — |
+
+Passes: `Form` with section footers explaining settings, destructive actions last and red, version shown once in
+About.
