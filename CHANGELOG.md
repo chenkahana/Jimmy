@@ -8,6 +8,7 @@ All notable changes to Jimmy are recorded here. The format follows
 
 ### Fixed
 
+- Artwork that's already loaded shows at once when a screen opens, so a podcast page no longer starts with a blank hero that fades in.
 - The mini player's Play and Skip Forward buttons take taps across a full 44-point target instead of just the glyph.
 - Download buttons on Now Playing, episode detail, and episode rows now download the episode.
 
