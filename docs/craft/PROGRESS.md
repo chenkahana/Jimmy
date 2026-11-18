@@ -16,3 +16,4 @@ Append-only. One line per completed step: date, step, what was done, commit.
 | 2026-11-18 | R1.2 | Transitions (10) and per-surface gestures, verified with Swipes flow captures | 9ad6f40 |
 | 2026-11-18 | R1.3 | VoiceOver reading order for Queue, Now Playing, Podcast, Discover, Settings from AX trees; announce() unused | 5816aeb |
 | 2026-11-18 | R1.4 | R1-inventory.md complete with coverage gaps | 6310364 |
+| 2026-11-18 | R2.1 |  | e8e0cbf |
