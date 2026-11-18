@@ -1,4 +1,4 @@
-RESUME HERE: R4.6 next system (draft in hold/R4-systems.md)
+RESUME HERE: R5.1 score every finding in R5-backlog.md
 
 # Progress log
 

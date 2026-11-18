@@ -117,3 +117,33 @@ English only (Chen, 2026-11-18). The catalog exists for review, plurals and cons
 7. **Adoption:** add `Localizable.xcstrings` with "Use Compiler to Extract Strings" on; SwiftUI `Text("…")` and
    `Button("…")` literals flow in automatically; convert string building in view models to `String(localized:)`.
    No translation targets.
+
+## R4.6 State kit
+
+**Today:** three empty-state components (`EmptyStateView`, `ContentUnavailableView` direct, `UnifiedEmptyStateView`),
+18 bare `ProgressView()` spinners, a skeleton system (`LiquidSkeletonView`) used only through `LoadingStateManager`,
+and Discover's own `redacted(.placeholder)` rows (the best of them).
+
+| State | Pattern |
+|---|---|
+| Loading < 300 ms | Show nothing new; keep the previous content. |
+| Loading ≥ 300 ms, list | The list's own rows with `redacted(.placeholder)` (Discover's pattern) in place; no centered spinner (J-10, J-15). |
+| First launch before the store answers | The real shell with the last-known queue snapshot (cached on quit) or placeholder rows; never the empty state until the store says it's empty (J-02). |
+| Empty | `ContentUnavailableView` with what will appear and one action (already the copy rule); retire `UnifiedEmptyStateView` and `EmptyStateView` into it. |
+| Offline | Lists keep cached content with a footnote "Offline. Showing saved shows." and downloaded episodes playable; Discover shows last cached charts (J-16). |
+| Failed (partial) | Inline row with the failure and Try Again (Library's refresh row is the model). |
+| Failed (whole page) | `ContentUnavailableView` with Try Again, only when nothing cached exists. |
+| Destructive | Undo for queue edits (toast with Undo for ~5 s); confirmation only for whole-library actions (J-09). |
+| Announcements | Every async outcome that changes what the listener has (download done/failed, import done, sleep timer ended) posts `AccessibilityNotification.Announcement` (J-41). |
+
+## Systems proposal in five lines
+
+1. Five motion tokens (`quick`, `standard`, `emphasized`, `gesture`, `reveal`), finger-tracked gestures that keep
+   velocity, and one shared geometry from mini player to Now Playing.
+2. A haptic map that marks detents and commits (skips, chapter crossings, speed/sleep steps, follow, downloads),
+   never taps.
+3. Layout: the existing 4–32 spacing scale, `artwork(side:)` and concentric radii, and a `.hitTarget()` that makes
+   every control 44 pt.
+4. Type: text styles everywhere, no fixed sizes except capped glyphs, one formatter each for durations and dates.
+5. Copy and states: an English String Catalog with one name per concept, real ellipses and plurals; a state kit of
+   in-place placeholders, cached content when offline, Undo for queue edits and VoiceOver announcements.
