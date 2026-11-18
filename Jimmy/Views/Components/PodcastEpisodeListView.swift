@@ -66,7 +66,7 @@ struct PodcastEpisodeListView: View {
             queueButtons(item.episode)
         }
         .swipeActions(edge: .trailing) {
-            Button(isFinished ? "Unplayed" : "Played", systemImage: isFinished ? "circle" : "checkmark.circle") {
+            Button(isFinished ? "Mark Unplayed" : "Mark Played", systemImage: isFinished ? "circle" : "checkmark.circle") {
                 toggleFinished()
             }
             downloadButton(item.episode, state: downloadState)
@@ -76,7 +76,7 @@ struct PodcastEpisodeListView: View {
                 Task { await appModel.play(item.episode) }
             }
             queueButtons(item.episode)
-            Button(isFinished ? "Mark as Unplayed" : "Mark as Played",
+            Button(isFinished ? "Mark Unplayed" : "Mark Played",
                    systemImage: isFinished ? "circle" : "checkmark.circle") {
                 toggleFinished()
             }
@@ -92,7 +92,7 @@ struct PodcastEpisodeListView: View {
         Button("Play Next", systemImage: "text.line.first.and.arrowtriangle.forward") {
             Task { await appModel.playNext(episode.id) }
         }
-        Button("Add to Queue", systemImage: "text.append") {
+        Button("Add to Queue", systemImage: "text.badge.plus") {
             Task { await appModel.enqueue(episode.id) }
         }
     }

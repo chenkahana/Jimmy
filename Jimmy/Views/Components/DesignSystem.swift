@@ -68,9 +68,10 @@ extension View {
         modifier(JimmyCardStyle())
     }
 
-    /// Grows an icon-only or text-only control to the 44 pt minimum tap target.
-    func hitTarget() -> some View {
-        frame(minWidth: JimmyDesign.minHit, minHeight: JimmyDesign.minHit)
+    /// Grows an icon-only or text-only control to the 44 pt minimum tap target. `alignment` places
+    /// the content inside the target, so a control at the edge of a row can stay flush with it.
+    func hitTarget(alignment: Alignment = .center) -> some View {
+        frame(minWidth: JimmyDesign.minHit, minHeight: JimmyDesign.minHit, alignment: alignment)
             .contentShape(.rect)
     }
 }
