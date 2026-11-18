@@ -72,7 +72,6 @@ struct ExpandedNowPlayingView: View {
             }
         }
         .environment(\.colorScheme, backdrop?.colorScheme ?? colorScheme)
-        .animation(.motion, value: dragOffset)
     }
 
     // MARK: - Player
@@ -315,15 +314,14 @@ struct ExpandedNowPlayingView: View {
 
     // MARK: - Gestures & Actions
 
+    /// Follows the finger one to one, and closes on a long drag or a flick down.
     private var dismissGesture: some Gesture {
         DragGesture()
             .onChanged { value in
-                if value.translation.height > 0 {
-                    dragOffset = rubberBand(value.translation.height)
-                }
+                dragOffset = max(value.translation.height, 0)
             }
             .onEnded { value in
-                if value.translation.height > 100 {
+                if value.translation.height > 100 || value.predictedEndTranslation.height > 220 {
                     closePlayer()
                 } else {
                     withAnimation(.motionGentle) {
@@ -370,11 +368,6 @@ struct ExpandedNowPlayingView: View {
             let total = Int(max(0, appModel.playback?.sleepTimerRemaining ?? 0))
             return String(format: "%d:%02d", total / 60, total % 60)
         }
-    }
-
-    private func rubberBand(_ translation: CGFloat) -> CGFloat {
-        let constant: CGFloat = 0.55
-        return (1.0 - (1.0 / ((translation * constant / 1000.0) + 1.0))) * 1000.0
     }
 
     private func formatTime(_ time: TimeInterval) -> String {
