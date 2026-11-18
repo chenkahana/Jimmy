@@ -47,3 +47,12 @@ Chen's phone before a backlog item depends on it. The "verify" list at the end i
 | Player | Sheet-style full player with tabs for Now Playing, Show Notes, Chapters; chapters can be skipped (deselected). Artwork-tinted background. **(known)** |
 | Up Next | Drag to reorder with lift and haptic; swipe actions configurable (full swipe = primary). **(known)** |
 | Episode rows | Multi-select mode for bulk actions; swipe actions with colors (Up Next top/bottom, archive). **(known)** |
+
+## R3.4 Castro
+
+| Flow | Mechanics |
+|---|---|
+| Model | Inbox → Queue triage: new episodes land in an Inbox; a swipe sends them to the top or bottom of the Queue or archives them. Closest product to Jimmy's queue-centric model. **(known)** |
+| Swipes | Colored, labeled swipe actions with full-swipe; distinct haptic when the full-swipe threshold is crossed. **(known)** |
+| Queue | Reorder by long-press anywhere on the row (no Edit mode), lift with shadow, auto-scroll near edges. **(known)** |
+| Player | Pull-up player card; chapter list inline; speed per show. **(verify)** |
