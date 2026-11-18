@@ -26,6 +26,9 @@ enum JimmyDesign {
         static let xl: CGFloat = 24
     }
 
+    /// The smallest tap target for a control, in points.
+    static let minHit: CGFloat = 44
+
     /// The only shadow: under artwork that floats, such as the Now Playing art.
     enum Shadow {
         static let artworkColor = Color.black.opacity(0.18)
@@ -63,6 +66,12 @@ struct JimmyCardStyle: ViewModifier {
 extension View {
     func jimmyCard() -> some View {
         modifier(JimmyCardStyle())
+    }
+
+    /// Grows an icon-only or text-only control to the 44 pt minimum tap target.
+    func hitTarget() -> some View {
+        frame(minWidth: JimmyDesign.minHit, minHeight: JimmyDesign.minHit)
+            .contentShape(.rect)
     }
 }
 

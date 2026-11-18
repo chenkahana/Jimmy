@@ -34,26 +34,33 @@ struct NativeMiniPlayerView: View {
                 .buttonStyle(.plain)
                 .accessibilityHint("Opens Now Playing")
 
-                Button {
-                    Task { await playback.togglePlayPause() }
-                } label: {
-                    Image(systemName: playback.isPlaying ? "pause.fill" : "play.fill")
-                        .font(.title3)
-                }
-                .accessibilityLabel(playback.isPlaying ? "Pause" : "Play")
-
-                if isExpanded {
+                // No spacing: the 44 pt targets already keep the glyphs apart.
+                HStack(spacing: 0) {
                     Button {
-                        Task { await playback.skipForward() }
+                        Task { await playback.togglePlayPause() }
                     } label: {
-                        Image(systemName: "goforward.\(Int(playback.skipForwardInterval))")
+                        Image(systemName: playback.isPlaying ? "pause.fill" : "play.fill")
                             .font(.title3)
+                            .hitTarget()
                     }
-                    .accessibilityLabel("Skip Forward")
+                    .accessibilityLabel(playback.isPlaying ? "Pause" : "Play")
+
+                    if isExpanded {
+                        Button {
+                            Task { await playback.skipForward() }
+                        } label: {
+                            Image(systemName: "goforward.\(Int(playback.skipForwardInterval))")
+                                .font(.title3)
+                                .hitTarget()
+                        }
+                        .accessibilityLabel("Skip Forward")
+                    }
                 }
             }
             .buttonStyle(.plain)
-            .padding(.horizontal, JimmyDesign.Spacing.lg)
+            .padding(.leading, JimmyDesign.Spacing.lg)
+            // The skip target's own inset makes up the rest of the trailing margin.
+            .padding(.trailing, JimmyDesign.Spacing.xs)
             .popoverTip(MiniPlayerTip(), arrowEdge: .bottom)
         }
     }
