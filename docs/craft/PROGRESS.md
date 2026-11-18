@@ -1,4 +1,4 @@
-RESUME HERE: R1.1 surfaces x states in R1-inventory.md (draft held in ~/tmp/codex/jimmy-craft/hold/R1-inventory.md; commit section by section)
+RESUME HERE: R1.2 transitions and gestures (draft in ~/tmp/codex/jimmy-craft/hold/R1-inventory.md)
 
 # Progress log
 

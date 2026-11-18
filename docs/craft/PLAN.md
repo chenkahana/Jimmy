@@ -20,7 +20,7 @@ approves the backlog. Resume point and log: [`PROGRESS.md`](PROGRESS.md).
 - [x] R0.5 Write `R0-baseline.md`
 
 ### R1 Inventory → [`R1-inventory.md`](R1-inventory.md)
-- [ ] R1.1 Surfaces × states
+- [x] R1.1 Surfaces × states
 - [ ] R1.2 Entry/exit transitions and gestures
 - [ ] R1.3 VoiceOver paths
 - [ ] R1.4 Write `R1-inventory.md`
