@@ -38,3 +38,16 @@ minimizes on scroll, mini player has a hint ("Opens Now Playing") and Play/Pause
 Passes: plain `List` in play order, current episode marked by an animated waveform that honors Reduce Motion,
 progress line, `monospacedDigit` metadata, AX-size layout that stacks artwork above text (`run/ax5-00-queue.png`),
 summary footer, context menu matches swipes, edit mode with reorder handles, a drop haptic.
+
+## R2.3 Library (Shows, Episodes, Downloads)
+
+| ID | Finding | Evidence | Check | Sev | Reach | Effort | Score | Constraint |
+|---|---|---|---|---|---|---|---|---|
+| J-12 | There is no Downloads view. `docs/design.md` promises Shows / Episodes / Downloads; `main` has Shows and Episodes, and downloads appear only as a podcast filter and a smart playlist. Nowhere shows what's downloading, failed or using space. | `run-light/l-00.png`; `Jimmy/Views/LibraryView.swift:28-29`; `docs/design.md` "Library" | 8 | S2 | daily | M | 4.5 | P (offline listening) |
+| J-13 | One action, three names: Queue says "Mark Played", the Library card's swipe says "Played", its context menu says "Mark as Played". "Add to Queue" uses `text.append` on the card and `text.badge.plus` in episode detail. | `run/s-00`, `run/s-02`; `run-light/q-01`; `Components/EpisodeCard.swift:54-66`; `EpisodeDetailView.swift:131` | 9 | S3 | daily | S | 6 | — |
+| J-14 | Show tile context menu has only "Unsubscribe", while the podcast page says "Follow / Following" (and Settings "Clear All Subscriptions"). No Play Latest, Mark All Played or Share. | `run/s-03-show-context.png`; `LibraryView.swift:296-309` | 9, 4 | S3 | occasional | S | 4 | — |
+| J-15 | First load with no shows yet: a centered spinner replaces the page. | `LibraryView.swift:223-227` | 8 | S4 | rare | S | 1 | — |
+
+Passes: `.searchable` in the nav bar drawer with the prompt following the segment, adaptive grid that becomes one
+column at AX sizes, "Couldn't refresh N shows. Try Again." with automatic grammar agreement (`inflect: true`),
+pull to refresh, empty state "No Shows Yet" with Browse Shows and Add Sample Shows (`run/os-01-after-skip.png`).

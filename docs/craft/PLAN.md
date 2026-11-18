@@ -28,7 +28,7 @@ approves the backlog. Resume point and log: [`PROGRESS.md`](PROGRESS.md).
 ### R2 Audit → [`R2-findings.md`](R2-findings.md)
 - [x] R2.1 Shell: tab bar, mini player, navigation
 - [x] R2.2 Queue
-- [ ] R2.3 Library (Shows, Episodes, Downloads)
+- [x] R2.3 Library (Shows, Episodes, Downloads)
 - [ ] R2.4 Discover and Search
 - [ ] R2.5 Podcast and episode detail
 - [ ] R2.6 Now Playing (full player, scrub, speed, sleep, chapters)
