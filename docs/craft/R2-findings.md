@@ -142,3 +142,22 @@ Passes: queue rows and Library reflow at AX5; Now Playing glyphs use `@ScaledMet
 adjustable; panels are modal with escape; Reduce Motion handled for the waveform and panels; system glass handles
 Reduce Transparency on its own (no custom blur to replace). See J-05 (mini player at AX5), J-11 and J-30
 (VoiceOver).
+
+## R2.11 Coverage by the existing polish docs
+
+The handoff lists six docs; none are on `main` (they live only in the stale `~/Jimmy` checkout on
+`feat/stability-first-overhaul`). They describe the pre-rewrite app:
+
+| Doc | What it covered | Status on `main` |
+|---|---|---|
+| `world-class-native-polish-v3.md` | A custom "V3" Liquid Glass tab bar (`TabBarModelsV3`, `LiquidGlassTabBarContainerV3`), its Dynamic Type, Reduce Motion/Transparency, VoiceOver and 60/120 fps targets | Superseded: `main` uses the system `TabView` with `Tab(role: .search)` and a bottom accessory. Nothing to carry over. |
+| `liquid-glass-design-tokens.md` | Tab-bar tokens (bar metrics, capsule, search pill, animation) | Superseded by `JimmyDesign` (`DesignSystem.swift`) and `docs/design.md`. R4 reconciles the remaining tokens. |
+| `native-liquid-glass-migration.md` | Feature-flagged move to the native tab bar, rollback plan | Done: native tab bar shipped. |
+| `split-capsule-tab-bar.md` | Two-capsule tab bar with a separate search capsule, spring parameters | Superseded by the system search tab. |
+| `IMPROVEMENT_OPPORTUNITIES.md` | Service consolidation, architecture, performance roadmap | Not polish; mostly done by the JimmyKit rewrite. No overlap with R2. |
+| `CURRENT_STATE_ASSESSMENT.md` | Health score, service analysis, bottlenecks | Same; stale. |
+
+`docs/design.md` on `main` is the live design spec. Findings that touch it: J-07 (swipe tints vs one accent),
+J-12 (Downloads segment promised, missing), J-24 (no morph despite "zoom transitions"), the Motion row in its token
+table (R4.1), and its Words rule "Title-case labels" (J-32). None of the R2 findings were already fixed by earlier
+polish work.

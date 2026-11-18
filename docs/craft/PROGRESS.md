@@ -1,4 +1,4 @@
-RESUME HERE: R2.11 next section of R2-findings.md (full draft in ~/tmp/codex/jimmy-craft/hold/R2-findings.md)
+RESUME HERE: R2.12 next section of R2-findings.md (full draft in ~/tmp/codex/jimmy-craft/hold/R2-findings.md)
 
 # Progress log
 
