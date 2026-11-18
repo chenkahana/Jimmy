@@ -109,7 +109,7 @@ struct ExpandedNowPlayingView: View {
             Button(action: closePlayer) {
                 Image(systemName: "chevron.down")
                     .font(.title3.weight(.semibold))
-                    .frame(width: 44, height: 44)
+                    .hitTarget()
             }
             .accessibilityLabel("Close Now Playing")
 
@@ -120,7 +120,7 @@ struct ExpandedNowPlayingView: View {
             } label: {
                 Image(systemName: "ellipsis")
                     .font(.title3.weight(.semibold))
-                    .frame(width: 44, height: 44)
+                    .hitTarget()
             }
             .accessibilityLabel("More")
         }
@@ -252,14 +252,20 @@ struct ExpandedNowPlayingView: View {
 
     private var secondaryControls: some View {
         HStack {
-            Button(speedText(settings.playbackSpeed)) { show(.speed) }
-                .accessibilityLabel("Playback speed, \(speedText(settings.playbackSpeed))")
+            Button { show(.speed) } label: {
+                Text(speedText(settings.playbackSpeed)).hitTarget(alignment: .leading)
+            }
+            .accessibilityLabel("Playback speed, \(speedText(settings.playbackSpeed))")
             Spacer()
-            Button(sleepLabel) { show(.sleep) }
-                .monospacedDigit()
-                .accessibilityLabel(isSleepTimerActive ? "Sleep timer, \(sleepLabel)" : "Sleep timer")
+            Button { show(.sleep) } label: {
+                Text(sleepLabel).hitTarget()
+            }
+            .monospacedDigit()
+            .accessibilityLabel(isSleepTimerActive ? "Sleep timer, \(sleepLabel)" : "Sleep timer")
             Spacer()
-            Button("Chapters") { show(.chapters) }
+            Button { show(.chapters) } label: {
+                Text("Chapters").hitTarget()
+            }
             Spacer()
             RoutePickerViewRepresentable()
                 .frame(width: 44, height: 44)
