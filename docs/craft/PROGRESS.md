@@ -21,3 +21,4 @@ Append-only. One line per completed step: date, step, what was done, commit.
 | 2026-11-18 | R2.3 | Queue: J-06..J-11 | 8973683 |
 | 2026-11-18 | R2.4 | Library: J-12..J-15 (no Downloads view, naming) | 8809d98 |
 | 2026-11-18 | R2.5 | Discover: J-16 (uncached charts) | 839ae70 |
+| 2026-11-18 | R2.6 | Podcast + episode detail: J-17..J-21 (show notes, pop-in) | c64d7ab |
