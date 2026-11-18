@@ -35,3 +35,4 @@ Append-only. One line per completed step: date, step, what was done, commit.
 | 2026-11-18 | R3.5 | Castro mechanics | 881e24d |
 | 2026-11-18 | R4.1 |  | 4830db3 |
 | 2026-11-18 | R4.2 | Motion tokens (quick, standard, emphasized, gesture, reveal) and rules | d9b8fe5 |
+| 2026-11-18 | R4.3 | Haptic map | ee2edf1 |
