@@ -74,3 +74,21 @@ All through `.sensoryFeedback(_:trigger:)`; retire `Motion.lightHaptic()` etc. a
   J-22)
 - The old `liquid-glass-design-tokens.md` tab-bar metrics are retired with the custom tab bar (R2.11); nothing
   carries over.
+
+## R4.4 Type ramp
+
+**Today:** text styles dominate (`.subheadline` 18, `.caption` 16, `.footnote` 13, `.headline` 11, …) but 30
+`.system(size:)` calls remain, 22 of them fixed; `JimmyDesign.Typography` defines five aliases that few views use.
+
+| Role | Style | Notes |
+|---|---|---|
+| Screen title | system large title | nav bar |
+| Detail title (episode, Now Playing) | `.title2.bold()` / `.title3.semibold()` | 2–4 lines, tail truncation |
+| Row title | `.headline` | 2 lines, 4 at AX sizes (already in `QueueEpisodeRow`) |
+| Row metadata | `.footnote` secondary, `monospacedDigit()` | one formatter for times and dates (R4.5) |
+| Show notes, transcripts | `.body` in New York (`.serif`), line spacing 6 | per `docs/design.md` |
+| Badges | `.caption2.weight(.semibold)` | replaces 10 pt fixed (`StatusBadge.swift`) (J-40) |
+| Transport glyphs | `@ScaledMetric` with caps (already) | keep |
+| Mini player | `.subheadline.semibold` title; at AX sizes hide skip and keep play, let the title take two lines | (J-05) |
+
+Rule: no `.system(size:)` outside glyphs that have a `@ScaledMetric` and a cap.
