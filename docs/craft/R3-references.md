@@ -25,3 +25,15 @@ Chen's phone before a backlog item depends on it. The "verify" list at the end i
 | States | Empty Library: "Shows you follow appear here" + Browse. Offline: downloaded episodes still listed and playable; others greyed. **(known)** |
 | System | Lock Screen with chapter info and artwork, CarPlay with artwork grids, Watch app with Up Next, Siri/App Intents ("Play the latest episode of …"), Spotlight for shows, Live Activity-style Now Playing in the Dynamic Island, Handoff to Mac. **(known)** |
 | Haptics | Light tick when a swipe action passes its full-swipe threshold (system), selection haptic on menu choices. Transport taps have no haptic. **(known)** |
+
+## R3.2 Overcast
+
+| Flow | Mechanics |
+|---|---|
+| Player layout | Full player is pageable: swipe right for the Effects pane (Smart Speed, Voice Boost, speed slider, per-show save), left for show notes, further left for chapters. **(doc: MacStories, The Sweet Setup)** |
+| Speed | A continuous slider (not a segmented picker) with fine steps; the value reads out as you drag. **(doc)** |
+| Smart Speed | Trims silences; the app reports time saved overall. Not a UI motion, but a "feels physical" detail: speed is a dial with feedback. **(doc)** |
+| Chapters | Each chapter has its own progress bar, link and art. **(doc)** |
+| Scrubbing | The seek bar is long and thin; Overcast also exposes skip buttons with per-podcast skip-intro/outro durations (2025). **(doc: iClarified)** |
+| Queue | Playlists with drag handles; long-press to reorder. **(known)** |
+| Watch | Full standalone Watch app with playback controls and downloaded episodes. **(doc: MacStories)** |

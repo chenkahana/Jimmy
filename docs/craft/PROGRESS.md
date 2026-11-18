@@ -1,4 +1,4 @@
-RESUME HERE: R3.2 next reference (draft in hold/R3-references.md)
+RESUME HERE: R3.3 next reference (draft in hold/R3-references.md)
 
 # Progress log
 
