@@ -13,3 +13,4 @@ Append-only. One line per completed step: date, step, what was done, commit.
 | 2026-11-18 | R0.4 | Cold launch video (blank ~1.75 s, empty-queue flash), XCUITest launch timing x5, App Launch + Time Profiler traces; Animation Hitches unsupported in sim -> device steps | edda38c |
 | 2026-11-18 | R0.5 | R0-baseline.md complete: summary, setup, recordings, system steps, traces, driver appendix | 5c20a81 |
 | 2026-11-18 | R1.1 | Surfaces x states table (20 surfaces) with file and capture per row | 449df8a |
+| 2026-11-18 | R1.2 | Transitions (10) and per-surface gestures, verified with Swipes flow captures | 9ad6f40 |
