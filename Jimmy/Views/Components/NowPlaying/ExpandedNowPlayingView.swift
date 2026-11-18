@@ -75,7 +75,6 @@ struct ExpandedNowPlayingView: View {
             }
         }
         .environment(\.colorScheme, backdrop?.colorScheme ?? colorScheme)
-        .animation(.motion, value: dragOffset)
     }
 
     // MARK: - Player
@@ -112,7 +111,7 @@ struct ExpandedNowPlayingView: View {
             Button(action: closePlayer) {
                 Image(systemName: "chevron.down")
                     .font(.title3.weight(.semibold))
-                    .frame(width: 44, height: 44)
+                    .hitTarget()
             }
             .accessibilityLabel("Close Now Playing")
 
@@ -123,7 +122,7 @@ struct ExpandedNowPlayingView: View {
             } label: {
                 Image(systemName: "ellipsis")
                     .font(.title3.weight(.semibold))
-                    .frame(width: 44, height: 44)
+                    .hitTarget()
             }
             .accessibilityLabel("More")
         }
@@ -265,14 +264,20 @@ struct ExpandedNowPlayingView: View {
 
     private var secondaryControls: some View {
         HStack {
-            Button(speedText(settings.playbackSpeed)) { show(.speed) }
-                .accessibilityLabel("Playback speed, \(speedText(settings.playbackSpeed))")
+            Button { show(.speed) } label: {
+                Text(speedText(settings.playbackSpeed)).hitTarget(alignment: .leading)
+            }
+            .accessibilityLabel("Playback speed, \(speedText(settings.playbackSpeed))")
             Spacer()
-            Button(sleepLabel) { show(.sleep) }
-                .monospacedDigit()
-                .accessibilityLabel(isSleepTimerActive ? "Sleep timer, \(sleepLabel)" : "Sleep timer")
+            Button { show(.sleep) } label: {
+                Text(sleepLabel).hitTarget()
+            }
+            .monospacedDigit()
+            .accessibilityLabel(isSleepTimerActive ? "Sleep timer, \(sleepLabel)" : "Sleep timer")
             Spacer()
-            Button("Chapters") { show(.chapters) }
+            Button { show(.chapters) } label: {
+                Text("Chapters").hitTarget()
+            }
             Spacer()
             RoutePickerViewRepresentable()
                 .frame(width: 44, height: 44)
@@ -326,15 +331,14 @@ struct ExpandedNowPlayingView: View {
 
     // MARK: - Gestures & Actions
 
+    /// Follows the finger one to one, and closes on a long drag or a flick down.
     private var dismissGesture: some Gesture {
         DragGesture()
             .onChanged { value in
-                if value.translation.height > 0 {
-                    dragOffset = rubberBand(value.translation.height)
-                }
+                dragOffset = max(value.translation.height, 0)
             }
             .onEnded { value in
-                if value.translation.height > 100 {
+                if value.translation.height > 100 || value.predictedEndTranslation.height > 220 {
                     closePlayer()
                 } else {
                     withAnimation(.motionGentle) {
@@ -381,11 +385,6 @@ struct ExpandedNowPlayingView: View {
             let total = Int(max(0, appModel.playback?.sleepTimerRemaining ?? 0))
             return String(format: "%d:%02d", total / 60, total % 60)
         }
-    }
-
-    private func rubberBand(_ translation: CGFloat) -> CGFloat {
-        let constant: CGFloat = 0.55
-        return (1.0 - (1.0 / ((translation * constant / 1000.0) + 1.0))) * 1000.0
     }
 
     private func formatTime(_ time: TimeInterval) -> String {
