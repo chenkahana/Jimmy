@@ -161,3 +161,25 @@ The handoff lists six docs; none are on `main` (they live only in the stale `~/J
 J-12 (Downloads segment promised, missing), J-24 (no morph despite "zoom transitions"), the Motion row in its token
 table (R4.1), and its Words rule "Title-case labels" (J-32). None of the R2 findings were already fixed by earlier
 polish work.
+
+## R2.12 Craft scores (0–3 per check)
+
+0 missing or broken · 1 present but rough · 2 good, small gaps · 3 Apple-level. Blank = check doesn't apply.
+
+| Surface | 1 Motion | 2 Playback | 3 System | 4 Touch | 5 Geometry | 6 Type | 7 Color | 8 States | 9 Words | 10 Citizen | 11 Speed | 12 A11y |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Shell / mini player | 1 | 2 | | 0 | 2 | 1 | 3 | 1 | 2 | | 1 | 1 |
+| Queue | 2 | | | 1 | 3 | 3 | 2 | 2 | 2 | | 2 | 2 |
+| Library | 2 | | | 2 | 2 | 2 | 3 | 1 | 1 | | 2 | 2 |
+| Discover / Search | 2 | | | 2 | 3 | 2 | 3 | 1 | 2 | | 2 | 2 |
+| Podcast detail | 1 | | | 2 | 1 | 2 | 2 | 2 | 2 | | 2 | 2 |
+| Episode detail | 2 | | | 2 | 2 | 1 | 3 | 2 | 1 | | 2 | 2 |
+| Now Playing | 1 | 1 | 2 | 0 | 2 | 2 | 3 | 2 | 2 | | 2 | 1 |
+| Settings / Stats | 2 | | | 3 | 3 | 3 | 3 | 2 | 1 | | 2 | 3 |
+| Onboarding | 2 | | | 3 | 2 | 3 | 3 | 3 | 3 | | 2 | 2 |
+| CarPlay | | 1 | 1 | | | | | | | 1 | | |
+| Watch | | 1 | 1 | 1 | | | | 2 | 1 | 1 | | 1 |
+| Widgets / Intents / Spotlight | | | 0 | | | | | | | 0 | | |
+
+Average of 96 scored cells: **1.83** (out of 3). Lowest columns: Touch (hit targets), Motion (player and pop-in),
+States (launch, Discover), Words (naming drift), System citizen.

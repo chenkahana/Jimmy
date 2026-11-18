@@ -1,4 +1,4 @@
-RESUME HERE: R2.12 next section of R2-findings.md (full draft in ~/tmp/codex/jimmy-craft/hold/R2-findings.md)
+RESUME HERE: R3.1 Apple Podcasts references (draft in ~/tmp/codex/jimmy-craft/hold/R3-references.md)
 
 # Progress log
 
