@@ -8,6 +8,7 @@ All notable changes to Jimmy are recorded here. The format follows
 
 ### Fixed
 
+- An episode shows the same length and date everywhere: Library, podcast pages and episode detail use the queue's "42 min" and "Today", "3d" or "Oct 2".
 - Search keeps the last Top Shows it loaded, on this device, and shows them with a Try Again row when a fetch fails, instead of an error page.
 - Show notes keep their paragraphs, line breaks and list items, and linked text links to its page instead of running together as plain text.
 - Launch no longer flashes "Queue Is Empty" before the queue appears.

@@ -102,19 +102,19 @@ struct EpisodeDetailView: View {
         }
     }
 
-    /// "Nov 3, 2026 · 38 min left".
+    /// "3d · 38 min left".
     private var details: String {
         var parts: [String] = []
         if let date = episode.publishedDate {
-            parts.append(date.formatted(date: .abbreviated, time: .omitted))
+            parts.append(QueueTimeFormat.age(of: date))
         }
         let position = episodeWithState.playbackState.position
         if episodeWithState.playbackState.finished {
             parts.append("Played")
         } else if let duration = episode.duration, duration > 0 {
             parts.append(position > 0
-                ? "\(EpisodeCard.durationText(max(duration - position, 0))) left"
-                : EpisodeCard.durationText(duration))
+                ? "\(QueueTimeFormat.duration(max(duration - position, 0))) left"
+                : QueueTimeFormat.duration(duration))
         }
         return parts.joined(separator: " · ")
     }

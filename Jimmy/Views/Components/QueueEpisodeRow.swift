@@ -136,7 +136,8 @@ struct QueueEpisodeRow: View {
     }
 }
 
-/// The queue's time strings: "42 min", "2 h 14 min", and episode ages like "3d" or "Oct 2".
+/// Every episode time string in the app: "42 min", "2 h 14 min" (rounded up, so never "0 min"), and
+/// episode ages like "Today", "3d" or "Oct 2", so one episode reads the same on every screen.
 enum QueueTimeFormat {
     static func duration(_ seconds: TimeInterval) -> String {
         let totalMinutes = max(1, Int((seconds / 60).rounded(.up)))

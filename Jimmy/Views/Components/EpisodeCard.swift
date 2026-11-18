@@ -120,16 +120,18 @@ struct EpisodeCard: View, Equatable {
         .accessibilityHint("Opens the episode")
     }
 
-    /// "Show · Nov 3 · 38 min left": the show only where shows mix.
+    /// "Show · 3d · 38 min left": the show only where shows mix.
     private var details: String {
         var parts: [String] = []
         if showsArtwork, !episode.podcastTitle.isEmpty { parts.append(episode.podcastTitle) }
-        if let date = episode.publishedDate { parts.append(Self.dateText(date)) }
+        if let date = episode.publishedDate { parts.append(QueueTimeFormat.age(of: date)) }
         if isPlayed {
             parts.append("Played")
         } else if episode.duration > 0 {
             let remaining = episode.duration * (1 - min(episode.playProgress, 1))
-            parts.append(isStarted ? "\(Self.durationText(remaining)) left" : Self.durationText(episode.duration))
+            parts.append(isStarted
+                ? "\(QueueTimeFormat.duration(remaining)) left"
+                : QueueTimeFormat.duration(episode.duration))
         }
         return parts.joined(separator: " · ")
     }
@@ -152,19 +154,6 @@ struct EpisodeCard: View, Equatable {
         if let onRemoveFromQueue {
             Button("Remove from Queue", systemImage: "trash", role: .destructive, action: onRemoveFromQueue)
         }
-    }
-
-    static func dateText(_ date: Date) -> String {
-        Calendar.current.isDate(date, equalTo: .now, toGranularity: .year)
-            ? date.formatted(.dateTime.month(.abbreviated).day())
-            : date.formatted(.dateTime.month(.abbreviated).day().year())
-    }
-
-    /// "42 min", "1 h 5 min".
-    static func durationText(_ seconds: TimeInterval) -> String {
-        let minutes = max(1, Int((seconds / 60).rounded()))
-        guard minutes >= 60 else { return "\(minutes) min" }
-        return minutes % 60 == 0 ? "\(minutes / 60) h" : "\(minutes / 60) h \(minutes % 60) min"
     }
 
     // MARK: - Equatable
