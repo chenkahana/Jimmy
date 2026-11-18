@@ -8,6 +8,7 @@ All notable changes to Jimmy are recorded here. The format follows
 
 ### Fixed
 
+- An episode shows the same length and date everywhere: Library, podcast pages and episode detail use the queue's "42 min" and "Today", "3d" or "Oct 2".
 - The mini player's Play and Skip Forward buttons take taps across a full 44-point target instead of just the glyph.
 - Download buttons on Now Playing, episode detail, and episode rows now download the episode.
 
