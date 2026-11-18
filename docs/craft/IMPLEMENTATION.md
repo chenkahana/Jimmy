@@ -1,4 +1,4 @@
-RESUME HERE: J-01 PR #41 open, waiting for CI; next J-22 + J-30.
+RESUME HERE: PRs #42 (J-22), #43 (J-06), #44 (J-23) open in CI, merge each when green (CHANGELOG conflicts: merge main into the branch); next J-26.
 
 # Implementation tracker
 
@@ -9,10 +9,12 @@ is green. Simulator checks on a dedicated iPhone Duo (iOS 27.1) "Jimmy Impl", dr
 
 ## Top items (lead's order)
 
-- [ ] J-01 Mini player Play/Skip 44 pt targets — PR https://github.com/chenkahana/Jimmy/pull/41 (CI)
-- [ ] J-22 + J-30 Now Playing chevron, •••, Speed/Sleep/Chapters targets; no nameless "More" duplicate
-- [ ] J-06 + J-11 Queue row Play 44 pt; one VoiceOver stop per row
-- [ ] J-23 Player drag follows the finger; flick dismisses with velocity
+- [x] J-01 Mini player Play/Skip 44 pt targets — PR https://github.com/chenkahana/Jimmy/pull/41
+- [ ] J-22 Now Playing chevron, •••, Speed/Sleep/Chapters targets — PR https://github.com/chenkahana/Jimmy/pull/42 (CI)
+- [ ] J-30 No nameless "More" duplicate — skipped after 2 attempts (icon-only `Label`, `.accessibilityElement(children: .combine)`): the element is SwiftUI `Menu`'s own button and the simulator tree can't show VoiceOver focus. Needs a VoiceOver check on a device.
+- [ ] J-06 Queue row Play 44 pt — PR https://github.com/chenkahana/Jimmy/pull/43 (CI)
+- [ ] J-11 One VoiceOver stop per queue row — skipped after 2 attempts (`.accessibilityHidden(true)` on the Play button, `.accessibilityElement(children: .ignore)` on the row): neither changed the simulator's tree. Needs a VoiceOver check on a device.
+- [ ] J-23 Player drag follows the finger; flick dismisses with velocity — PR https://github.com/chenkahana/Jimmy/pull/44 (CI)
 - [ ] J-26 Haptics and symbol bounce on skip, speed, sleep
 - [ ] J-02 No blank window or "Queue Is Empty" flash at launch
 - [ ] J-13 One name for Mark Played
@@ -49,4 +51,5 @@ is green. Simulator checks on a dedicated iPhone Duo (iOS 27.1) "Jimmy Impl", dr
 
 ## Device checks owed
 
-- None yet.
+- J-30, J-11: VoiceOver on an iPhone (Now Playing "More"; a queue row).
+- J-23: drag and flick feel on a ProMotion iPhone.
