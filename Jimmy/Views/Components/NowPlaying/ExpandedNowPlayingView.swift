@@ -24,6 +24,8 @@ struct ExpandedNowPlayingView: View {
     /// The artwork's color when it is legible; `nil` falls back to the system background.
     @State private var backdrop: ArtworkContrast?
     @State private var panel: Panel?
+    /// Whether the episode has chapters; the Chapters button only shows when it does.
+    @State private var hasChapters = false
     /// The scrubber's position while it is being dragged.
     @State private var scrubPosition: TimeInterval?
     @State private var scrubsEnded = 0
@@ -55,6 +57,9 @@ struct ExpandedNowPlayingView: View {
                             return
                         }
                         backdrop = ArtworkContrast(color.resolve(in: EnvironmentValues())).usable
+                    }
+                    .task(id: episode.id) {
+                        hasChapters = !(await appModel.chapters(for: episode.id)).isEmpty
                     }
             } else {
                 ContentUnavailableView {
@@ -118,6 +123,16 @@ struct ExpandedNowPlayingView: View {
             Spacer()
 
             Menu {
+                Section {
+                    Button("Go to Episode", systemImage: "info.circle") {
+                        go(to: .episode(episode.id))
+                    }
+                    if let podcastID = episode.podcastID {
+                        Button("Go to Show", systemImage: "square.stack") {
+                            go(to: .podcast(podcastID))
+                        }
+                    }
+                }
                 downloadButton(for: episode)
             } label: {
                 Image(systemName: "ellipsis")
@@ -275,10 +290,12 @@ struct ExpandedNowPlayingView: View {
             .monospacedDigit()
             .accessibilityLabel(isSleepTimerActive ? "Sleep timer, \(sleepLabel)" : "Sleep timer")
             Spacer()
-            Button { show(.chapters) } label: {
-                Text("Chapters").hitTarget()
+            if hasChapters {
+                Button { show(.chapters) } label: {
+                    Text("Chapters").hitTarget()
+                }
+                Spacer()
             }
-            Spacer()
             RoutePickerViewRepresentable()
                 .frame(width: 44, height: 44)
                 .accessibilityLabel("AirPlay")
@@ -346,6 +363,12 @@ struct ExpandedNowPlayingView: View {
                     }
                 }
             }
+    }
+
+    /// Closes the player and opens `destination` in Library.
+    private func go(to destination: ShellDestination) {
+        closePlayer()
+        ShellStore.shared.navigate(to: destination)
     }
 
     private func closePlayer() {
