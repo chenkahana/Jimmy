@@ -105,3 +105,12 @@ with tap-out, drag-to-dismiss and VoiceOver escape, Reduce Motion fade for panel
 
 Passes: `Form` with section footers explaining settings, destructive actions last and red, version shown once in
 About.
+
+## R2.8 Onboarding
+
+| ID | Finding | Evidence | Check | Sev | Reach | Effort | Score | Constraint |
+|---|---|---|---|---|---|---|---|---|
+| J-34 | "Choose an Export File" floats over the last source row with no material behind it; the row's subtitle is cut under the button at rest. | `run/o-00.png`, `run-dark/o-*` | 5 | S4 | rare | S | 1 | — |
+
+Passes: one screen, installed apps first, what each source brings over, Skip in the toolbar, Start Fresh with a
+footer, Skip lands on an empty Library with Browse Shows and Add Sample Shows (`run/os-01-after-skip.png`).
