@@ -55,7 +55,7 @@ approves the backlog. Resume point and log: [`PROGRESS.md`](PROGRESS.md).
 - [x] R4.6 State kit (empty, loading, offline, error)
 
 ### R5 Backlog → [`R5-backlog.md`](R5-backlog.md)
-- [ ] R5.1 Score every finding
+- [x] R5.1 Score every finding
 - [ ] R5.2 Group into workstreams
 - [ ] R5.3 Slice into one-visible-change PRs, mark "needs Chen"
 

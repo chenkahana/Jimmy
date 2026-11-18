@@ -1,4 +1,4 @@
-RESUME HERE: R5.1 score every finding in R5-backlog.md
+RESUME HERE: R5.2 workstreams (draft in hold/R5-backlog.md)
 
 # Progress log
 
