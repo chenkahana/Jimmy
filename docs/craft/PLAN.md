@@ -17,7 +17,7 @@ approves the backlog. Resume point and log: [`PROGRESS.md`](PROGRESS.md).
       player, scrub/speed/sleep, downloads, settings, onboarding (Light and Dark)
 - [x] R0.3 System checks: Lock Screen / Control Center (Now Playing), CarPlay, Watch
 - [x] R0.4 Instruments traces: launch, list scroll, player open/close, scrubbing
-- [ ] R0.5 Write `R0-baseline.md`
+- [x] R0.5 Write `R0-baseline.md`
 
 ### R1 Inventory → [`R1-inventory.md`](R1-inventory.md)
 - [ ] R1.1 Surfaces × states

@@ -4,6 +4,20 @@ Where the evidence came from, how to reproduce it, and what the app looks and fe
 Findings themselves live in [`R2-findings.md`](R2-findings.md); this file is the measurement setup and the raw
 observations.
 
+## R0.5 Summary
+
+- `main` builds and runs cleanly on the iOS 27.1 simulator (iPhone Duo, folded display). Every main flow was driven
+  and recorded in Light and Dark; nothing crashed.
+- The app is already close to the system: native `TabView` with the mini player as the bottom accessory, `List`
+  rows with swipe actions and context menus, zoom transitions into details, `ContentUnavailableView` states,
+  `.searchable`, a `Form` for Settings, artwork-colored Now Playing with a glass transport.
+- What breaks the spell, in the order a listener meets it: a blank window and an empty-queue flash at launch; tiny
+  hit targets on the mini player and the Now Playing chrome; a player that slides in instead of growing from the
+  mini player and ignores a flick; show notes as one run-on paragraph; artwork and backdrop popping in after a
+  podcast opens; speed as a five-segment control; the Search tab's error page whenever the chart fetch hiccups.
+- Out of reach here and listed with exact steps for Chen's devices: Lock Screen, Control Center, Dynamic Island,
+  AirPods, interruptions, CarPlay, Watch, and 120 Hz hitch measurement.
+
 ## R0.1 Build and run
 
 | | |
@@ -136,3 +150,116 @@ in what order, where the main thread goes), not for absolute device numbers.
 500+ episodes and fling to the end; open and close Now Playing three times (tap, then drag); scrub back and forth for
 5 s. Save as `jimmy-hitches.trace`. Then *App Launch* with Jimmy killed: record a cold launch to the queue. Targets
 from the rubric: zero hitches > 1 frame in those flows; first frame with real content ≤ 400 ms.
+
+## Appendix: the flow driver
+
+Lives outside the repo at `~/tmp/codex/jimmy-craft/driver` (XcodeGen project, UI-test bundle that drives Jimmy by bundle ID). Flows: `Flows/Flows.swift` (QueueFlow, PlayerFlow, LibraryFlow, DiscoverFlow, OnboardingFlow), `Flows/Extra.swift` (Swipes, AX5, Restore, OnbSkip, LaunchTiming, LibraryRest), `Flows/Perf.swift`. To rebuild it elsewhere, these three files are enough to start; each flow is a few `tap`/`swipe`/`dump` calls.
+
+`project.yml`:
+```yaml
+name: Driver
+options:
+  deploymentTarget:
+    iOS: "27.0"
+targets:
+  Host:
+    type: application
+    platform: iOS
+    sources: [Host]
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: com.chenk.craftdriver.host
+      GENERATE_INFOPLIST_FILE: YES
+      CODE_SIGNING_ALLOWED: NO
+  Flows:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [Flows]
+    dependencies:
+      - target: Host
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: com.chenk.craftdriver.flows
+      GENERATE_INFOPLIST_FILE: YES
+      TEST_TARGET_NAME: Host
+      CODE_SIGNING_ALLOWED: NO
+schemes:
+  Flows:
+    build:
+      targets:
+        Host: all
+        Flows: [test]
+    test:
+      targets: [Flows]
+```
+
+`Flows/Base.swift`:
+```swift
+import XCTest
+
+let outDir = "/Users/chenk/tmp/codex/jimmy-craft/run"
+
+class Base: XCTestCase {
+    var app: XCUIApplication!
+    var extraArgs: [String] { [] }
+    var demo: Bool { true }
+
+    override func setUpWithError() throws {
+        continueAfterFailure = true
+        app = XCUIApplication(bundleIdentifier: "com.chenkahana.Jimmy")
+        let env = ProcessInfo.processInfo.environment
+        if demo {
+            app.launchArguments = ["-demoLibrary"] + extraArgs
+            app.launchEnvironment["JIMMY_DEMO_DB_ID"] = env["TEST_RUNNER_JIMMY_DEMO_DB_ID"] ?? env["JIMMY_DEMO_DB_ID"] ?? "craft"
+        } else {
+            app.launchArguments = extraArgs
+        }
+        if let route = env["TEST_RUNNER_ROUTE"] { app.launchEnvironment["JIMMY_SCREENSHOT_ROUTE"] = route }
+        app.launch()
+        _ = app.wait(for: .runningForeground, timeout: 20)
+        try? FileManager.default.createDirectory(atPath: outDir, withIntermediateDirectories: true)
+        mark("launched")
+        // Dismiss any TipKit popover so it doesn't cover content.
+        sleep(2)
+    }
+
+    func mark(_ s: String) {
+        let line = "\(Date().timeIntervalSince1970) \(name) \(s)\n"
+        let p = outDir + "/marks.log"
+        if let h = FileHandle(forWritingAtPath: p) { h.seekToEndOfFile(); h.write(line.data(using: .utf8)!); h.closeFile() }
+        else { FileManager.default.createFile(atPath: p, contents: line.data(using: .utf8)) }
+    }
+
+    func dump(_ tag: String) {
+        let base = outDir + "/" + tag
+        try? app.debugDescription.write(toFile: base + ".ax.txt", atomically: true, encoding: .utf8)
+        let png = XCUIScreen.main.screenshot().pngRepresentation
+        FileManager.default.createFile(atPath: base + ".png", contents: png)
+        mark("dump \(tag)")
+    }
+
+    func tab(_ label: String) {
+        let b = app.buttons[label].firstMatch
+        if b.waitForExistence(timeout: 5) { b.tap() } else { mark("missing tab \(label)") }
+        sleep(2)
+    }
+
+    func dismissTips() {
+        for _ in 0..<3 {
+            let close = app.buttons["Close"].firstMatch
+            if close.exists && close.isHittable { close.tap(); usleep(500_000) } else { break }
+        }
+    }
+}
+```
+
+`run.sh`:
+```sh
+#!/bin/bash
+# usage: run.sh <Class/testMethod> [video-name]   env: ROUTE, DBID
+D=/Users/chenk/tmp/codex/jimmy-craft/driver; U=D3613924-57ED-4C71-8721-BA0DA2666DDA
+V=/Users/chenk/tmp/codex/jimmy-craft/video; mkdir -p $V
+export TEST_RUNNER_JIMMY_DEMO_DB_ID=${DBID:-$(cat /Users/chenk/tmp/codex/jimmy-craft/demo-db-id)}
+[ -n "$ROUTE" ] && export TEST_RUNNER_ROUTE=$ROUTE
+if [ -n "$2" ]; then xcrun simctl io $U recordVideo --display=1 --codec=h264 --force $V/$2.mov >/dev/null 2>&1 & RP=$!; sleep 1; fi
+xcodebuild -project $D/Driver.xcodeproj -scheme Flows -derivedDataPath $D/build -destination "platform=iOS Simulator,id=$U" CODE_SIGNING_ALLOWED=NO test-without-building -only-testing:Flows/$1 2>&1 | grep -E 'Test Case|error|failed|passed' | tail -15
+if [ -n "$2" ]; then kill -INT $RP; wait $RP 2>/dev/null; ls -la $V/$2.mov | awk '{print $5, $9}'; fi
+```
