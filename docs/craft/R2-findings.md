@@ -86,10 +86,10 @@ nav bar on scroll.
 | J-25 | Speed is a five-segment control (0.75, 1, 1.25, 1.5, 2×): no 0.5×, 1.75×, 2.5× or fine steps, and nothing dial-like. | `run-light/p-04-speed.png`; `ExpandedNowPlayingView.swift:33, 276-285` | 2 | S2 | daily | M | 4.5 | — |
 | J-26 | No haptics or symbol motion on the transport: skip buttons don't animate or tick, setting a speed or a sleep timer gives no feedback. Only the scrubber's release ticks. | `ExpandedNowPlayingView.swift:221-250`; `sweeps/haptics.txt` | 2 | S3 | every session | S | **8** | — |
 | J-27 | Scrubber is a plain `Slider`: no growth on touch, no fine-scrub, no chapter marks, the elapsed/remaining labels don't track the finger's target. | `run-light/p-02-scrubbed.png`, `p-03-scrub-vertical.png`; `ExpandedNowPlayingView.swift:170-213` | 2 | S3 | daily | M | 3 | — |
-| J-28 | The Chapters button is always there; on most episodes it opens "This episode has no chapters." | `run-light/p-08-chapters.png`; `ExpandedNowPlayingView.swift:264` | 8 | S3 | daily | S | 6 | — |
+| J-28 | The Chapters button is always there; on most episodes it opens "This episode has no chapters." | `run-light/p-08-chapters.png`; `ExpandedNowPlayingView.swift:262` | 8 | S3 | daily | S | 6 | — |
 | J-29 | The ••• menu holds one item (Download). No Go to Show, Go to Episode, Share, Mark Played, Play Next. | `run-light/p-09-more.png`; `ExpandedNowPlayingView.swift:130-144` | 4, 10 | S3 | daily | S | 6 | — |
 | J-30 | An unlabeled button sits at the same frame as "More": VoiceOver lands on a nameless element. | `run-light/p-00-open.ax.txt` (two Buttons at {326, 0, 44, 44}, one without a label) | 12 | S2 | daily | S | 9 | — |
-| J-31 | Sleep panel: "Cancel Timer" wraps onto two lines inside its bordered button. | `run-light/p-07-sleep-set.png`; `SleepTimerView.swift:62` | 5 | S3 | occasional | S | 4 | — |
+| J-31 | Sleep panel: "Cancel Timer" wraps onto two lines inside its bordered button. | `run-light/p-07-sleep-set.png`; `SleepTimerView.swift:56` | 5 | S3 | occasional | S | 4 | — |
 
 Passes: artwork-color backdrop that drops to the system background when it can't reach 4.5:1, secondary text at
 full strength on color, Play/Pause `contentTransition(.symbolEffect(.replace))`, 72 pt play button, glass
