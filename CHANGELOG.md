@@ -8,6 +8,7 @@ All notable changes to Jimmy are recorded here. The format follows
 
 ### Fixed
 
+- A queue row's Play button takes taps across a 44-point target; it was 33 points.
 - The mini player's Play and Skip Forward buttons take taps across a full 44-point target instead of just the glyph.
 - Download buttons on Now Playing, episode detail, and episode rows now download the episode.
 
