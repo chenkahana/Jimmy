@@ -1,4 +1,4 @@
-RESUME HERE: R3.5 next reference (draft in hold/R3-references.md)
+RESUME HERE: R4.1 motion tokens in R4-systems.md
 
 # Progress log
 

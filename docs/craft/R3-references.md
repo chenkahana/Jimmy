@@ -56,3 +56,42 @@ Chen's phone before a backlog item depends on it. The "verify" list at the end i
 | Swipes | Colored, labeled swipe actions with full-swipe; distinct haptic when the full-swipe threshold is crossed. **(known)** |
 | Queue | Reorder by long-press anywhere on the row (no Edit mode), lift with shadow, auto-scroll near edges. **(known)** |
 | Player | Pull-up player card; chapter list inline; speed per show. **(verify)** |
+
+## R3.5 Apple Music (player only)
+
+| Flow | Mechanics |
+|---|---|
+| Mini → full player | Artwork morph from the accessory thumbnail to the hero art; the background blooms from the artwork's colors; reverse path on dismiss. Interruptible: grab the player mid-animation and it follows the finger. **(known)** |
+| Dismiss | Tracks the finger, velocity-aware, small flick dismisses; background content scales slightly behind. **(known)** |
+| Scrubber / volume | Both bars grow on touch and rubber-band past the ends; a haptic tick when the volume bar hits min or max. **(known)** |
+| Play/pause | Symbol morph; artwork shrinks a little when paused and springs back when playing. **(known)** |
+| Up Next | Below the player; drag handles; history above. **(known)** |
+
+## Takeaways for Jimmy (feed R4 and R5)
+
+1. **Morph, don't slide.** Both Apple players grow the full player out of the mini player's artwork and shrink back
+   along the same path, and the gesture is interruptible. Jimmy slides a full-screen cover.
+2. **Velocity decides dismissal.** A short flick closes the player everywhere; a fixed 100 pt threshold doesn't.
+3. **Speed and sleep are dials.** Fine steps (0.1×) with a visible readout (Overcast, Pocket Casts), or Apple's
+   compact menu; never a five-segment control that hides 1.75× and 0.5×.
+4. **Scrubber grows on touch** and doesn't jump to the finger. Chapter marks on the bar are common in third-party
+   players; Apple doesn't draw them.
+5. **Swipe actions are colored and full-swipeable** with a threshold haptic; long-press anywhere reorders the
+   queue (Castro) or handles do (Apple). Jimmy's gray actions and context-menu-first long-press read as less direct.
+6. **Remaining sleep time lives on the button** (Apple) and shake-to-extend (Pocket Casts) is the one delight
+   worth considering.
+7. **System reach is table stakes**: Lock Screen chapter info, CarPlay artwork, Watch queue, Siri intents. Jimmy has
+   the first-level hooks but none of the extensions.
+
+## Verify on Chen's phone (5 minutes, before R5 items that cite "(verify)")
+
+1. Apple Podcasts: does a short flick (< 50 pt) dismiss the player? Does the scrubber jump to the finger or move
+   relatively?
+2. Castro: is reorder a long-press anywhere on the row?
+3. Apple Music: is there a haptic when the volume bar hits its end?
+
+Sources: [Pocket Casts sleep timer](https://support.pocketcasts.com/article/sleep-timer/),
+[Pocket Casts on the App Store](https://apps.apple.com/app/414834813),
+[The Sweet Setup on Overcast](https://thesweetsetup.com/like-overcast/),
+[MacStories: Overcast Watch and Shortcuts](https://www.macstories.net/reviews/overcast-revamps-apple-watch-app-and-shortcuts-actions/),
+[iClarified: Overcast Voice Boost 2 and per-podcast skips](https://www.iclarified.com/74295/overcast-podcast-player-gets-voice-boost-2-perpodcast-skip-durations-for-introsoutros-more).

@@ -44,7 +44,7 @@ approves the backlog. Resume point and log: [`PROGRESS.md`](PROGRESS.md).
 - [x] R3.2 Overcast
 - [x] R3.3 Pocket Casts
 - [x] R3.4 Castro
-- [ ] R3.5 Apple Music (player)
+- [x] R3.5 Apple Music (player)
 
 ### R4 Systems → [`R4-systems.md`](R4-systems.md)
 - [ ] R4.1 Motion tokens
