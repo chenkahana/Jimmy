@@ -29,3 +29,4 @@ Append-only. One line per completed step: date, step, what was done, commit.
 | 2026-11-18 | R2.11 | Accessibility pass: J-40..J-42 + AX5 | 58db209 |
 | 2026-11-18 | R2.12 | Coverage by existing polish docs (all superseded/stale) | 667f922 |
 | 2026-11-18 | R3.1 |  | c034ae2 |
+| 2026-11-18 | R3.2 | Apple Podcasts mechanics | 1d8cdfd |
