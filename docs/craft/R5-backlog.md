@@ -66,3 +66,57 @@ Boaz and Edison. **Needs Chen** = changes a product constraint, a written design
 | **W5 Artwork and geometry** | J-18, J-19, J-34, J-07 | R4.1 reveal, R4.3 radius | Needs one device check (J-19) and Chen's call on J-07. |
 | **W6 Library and queue** | J-12, J-08, J-36 | R4.6 | Downloads view is a scope decision. |
 | **W7 System citizen** | J-37, J-38, J-39, J-35 | — | Needs Chen's devices first; App Intents are the cheapest entry. |
+
+## R5.3 PR slices (one visible change each)
+
+Ordered for landing. Each PR: one change, before/after capture with the R0 driver, patch release per Jimmy's
+process. "Done when" is what the reviewer checks in the simulator.
+
+| PR | Change | Closes | Done when | Needs Chen |
+|---|---|---|---|---|
+| 1 | Add `.hitTarget()` (44 pt min frame + `contentShape`) and apply it to the mini player's Play and Skip | J-01 | AX tree shows both ≥ 44 × 44 | |
+| 2 | Apply `.hitTarget()` to Now Playing's chevron, ••• and Speed/Sleep/Chapters; remove the unlabeled duplicate | J-22, J-30 | AX tree: all ≥ 44 pt, no nameless button | |
+| 3 | Queue row Play button to 44 pt; fold it into the row for VoiceOver (custom action only) | J-06, J-11 | One VoiceOver stop per row; Play still tappable | |
+| 4 | Drag-to-dismiss tracks 1:1 and uses predicted end translation | J-23 | 80 pt flick closes; slow 60 pt drag springs back | |
+| 5 | Skip buttons: `symbolEffect(.bounce)` + light haptic; selection haptic on speed/sleep changes; success on sleep set | J-26 | Visible bounce in recording; haptics listed in code review | |
+| 6 | Hide Chapters when an episode has none; fill the ••• menu (Go to Show, Go to Episode, Share, Mark Played) | J-28, J-29 | No "no chapters" panel; menu has 5 items | |
+| 7 | Queue shows nothing (not the empty state) until the store's first answer; launch shows the shell immediately | J-02 | Launch strip has no "Queue Is Empty" frame | N: keep playback restore order |
+| 8 | Show notes: render HTML structure (paragraphs, lists, link text with targets) | J-17 | `q-08` capture shows paragraphs and tappable links | |
+| 9 | One duration formatter and one episode-date formatter everywhere | J-20, J-21 | Same episode shows the same minutes and date style on Queue, Library, podcast and detail | |
+| 10 | String Catalog + naming pass (Mark Played, Follow, Send Feedback, backup names, "…") | J-13, J-14, J-32 | `Localizable.xcstrings` exists; grep finds no "Subscribe", "Mark as Played", "..." in UI strings | |
+| 11 | Cache Discover charts on device; show cached charts with an inline retry on failure | J-16 | Airplane mode: Search tab still shows Top Shows | P: on-device cache |
+| 12 | Podcast page uses the tile's cached artwork and color on the first frame | J-18 | `l-zoom` strip shows art and backdrop at frame 0 | |
+| 13 | Speed as a dial: 0.5–3× in 0.05 steps with presets and a readout | J-25 | Panel capture; VoiceOver adjustable | |
+| 14 | Undo toast for queue Remove / Clear Played; confirm Clear All | J-09 | Remove → Undo restores position | Q |
+| 15 | Text styles for badges and the error banner; mini player at AX sizes drops Skip and gives the title room | J-40, J-05 | AX5 captures readable | |
+| 16 | VoiceOver announcements for download done/failed, import done, sleep timer ended; Reduce Motion for the shimmer | J-41, J-42 | VoiceOver speaks each outcome | |
+| 17 | Suggestions: placeholder rows and a Done button | J-10 | Capture shows rows, not a spinner | |
+| 18 | Sleep panel layout ("Cancel Timer" on one line), onboarding button on a material bar, tip placement | J-31, J-34, J-04 | Captures | |
+| 19 | Scrubber grows on touch, chapter ticks with selection haptic | J-27 | Recording shows growth; chapters ticked | |
+| 20 | Mini player ↔ Now Playing morph (shared artwork geometry), no mini-player blink | J-24, J-03 | `p-open` strip shows artwork growing from the accessory | N: transition only |
+| 21 | Fix pinned header stacking on the podcast page | J-19 | Verified on an iPhone first | Verify on iPhone |
+| 22 | Long-press reorder in the queue without Edit (or drop the claim and keep Edit) | J-08 | Device recording | Q; verify on device |
+| 23 | Restore tab and navigation path after relaunch (`SceneStorage`) | J-36 | `Restore` flow lands on the same podcast page | |
+| 24 | Swipe action tints | J-07 | Captures | **Yes:** `design.md` "one accent" |
+| 25 | Downloads segment in Library (in progress, failed, done, space used) | J-12 | Capture of all states | **Yes:** scope |
+| 26 | App Intents: Play Queue, Skip Forward/Back, Set Sleep Timer (Siri and Shortcuts) | J-35 (part) | Shortcuts app lists the intents | P: intents run on device |
+| 27 | Lock Screen: chapter info, playback-rate command; decide what "next" does | J-37 | Device steps R0.3 #1–4 | **Yes:** what "next" means in a queue |
+| 28 | CarPlay artwork in lists, rate button in Now Playing | J-38 | Device steps R0.3 #7 | Device |
+| 29 | Watch: skip glyphs from phone Settings, buttons not tap gestures, artwork | J-39 | Device steps R0.3 #8 | Device |
+| 30 | Widgets / Control Center control / Live Activity | J-35 (rest) | — | **Yes:** scope |
+| 31 | Feedback form closes on send completion, not a timer; Library first-load placeholders | J-33, J-15 | Code review | |
+
+**Systems first?** No separate token PR: PR 1 introduces `.hitTarget()`, PR 4 introduces `Motion.gesture`, PR 9 the
+formatters, PR 10 the catalog. Each system lands with its first visible use.
+
+## Questions only Chen can answer
+
+1. **Swipe tints (J-07):** keep `docs/design.md`'s one-accent rule (gray swipes) or allow system colors for swipe
+   actions (Play Next blue, Remove red, Played green) as Apple Podcasts and Castro do? Default: allow system colors for swipe actions only, and note it in `design.md`.
+2. **Downloads view (J-12):** build the Downloads segment `docs/design.md` promises, or remove it from the spec? Default: build it (offline listening is a private/on-device promise).
+3. **"Next" in a queue (J-37):** should AirPods/Lock Screen/CarPlay "next track" skip to the next queued episode
+   (marking the current one how: played, or left in place?), or stay disabled and map to skip forward? Default: next = start the next queued episode, leaving the current one in place with its progress.
+4. **System reach (J-35):** which first: App Intents/Siri, Lock Screen widget, Control Center control or a Live
+   Activity? Handoff to the Mac needs a Mac app or iCloud; is that in scope? Default: App Intents first (cheapest, unlocks Siri, Shortcuts and the Action button), then a Control Center control.
+5. **Devices:** 20 minutes with the R0.3 steps (Lock Screen, AirPods, interruptions, CarPlay, Watch) and 10 with
+   Instruments (R0.4) on a ProMotion iPhone; until then J-08, J-19, J-37–J-39 stay "verify".

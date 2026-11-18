@@ -1,4 +1,4 @@
-RESUME HERE: R5.3 PR slices + questions for Chen
+RESUME HERE: DONE. Research complete through R5; awaiting Chen's approval of R5-backlog.md. Do not implement until approved.
 
 # Progress log
 
