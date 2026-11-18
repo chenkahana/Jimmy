@@ -55,3 +55,22 @@ play/pause, skips, speed, sleep, follow, or downloads.
 | Play / pause | none | the audio is the feedback; Apple does the same |
 
 All through `.sensoryFeedback(_:trigger:)`; retire `Motion.lightHaptic()` etc. and `FeedbackManager` once moved.
+
+## R4.3 Layout tokens
+
+**Today:** `JimmyDesign.Spacing` (4, 8, 12, 16, 24, 32) is used 83 times; 40 paddings are still literals.
+`JimmyDesign.Radius` (8, 12, 16, 24) is used rarely; 45 literal radii span 2–24 pt (most common: 12 ×12, 3 ×7,
+4 ×6, 16 ×6). Artwork corners are 0.18 × side in three places by hand.
+
+**Proposal:**
+- Keep the spacing scale; add `JimmyDesign.Spacing.hairline = 2` for the progress-line gap and replace literal
+  paddings in touched files as each PR lands (no sweep PR).
+- Radius: one function, `JimmyDesign.Radius.artwork(side:)` = `side * 0.18` continuous, used by the queue row,
+  mini player, episode header, Now Playing and show tiles; nested shapes use `ConcentricRectangle` /
+  `.containerShape` instead of fixed radii; sheets, panels and glass keep the system radius
+  (`BottomPanelStyle.cornerRadius` 28 matches the system sheet). Progress bars and small badges use `Capsule`.
+- Hit targets: `JimmyDesign.minHit = 44`, applied with a `.hitTarget()` modifier that sets
+  `frame(minWidth: 44, minHeight: 44)` and `contentShape(.rect)` on icon-only and text-only controls. (J-01, J-06,
+  J-22)
+- The old `liquid-glass-design-tokens.md` tab-bar metrics are retired with the custom tab bar (R2.11); nothing
+  carries over.

@@ -49,7 +49,7 @@ approves the backlog. Resume point and log: [`PROGRESS.md`](PROGRESS.md).
 ### R4 Systems → [`R4-systems.md`](R4-systems.md)
 - [x] R4.1 Motion tokens
 - [x] R4.2 Haptic map
-- [ ] R4.3 Layout tokens (spacing, radius, concentricity)
+- [x] R4.3 Layout tokens (spacing, radius, concentricity)
 - [ ] R4.4 Type ramp
 - [ ] R4.5 Copy rules and English String Catalog
 - [ ] R4.6 State kit (empty, loading, offline, error)
