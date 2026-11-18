@@ -1,4 +1,4 @@
-RESUME HERE: R3.1 Apple Podcasts references (draft in ~/tmp/codex/jimmy-craft/hold/R3-references.md)
+RESUME HERE: R3.2 next reference (draft in hold/R3-references.md)
 
 # Progress log
 
