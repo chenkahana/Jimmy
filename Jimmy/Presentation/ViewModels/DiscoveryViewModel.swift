@@ -40,12 +40,24 @@ class DiscoveryViewModel: ObservableObject {
     /// Apple Podcasts search and charts (JimmyKit). Injectable so tests can stub it instead of
     /// hitting the network.
     private let directory: PodcastDirectory
+    /// The last chart that loaded, kept on device so Top Shows has something to show when a fetch fails.
+    private let chartsCacheURL: URL?
+    /// True once the chart has loaded this launch; a chart read from the cache still gets refreshed.
+    private var hasLoadedCharts = false
     private var cancellables = Set<AnyCancellable>()
     private var searchTask: Task<Void, Never>?
 
+    static let defaultChartsCacheURL = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)
+        .first?.appendingPathComponent("top-shows.json")
+
     // MARK: - Initialization
-    init(directory: PodcastDirectory) {
+    init(directory: PodcastDirectory, chartsCacheURL: URL? = DiscoveryViewModel.defaultChartsCacheURL) {
         self.directory = directory
+        self.chartsCacheURL = chartsCacheURL
+        if let chartsCacheURL, let data = try? Data(contentsOf: chartsCacheURL),
+           let cached = try? JSONDecoder().decode([PodcastSearchResult].self, from: data) {
+            charts = cached
+        }
         setupSearchBinding()
     }
 
@@ -83,6 +95,10 @@ class DiscoveryViewModel: ObservableObject {
             // The lookup doesn't promise the chart's order; put the shows back in rank order.
             let resultsByID = Dictionary(lookedUp.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
             charts = entries.compactMap { resultsByID[$0.id] }.map(Self.podcastSearchResult(from:))
+            hasLoadedCharts = true
+            if let chartsCacheURL, let data = try? JSONEncoder().encode(charts) {
+                try? data.write(to: chartsCacheURL, options: .atomic)
+            }
         } catch {
             errorMessage = error.localizedDescription
             Self.logger.error("DiscoveryViewModel: Failed to refresh data - \(error.localizedDescription)")
@@ -92,8 +108,8 @@ class DiscoveryViewModel: ObservableObject {
     }
 
     func loadDataIfNeeded() async {
-        // Only load if we don't have any data
-        guard !hasAnyData else { return }
+        // Once per launch; a failed load tries again next time Discover appears.
+        guard !hasLoadedCharts else { return }
 
         await refreshData()
     }

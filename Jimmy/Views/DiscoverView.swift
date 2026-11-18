@@ -159,6 +159,9 @@ struct DiscoverView: View {
                             }
                         }
                     }
+                    if viewModel.errorMessage != nil && !viewModel.isLoading {
+                        refreshErrorRow
+                    }
                 }
             }
         }
@@ -167,6 +170,19 @@ struct DiscoverView: View {
         .refreshable {
             await viewModel.refreshData()
         }
+    }
+
+    /// Shown under saved Top Shows when the latest fetch failed.
+    private var refreshErrorRow: some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text("Couldn't refresh Top Shows.")
+                .foregroundStyle(.secondary)
+            Spacer(minLength: JimmyDesign.Spacing.sm)
+            Button("Try Again") {
+                Task { await viewModel.refreshData() }
+            }
+        }
+        .font(.footnote)
     }
 
     private var recentSearchesHeader: some View {
