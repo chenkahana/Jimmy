@@ -24,3 +24,4 @@ Append-only. One line per completed step: date, step, what was done, commit.
 | 2026-11-18 | R2.6 | Podcast + episode detail: J-17..J-21 (show notes, pop-in) | c64d7ab |
 | 2026-11-18 | R2.7 | Now Playing: J-22..J-31 (targets, flick, morph, speed) | f6729f9 |
 | 2026-11-18 | R2.8 | Settings/Stats/Feedback: J-32..J-33 | 0255cc6 |
+| 2026-11-18 | R2.9 | Onboarding: J-34 | 7eb302d |
