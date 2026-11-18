@@ -8,6 +8,7 @@ All notable changes to Jimmy are recorded here. The format follows
 
 ### Fixed
 
+- Show notes keep their paragraphs, line breaks and list items, and linked text links to its page instead of running together as plain text.
 - Launch no longer flashes "Queue Is Empty" before the queue appears.
 - Now Playing follows your finger as you drag it down, and a quick flick down closes it.
 - A queue row's Play button takes taps across a 44-point target; it was 33 points.
