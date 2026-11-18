@@ -42,7 +42,7 @@ approves the backlog. Resume point and log: [`PROGRESS.md`](PROGRESS.md).
 ### R3 References → [`R3-references.md`](R3-references.md)
 - [x] R3.1 Apple Podcasts
 - [x] R3.2 Overcast
-- [ ] R3.3 Pocket Casts
+- [x] R3.3 Pocket Casts
 - [ ] R3.4 Castro
 - [ ] R3.5 Apple Music (player)
 

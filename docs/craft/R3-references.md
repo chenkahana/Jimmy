@@ -37,3 +37,13 @@ Chen's phone before a backlog item depends on it. The "verify" list at the end i
 | Scrubbing | The seek bar is long and thin; Overcast also exposes skip buttons with per-podcast skip-intro/outro durations (2025). **(doc: iClarified)** |
 | Queue | Playlists with drag handles; long-press to reorder. **(known)** |
 | Watch | Full standalone Watch app with playback controls and downloaded episodes. **(doc: MacStories)** |
+
+## R3.3 Pocket Casts
+
+| Flow | Mechanics |
+|---|---|
+| Speed | 0.5× to 3× (5× in newer builds) in 0.1× steps with − / + buttons and presets; can be saved per show. **(doc: App Store page, support)** |
+| Sleep timer | 15 min, 30 min, 1 h, End of Episode, custom; **shake the phone to restart** the timer before it ends; a fading volume ramp at the end. **(doc: support.pocketcasts.com)** |
+| Player | Sheet-style full player with tabs for Now Playing, Show Notes, Chapters; chapters can be skipped (deselected). Artwork-tinted background. **(known)** |
+| Up Next | Drag to reorder with lift and haptic; swipe actions configurable (full swipe = primary). **(known)** |
+| Episode rows | Multi-select mode for bulk actions; swipe actions with colors (Up Next top/bottom, archive). **(known)** |
