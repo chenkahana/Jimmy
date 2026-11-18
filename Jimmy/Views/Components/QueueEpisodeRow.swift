@@ -101,6 +101,7 @@ struct QueueEpisodeRow: View {
                     .font(.title)
                     .symbolRenderingMode(.hierarchical)
                     .foregroundStyle(.tint)
+                    .hitTarget()
             }
             .buttonStyle(.borderless)
             .accessibilityLabel(isCurrent && isPlaying ? "Pause" : "Play")

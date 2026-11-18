@@ -9,6 +9,13 @@ All notable changes to Jimmy are recorded here. The format follows
 ### Fixed
 
 - An episode shows the same length and date everywhere: Library, podcast pages and episode detail use the queue's "42 min" and "Today", "3d" or "Oct 2".
+- Search keeps the last Top Shows it loaded, on this device, and shows them with a Try Again row when a fetch fails, instead of an error page.
+- Show notes keep their paragraphs, line breaks and list items, and linked text links to its page instead of running together as plain text.
+- Launch no longer flashes "Queue Is Empty" before the queue appears.
+- Now Playing follows your finger as you drag it down, and a quick flick down closes it.
+- A queue row's Play button takes taps across a 44-point target; it was 33 points.
+- Now Playing's Close, More, Speed, Sleep and Chapters controls take taps across a 44-point target; Close was 18 × 10 points.
+- Artwork that's already loaded shows at once when a screen opens, so a podcast page no longer starts with a blank hero that fades in.
 - The mini player's Play and Skip Forward buttons take taps across a full 44-point target instead of just the glyph.
 - Download buttons on Now Playing, episode detail, and episode rows now download the episode.
 
@@ -19,6 +26,8 @@ All notable changes to Jimmy are recorded here. The format follows
 
 ### Changed
 
+- Now Playing's skip buttons bounce and tick when tapped, a speed change ticks, and setting a sleep timer gives a success tap.
+- Marking an episode played is called Mark Played (and Mark Unplayed) in every swipe and menu, and Add to Queue uses one icon everywhere.
 - Now Playing sits on a flat color sampled from the artwork, with transport in one glass capsule. Speed, Sleep and
   Chapters open one bottom panel, and chapters show their lengths. Download moves to the More menu.
 - Tabs are Queue, Library and Search. The mini player sits above the tab bar, which shrinks as you scroll, and

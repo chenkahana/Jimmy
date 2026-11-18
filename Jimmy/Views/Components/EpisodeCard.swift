@@ -53,7 +53,7 @@ struct EpisodeCard: View, Equatable {
                 .contextMenu { actionButtons }
                 .swipeActions(edge: .leading) {
                     if let onAddToQueue {
-                        Button("Add to Queue", systemImage: "text.append", action: onAddToQueue)
+                        Button("Add to Queue", systemImage: "text.badge.plus", action: onAddToQueue)
                     }
                 }
                 .swipeActions(edge: .trailing) {
@@ -61,7 +61,7 @@ struct EpisodeCard: View, Equatable {
                         Button("Remove", systemImage: "trash", role: .destructive, action: onRemoveFromQueue)
                     }
                     if let onToggleFinished {
-                        Button(isPlayed ? "Unplayed" : "Played", systemImage: isPlayed ? "circle" : "checkmark.circle",
+                        Button(isPlayed ? "Mark Unplayed" : "Mark Played", systemImage: isPlayed ? "circle" : "checkmark.circle",
                                action: onToggleFinished)
                     }
                 }
@@ -142,13 +142,13 @@ struct EpisodeCard: View, Equatable {
             Button("Play", systemImage: "play", action: onPlay)
         }
         if let onAddToQueue {
-            Button("Add to Queue", systemImage: "text.append", action: onAddToQueue)
+            Button("Add to Queue", systemImage: "text.badge.plus", action: onAddToQueue)
         }
         if let onMoveToLast {
             Button("Move to End", systemImage: "arrow.down.to.line", action: onMoveToLast)
         }
         if let onToggleFinished {
-            Button(isPlayed ? "Mark as Unplayed" : "Mark as Played",
+            Button(isPlayed ? "Mark Unplayed" : "Mark Played",
                    systemImage: isPlayed ? "circle" : "checkmark.circle", action: onToggleFinished)
         }
         if let onRemoveFromQueue {

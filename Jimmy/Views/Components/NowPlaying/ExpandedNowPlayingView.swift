@@ -27,6 +27,9 @@ struct ExpandedNowPlayingView: View {
     /// The scrubber's position while it is being dragged.
     @State private var scrubPosition: TimeInterval?
     @State private var scrubsEnded = 0
+    /// Counts skips, so each one bounces its glyph and ticks once.
+    @State private var skipsBack = 0
+    @State private var skipsForward = 0
     private let onClose: (() -> Void)?
 
     private enum Panel { case speed, sleep, chapters }
@@ -72,7 +75,6 @@ struct ExpandedNowPlayingView: View {
             }
         }
         .environment(\.colorScheme, backdrop?.colorScheme ?? colorScheme)
-        .animation(.motion, value: dragOffset)
     }
 
     // MARK: - Player
@@ -109,7 +111,7 @@ struct ExpandedNowPlayingView: View {
             Button(action: closePlayer) {
                 Image(systemName: "chevron.down")
                     .font(.title3.weight(.semibold))
-                    .frame(width: 44, height: 44)
+                    .hitTarget()
             }
             .accessibilityLabel("Close Now Playing")
 
@@ -120,7 +122,7 @@ struct ExpandedNowPlayingView: View {
             } label: {
                 Image(systemName: "ellipsis")
                     .font(.title3.weight(.semibold))
-                    .frame(width: 44, height: 44)
+                    .hitTarget()
             }
             .accessibilityLabel("More")
         }
@@ -221,9 +223,13 @@ struct ExpandedNowPlayingView: View {
         let forward = Int(settings.skipForwardDuration)
         let isPlaying = appModel.playback?.isPlaying ?? false
         return HStack(spacing: JimmyDesign.Spacing.xl) {
-            Button(action: viewModel.skipBackward) {
+            Button {
+                viewModel.skipBackward()
+                skipsBack += 1
+            } label: {
                 Image(systemName: "gobackward.\(back)")
                     .font(.system(size: min(skipGlyph, 40), weight: .semibold))
+                    .symbolEffect(.bounce, value: skipsBack)
                     .frame(width: 56, height: 56)
             }
             .accessibilityLabel("Skip back \(back) seconds")
@@ -238,28 +244,40 @@ struct ExpandedNowPlayingView: View {
             }
             .accessibilityLabel(isPlaying ? "Pause" : "Play")
 
-            Button(action: viewModel.skipForward) {
+            Button {
+                viewModel.skipForward()
+                skipsForward += 1
+            } label: {
                 Image(systemName: "goforward.\(forward)")
                     .font(.system(size: min(skipGlyph, 40), weight: .semibold))
+                    .symbolEffect(.bounce, value: skipsForward)
                     .frame(width: 56, height: 56)
             }
             .accessibilityLabel("Skip forward \(forward) seconds")
         }
         .buttonStyle(BounceButtonStyle())
+        .sensoryFeedback(.impact(weight: .light, intensity: 0.5), trigger: skipsBack)
+        .sensoryFeedback(.impact(weight: .light, intensity: 0.5), trigger: skipsForward)
         .padding(JimmyDesign.Spacing.sm)
         .glassEffect(.regular.interactive(), in: .capsule)
     }
 
     private var secondaryControls: some View {
         HStack {
-            Button(speedText(settings.playbackSpeed)) { show(.speed) }
-                .accessibilityLabel("Playback speed, \(speedText(settings.playbackSpeed))")
+            Button { show(.speed) } label: {
+                Text(speedText(settings.playbackSpeed)).hitTarget(alignment: .leading)
+            }
+            .accessibilityLabel("Playback speed, \(speedText(settings.playbackSpeed))")
             Spacer()
-            Button(sleepLabel) { show(.sleep) }
-                .monospacedDigit()
-                .accessibilityLabel(isSleepTimerActive ? "Sleep timer, \(sleepLabel)" : "Sleep timer")
+            Button { show(.sleep) } label: {
+                Text(sleepLabel).hitTarget()
+            }
+            .monospacedDigit()
+            .accessibilityLabel(isSleepTimerActive ? "Sleep timer, \(sleepLabel)" : "Sleep timer")
             Spacer()
-            Button("Chapters") { show(.chapters) }
+            Button { show(.chapters) } label: {
+                Text("Chapters").hitTarget()
+            }
             Spacer()
             RoutePickerViewRepresentable()
                 .frame(width: 44, height: 44)
@@ -286,11 +304,15 @@ struct ExpandedNowPlayingView: View {
                     }
                 }
                 .pickerStyle(.segmented)
+                .sensoryFeedback(.selection, trigger: settings.playbackSpeed)
             }
             .padding(JimmyDesign.Spacing.xl)
         case .sleep:
             SleepTimerView()
                 .padding(JimmyDesign.Spacing.xl)
+                .sensoryFeedback(trigger: appModel.playback?.sleepTimerMode) { _, mode in
+                    mode == nil ? nil : .success
+                }
         case .chapters:
             if let episode = viewModel.currentPlayingEpisode {
                 NowPlayingChaptersPanel(episodeID: episode.id, duration: appModel.playback?.duration) { start in
@@ -309,15 +331,14 @@ struct ExpandedNowPlayingView: View {
 
     // MARK: - Gestures & Actions
 
+    /// Follows the finger one to one, and closes on a long drag or a flick down.
     private var dismissGesture: some Gesture {
         DragGesture()
             .onChanged { value in
-                if value.translation.height > 0 {
-                    dragOffset = rubberBand(value.translation.height)
-                }
+                dragOffset = max(value.translation.height, 0)
             }
             .onEnded { value in
-                if value.translation.height > 100 {
+                if value.translation.height > 100 || value.predictedEndTranslation.height > 220 {
                     closePlayer()
                 } else {
                     withAnimation(.motionGentle) {
@@ -364,11 +385,6 @@ struct ExpandedNowPlayingView: View {
             let total = Int(max(0, appModel.playback?.sleepTimerRemaining ?? 0))
             return String(format: "%d:%02d", total / 60, total % 60)
         }
-    }
-
-    private func rubberBand(_ translation: CGFloat) -> CGFloat {
-        let constant: CGFloat = 0.55
-        return (1.0 - (1.0 / ((translation * constant / 1000.0) + 1.0))) * 1000.0
     }
 
     private func formatTime(_ time: TimeInterval) -> String {
