@@ -54,3 +54,27 @@ answers to, and the VoiceOver path through it. "Seen" points at the capture unde
 | Now Playing | Scrubber drag (plain `Slider`); transport taps; drag down anywhere on the player; panels drag down. |
 | Discover | Pull nothing (no refresh on charts); swipe to delete recent searches. |
 | Library | Pull to refresh. |
+
+## R1.3 VoiceOver paths
+
+From the accessibility trees (`*.ax.txt`), in reading order:
+
+- **Queue:** nav "Queue" → Edit → each row as one button ("Know the Score, 99% Invisible, 26 min left, 1d, Paused",
+  value "32%") with a separate "Play" button inside it, and a "Pause/Play" custom action → summary text → More,
+  Suggestions → tabs Queue/Library/Search → mini player ("Know the Score, 26 min left", hint "Opens Now Playing")
+  → Play → Skip Forward. Row hint "Shows episode details". The row adds one custom action (Play/Pause,
+  `QueueView.swift:152`); the swipe actions reach VoiceOver through the system's Actions rotor, the context menu
+  through "Show menu". The nested "Play" button is a second stop on every row.
+- **Now Playing:** "Close Now Playing" → "More" (plus an unlabeled button at the same frame) → artwork ("Artwork for
+  Know the Score from 99% Invisible", image) → title → show → "Playback position, 12:00 of 37:01" (adjustable: swipe
+  up/down skips by the skip interval) → "Skip back 15 seconds" → "Play" → "Skip forward 15 seconds" → "Playback
+  speed, 1×" → "Sleep timer" → "Chapters" → "AirPlay". Elapsed/remaining labels are hidden (the slider value covers
+  them). Panels are modal with an escape action.
+- **Podcast:** title, author, "Following", description, "More", "Episodes", each episode as one button ("Are wildfires
+  making the future uninsurable?, Unplayed, 14 Nov · 41 min"); back button has an identifier but no label; "Filter
+  and Sort".
+- **Discover:** search field "Shows", "Top Shows", each chart row, + buttons.
+- **Settings:** standard `Form` — labels, toggles and pickers read correctly.
+- No custom rotors (headings exist on `JimmySectionHeader` and the Now Playing panel titles). No announcements:
+  `AccessibilityService.announce(_:)` (`Services/AccessibilityService.swift:30`) exists but nothing calls it, so
+  downloads finishing or failing, a sleep timer ending and errors are silent.

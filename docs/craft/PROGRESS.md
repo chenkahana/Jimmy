@@ -1,4 +1,4 @@
-RESUME HERE: R1.3 VoiceOver paths (draft in hold/R1-inventory.md)
+RESUME HERE: R1.4 write coverage gaps and finish R1-inventory.md
 
 # Progress log
 
