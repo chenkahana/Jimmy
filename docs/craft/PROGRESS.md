@@ -32,3 +32,4 @@ Append-only. One line per completed step: date, step, what was done, commit.
 | 2026-11-18 | R3.2 | Apple Podcasts mechanics | 1d8cdfd |
 | 2026-11-18 | R3.3 | Overcast mechanics | 65743a6 |
 | 2026-11-18 | R3.4 | Pocket Casts mechanics | a4d311d |
+| 2026-11-18 | R3.5 | Castro mechanics | 881e24d |
