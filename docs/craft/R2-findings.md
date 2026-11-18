@@ -61,3 +61,17 @@ pull to refresh, empty state "No Shows Yet" with Browse Shows and Add Sample Sho
 Passes: native `.searchable` with recent searches, skeleton rows with `redacted(.placeholder)` while loading
 (`run-light/d-03-typing.png`), `ContentUnavailableView.search` for no results (`d-06-no-results.png`), zoom into a
 result, follow button turns into a checkmark.
+
+## R2.5 Podcast and episode detail
+
+| ID | Finding | Evidence | Check | Sev | Reach | Effort | Score | Constraint |
+|---|---|---|---|---|---|---|---|---|
+| J-17 | **Show notes lose their structure.** HTML tags are stripped with a regex that doesn't turn `<p>`, `<br>` or `<li>` into line breaks, and `<a>` link targets are dropped, so paragraphs and link lists run together ("…climate changeInside the insurance industry's destruction labEpisode 797: Flood Money…", "InstagramTikTokYouTubeFacebook"). | `run-light/q-08-episode-detail-scrolled.png`; `Jimmy/Utilities/StringExtensions.swift:61-70`; used by `EpisodeDetailView.swift:288` and `EpisodeRowView.swift:104` | 6 | S2 | daily | M | 4.5 | — |
+| J-18 | Podcast page: the hero artwork is blank for ~0.2 s after the zoom lands, then the artwork-color backdrop fades in over 0.6 s, so the page visibly repaints after it arrives. | `sheets/l-zoom.png`; `Jimmy/Services/ArtworkColorExtractor.swift:29,54` (`easeInOut(0.6)`) | 1, 5 | S2 | daily | M | 4.5 | — |
+| J-19 | Scrolled podcast page: the pinned "Episodes" header sits above the inline "Planet Money" title, and episode text shows through behind both. | `sheets/l04-top.png`, `run-light/l-04-podcast-scrolled.png` | 5 | S2 | daily | M | 4.5 | Verify on iPhone |
+| J-20 | Same episode, two durations: Queue "42 min", detail "41 min". Queue rounds up, `EpisodeCard.durationText` rounds to nearest. | `run-light/01-queue.png` vs `q-07-episode-detail.png`; `QueueEpisodeRow.swift:150` vs `Components/EpisodeCard.swift:164-168` | 9 | S3 | daily | S | 6 | — |
+| J-21 | Dates change format by screen: Queue "1d", Library Episodes "17 Nov", podcast list "11 Nov", episode detail "14 Nov 2026". | `run-light/01-queue.png`, `l-01-episodes.png`, `l-04-*`, `q-07-*`; `QueueEpisodeRow.swift:153-170`, `EpisodeDetailView.swift:109` | 9 | S3 | daily | S | 6 | — |
+
+Passes: zoom from row/tile, serif show notes with linked timestamps, Follow as `.glassProminent` and Following as
+glass, Unfollow confirmation, Filter and Sort menu, "Couldn't Load Episodes" with Try Again, title moves into the
+nav bar on scroll.
