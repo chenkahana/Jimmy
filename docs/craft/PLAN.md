@@ -47,7 +47,7 @@ approves the backlog. Resume point and log: [`PROGRESS.md`](PROGRESS.md).
 - [x] R3.5 Apple Music (player)
 
 ### R4 Systems → [`R4-systems.md`](R4-systems.md)
-- [ ] R4.1 Motion tokens
+- [x] R4.1 Motion tokens
 - [ ] R4.2 Haptic map
 - [ ] R4.3 Layout tokens (spacing, radius, concentricity)
 - [ ] R4.4 Type ramp

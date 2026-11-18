@@ -1,4 +1,4 @@
-RESUME HERE: R4.1 motion tokens in R4-systems.md
+RESUME HERE: R4.2 next system (draft in hold/R4-systems.md)
 
 # Progress log
 
