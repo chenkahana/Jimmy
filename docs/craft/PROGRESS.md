@@ -27,3 +27,4 @@ Append-only. One line per completed step: date, step, what was done, commit.
 | 2026-11-18 | R2.9 | Onboarding: J-34 | 7eb302d |
 | 2026-11-18 | R2.10 | CarPlay/Watch/system: J-35..J-39 | 1bb65eb |
 | 2026-11-18 | R2.11 | Accessibility pass: J-40..J-42 + AX5 | 58db209 |
+| 2026-11-18 | R2.12 | Coverage by existing polish docs (all superseded/stale) | 667f922 |
