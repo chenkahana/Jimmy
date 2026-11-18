@@ -9,6 +9,7 @@ All notable changes to Jimmy are recorded here. The format follows
 ### Fixed
 
 - Now Playing's Close, More, Speed, Sleep and Chapters controls take taps across a 44-point target; Close was 18 × 10 points.
+- Artwork that's already loaded shows at once when a screen opens, so a podcast page no longer starts with a blank hero that fades in.
 - The mini player's Play and Skip Forward buttons take taps across a full 44-point target instead of just the glyph.
 - Download buttons on Now Playing, episode detail, and episode rows now download the episode.
 
@@ -19,6 +20,7 @@ All notable changes to Jimmy are recorded here. The format follows
 
 ### Changed
 
+- Marking an episode played is called Mark Played (and Mark Unplayed) in every swipe and menu, and Add to Queue uses one icon everywhere.
 - Now Playing sits on a flat color sampled from the artwork, with transport in one glass capsule. Speed, Sleep and
   Chapters open one bottom panel, and chapters show their lengths. Download moves to the More menu.
 - Tabs are Queue, Library and Search. The mini player sits above the tab bar, which shrinks as you scroll, and
