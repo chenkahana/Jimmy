@@ -1,4 +1,4 @@
-RESUME HERE: R0.2 record flows (queue, library, discover/search, podcast+episode detail, mini↔full player, scrub/speed/sleep, downloads, settings, onboarding) Light+Dark with ~/tmp/codex/jimmy-craft/driver/run.sh; videos to ~/tmp/codex/jimmy-craft/video. Sim 'Jimmy Craft' udid D3613924-57ED-4C71-8721-BA0DA2666DDA, demo DB id in ~/tmp/codex/jimmy-craft/demo-db-id.
+RESUME HERE: R0.3 system checks (Lock Screen/Control Center/CarPlay/Watch): code evidence + needs-Chen-device steps
 
 # Progress log
 
