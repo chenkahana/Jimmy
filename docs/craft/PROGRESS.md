@@ -1,4 +1,4 @@
-RESUME HERE: R2.1 audit Shell (tab bar, mini player, launch) into R2-findings.md
+RESUME HERE: R2.2 next section of R2-findings.md (full draft in ~/tmp/codex/jimmy-craft/hold/R2-findings.md)
 
 # Progress log
 

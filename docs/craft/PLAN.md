@@ -26,7 +26,7 @@ approves the backlog. Resume point and log: [`PROGRESS.md`](PROGRESS.md).
 - [x] R1.4 Write `R1-inventory.md`
 
 ### R2 Audit → [`R2-findings.md`](R2-findings.md)
-- [ ] R2.1 Shell: tab bar, mini player, navigation
+- [x] R2.1 Shell: tab bar, mini player, navigation
 - [ ] R2.2 Queue
 - [ ] R2.3 Library (Shows, Episodes, Downloads)
 - [ ] R2.4 Discover and Search
