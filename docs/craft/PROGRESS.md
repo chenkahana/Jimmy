@@ -10,3 +10,4 @@ Append-only. One line per completed step: date, step, what was done, commit.
 | 2026-11-18 | R0.1 | Built main for iOS 27.1 sim (iPhone Duo 'Jimmy Craft'), launched with -demoLibrary, XCUITest driver outside repo, first tab dump | 459be36 |
 | 2026-11-18 | R0.2 | Recorded queue, player, library/podcast/episode/settings, discover, onboarding flows in Light and Dark (videos in ~/tmp/codex/jimmy-craft/video); no Downloads screen exists | 6068dbe |
 | 2026-11-18 | R0.3 | Lock Screen/Control Center/CarPlay/Watch: not reachable from sim; documented what code publishes + exact device steps for Chen | 6d0307d |
+| 2026-11-18 | R0.4 | Cold launch video (blank ~1.75 s, empty-queue flash), XCUITest launch timing x5, App Launch + Time Profiler traces; Animation Hitches unsupported in sim -> device steps | edda38c |
