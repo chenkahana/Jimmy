@@ -23,3 +23,4 @@ Append-only. One line per completed step: date, step, what was done, commit.
 | 2026-11-18 | R2.5 | Discover: J-16 (uncached charts) | 839ae70 |
 | 2026-11-18 | R2.6 | Podcast + episode detail: J-17..J-21 (show notes, pop-in) | c64d7ab |
 | 2026-11-18 | R2.7 | Now Playing: J-22..J-31 (targets, flick, morph, speed) | f6729f9 |
+| 2026-11-18 | R2.8 | Settings/Stats/Feedback: J-32..J-33 | 0255cc6 |
