@@ -1,4 +1,4 @@
-RESUME HERE: #41–#52 merged. Batch PR https://github.com/chenkahana/Jimmy/pull/53 (craft/batch-1, 14 commits) open, CI running; merge with --admin when green. Then final report to lead. Remaining: device checks, J-24 morph decision, gated items.
+RESUME HERE: Done. #41–#53 merged (#53 = batch of 14 items, CI green, main 6aebe89). Remaining: device checks (see items), J-24 morph decision, gated items J-07/J-12/J-37/J-35.
 
 # Implementation tracker
 
