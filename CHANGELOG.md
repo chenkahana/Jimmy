@@ -8,6 +8,7 @@ All notable changes to Jimmy are recorded here. The format follows
 
 ### Fixed
 
+- Library's first load no longer replaces the page with a spinner.
 - The feedback form closes when sending completes instead of on a 1.5-second timer.
 - The mini player tip's title is in title case, like other titles.
 - Onboarding's import button sits on a bar, so the source list no longer shows through behind it.

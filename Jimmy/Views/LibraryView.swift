@@ -222,8 +222,8 @@ struct LibraryView: View {
     private var mainContentView: some View {
         if jimmyKitPodcasts.isEmpty {
             if isLoadingEpisodes {
-                ProgressView()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                // Nothing until the store answers, rather than a spinner that replaces the page.
+                Color.clear
             } else {
                 emptyStateView
             }
