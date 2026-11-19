@@ -52,6 +52,7 @@ All notable changes to Jimmy are recorded here. The format follows
 
 ### Added
 
+- VoiceOver announces when a download finishes or fails and when the sleep timer ends.
 - Single CI workflow for build validation.
 - Community files: LICENSE, CONTRIBUTING.md, CODE_OF_CONDUCT.md, SECURITY.md, SUPPORT.md, THIRD_PARTY_NOTICES.md, documentation.
 - A real Apple Watch app (Now Playing, Queue, Recent) that controls the phone's player over

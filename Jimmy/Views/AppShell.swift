@@ -27,6 +27,7 @@ struct AppShell: View {
                 shell.present(.nowPlaying)
             }
         }
+        .modifier(OutcomeAnnouncements())
         .fullScreenCover(isPresented: $onboarding.isPresented) {
             OnboardingView()
         }
