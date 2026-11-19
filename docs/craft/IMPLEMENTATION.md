@@ -1,4 +1,4 @@
-RESUME HERE: #41–#52 merged (CI green each; CHANGELOG-only merges admin-landed). Remaining non-gated items go into ONE batch PR, branch craft/batch-1 (worktree ~/.worktrees/Jimmy/craft-batch-1), one commit per item, CI once. Next: J-28/J-29, J-05, then the rest below.
+RESUME HERE: #41–#52 merged. Batch PR https://github.com/chenkahana/Jimmy/pull/53 (craft/batch-1, 14 commits) open, CI running; merge with --admin when green. Then final report to lead. Remaining: device checks, J-24 morph decision, gated items.
 
 # Implementation tracker
 
@@ -23,25 +23,25 @@ is green. Simulator checks on a dedicated iPhone Duo (iOS 27.1) "Jimmy Impl", dr
 
 ## Remaining non-gated
 
-- [ ] J-28 + J-29 Hide Chapters with none; fill the ••• menu (Go to Episode, Go to Show) — batch PR (craft/batch-1)
+- [x] J-28 + J-29 Hide Chapters with none; fill the ••• menu (Go to Episode, Go to Show) — batch PR https://github.com/chenkahana/Jimmy/pull/53
 - [x] J-20 + J-21 One duration and one date format — PR https://github.com/chenkahana/Jimmy/pull/50
 - [x] J-14 (naming) + J-32 Naming pass (Follow, Send Feedback, "…") — PR https://github.com/chenkahana/Jimmy/pull/51
 - [x] J-18 Podcast hero art on the first frame — PR https://github.com/chenkahana/Jimmy/pull/52
-- [ ] J-25 Speed dial
-- [ ] J-09 Undo for queue Remove; confirm Clear All
+- [x] J-25 Speed slider with presets — batch PR https://github.com/chenkahana/Jimmy/pull/53 (rates above 2× need a device check)
+- [x] J-09 Undo for queue Remove; confirm Clear All — batch PR https://github.com/chenkahana/Jimmy/pull/53
 - [ ] J-40 Fixed font sizes — skipped: the 10 pt badges and 12–16 pt banner are in dead code (`StatusBadge` only via unused `EpisodeRowView`, `ErrorBannerView` only via unused `PodcastSearchViewModel`); live fixed sizes are capped glyphs
-- [ ] J-05 Mini player at AX sizes — batch PR (craft/batch-1)
-- [ ] J-41 + J-42 VoiceOver announcements; shimmer honors Reduce Motion
-- [ ] J-10 Suggestions placeholder rows and Done
-- [ ] J-31 + J-34 + J-04 Sleep panel, onboarding button, tip placement
-- [ ] J-27 Scrubber growth and chapter ticks
-- [ ] J-24 + J-03 Mini player ↔ Now Playing morph
-- [ ] J-36 Restore tab and place after relaunch
-- [ ] J-33 + J-15 Feedback form closes on completion; Library first-load placeholders
+- [x] J-05 Mini player at AX sizes — batch PR https://github.com/chenkahana/Jimmy/pull/53
+- [x] J-41 + J-42 VoiceOver announcements — batch PR https://github.com/chenkahana/Jimmy/pull/53 (announcements need device VoiceOver). J-42: nothing to do (skeleton unused; waveform already honors Reduce Motion)
+- [x] J-10 Suggestions placeholder rows and Done — batch PR https://github.com/chenkahana/Jimmy/pull/53
+- [x] J-31 + J-34 + J-04 Sleep panel, onboarding button, tip copy — batch PR https://github.com/chenkahana/Jimmy/pull/53 (J-04 partial: copy only, placement unchanged)
+- [x] J-27 (part) Scrub times emphasized while scrubbing — batch PR https://github.com/chenkahana/Jimmy/pull/53; chapter ticks not done (nothing fills chapters)
+- [ ] J-24 + J-03 Mini player ↔ Now Playing morph — skipped after 2 attempts: `.navigationTransition(.zoom)` morphs on open but breaks J-23 flick-to-close; needs a decision
+- [x] J-36 (part) Restore tab after relaunch — batch PR https://github.com/chenkahana/Jimmy/pull/53; in-tab navigation path not restored
+- [x] J-33 + J-15 Feedback form closes on completion; no Library first-load spinner — batch PR https://github.com/chenkahana/Jimmy/pull/53
 - [ ] J-19 Pinned header stacking (needs an iPhone check)
 - [ ] J-08 Long-press reorder (needs a device check)
 - [ ] J-38 CarPlay artwork and rate button (needs CarPlay)
-- [ ] J-39 Watch glyphs, buttons, artwork (needs a Watch)
+- [x] J-39 (part) Watch rows as buttons, named skip buttons, wording — batch PR https://github.com/chenkahana/Jimmy/pull/53; skip intervals from phone settings and artwork need a Watch
 
 ## Waiting: Chen
 
