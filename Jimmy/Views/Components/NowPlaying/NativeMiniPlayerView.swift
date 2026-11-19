@@ -2,10 +2,12 @@ import JimmyKit
 import SwiftUI
 
 /// The tab bar's bottom accessory. Inline: art, title, play. Expanded adds time left and skip
-/// forward. Tapping the art or title opens Now Playing.
+/// forward. Tapping the art or title opens Now Playing. At accessibility text sizes skip forward goes, so
+/// the title keeps room, and text stops growing at the first accessibility size to fit the bar.
 struct NativeMiniPlayerView: View {
     @Environment(AppModel.self) private var appModel
     @Environment(\.tabViewBottomAccessoryPlacement) private var placement
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     let onTap: () -> Void
 
@@ -45,7 +47,7 @@ struct NativeMiniPlayerView: View {
                     }
                     .accessibilityLabel(playback.isPlaying ? "Pause" : "Play")
 
-                    if isExpanded {
+                    if isExpanded && !dynamicTypeSize.isAccessibilitySize {
                         Button {
                             Task { await playback.skipForward() }
                         } label: {
@@ -61,6 +63,7 @@ struct NativeMiniPlayerView: View {
             .padding(.leading, JimmyDesign.Spacing.lg)
             // The skip target's own inset makes up the rest of the trailing margin.
             .padding(.trailing, JimmyDesign.Spacing.xs)
+            .dynamicTypeSize(...DynamicTypeSize.accessibility1)
             .popoverTip(MiniPlayerTip(), arrowEdge: .bottom)
         }
     }

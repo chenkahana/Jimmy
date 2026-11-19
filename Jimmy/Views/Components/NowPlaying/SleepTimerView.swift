@@ -53,7 +53,9 @@ struct SleepTimerView: View {
                     Button("+15 min") { appModel.playback?.extendSleepTimer(by: 15 * 60) }
                         .accessibilityLabel("Add 15 minutes")
                     Spacer()
-                    Button("Cancel Timer", role: .destructive) { appModel.playback?.cancelSleepTimer() }
+                    // "Cancel" under the "Sleep Timer" heading; "Cancel Timer" wrapped onto two lines here.
+                    Button("Cancel", role: .destructive) { appModel.playback?.cancelSleepTimer() }
+                        .accessibilityLabel("Cancel Sleep Timer")
                 }
                 .buttonStyle(.bordered)
             } else {

@@ -92,7 +92,9 @@ struct OnboardingView: View {
         .controlSize(.large)
         .frame(maxWidth: .infinity)
         .padding(.horizontal, JimmyDesign.Spacing.lg)
-        .padding(.bottom, JimmyDesign.Spacing.sm)
+        .padding(.vertical, JimmyDesign.Spacing.sm)
+        // A bar under the button, so the list never shows through it.
+        .background(.bar)
     }
 
     /// Files shared to Jimmy, whether the flow was already open or opened for them.

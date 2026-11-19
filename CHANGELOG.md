@@ -8,6 +8,13 @@ All notable changes to Jimmy are recorded here. The format follows
 
 ### Fixed
 
+- Watch: queue rows are buttons VoiceOver can activate, skip buttons have names, and "Nothing Is Playing" matches the phone.
+- Library's first load no longer replaces the page with a spinner.
+- The feedback form closes when sending completes instead of on a 1.5-second timer.
+- The mini player tip's title is in title case, like other titles.
+- Onboarding's import button sits on a bar, so the source list no longer shows through behind it.
+- The running sleep timer's Cancel button fits on one line.
+- At the largest text sizes the mini player drops Skip Forward and stops its text at the first accessibility size, so the episode title is readable instead of "K…".
 - An episode shows the same length and date everywhere: Library, podcast pages and episode detail use the queue's "42 min" and "Today", "3d" or "Oct 2".
 - Search keeps the last Top Shows it loaded, on this device, and shows them with a Try Again row when a fetch fails, instead of an error page.
 - Show notes keep their paragraphs, line breaks and list items, and linked text links to its page instead of running together as plain text.
@@ -26,6 +33,11 @@ All notable changes to Jimmy are recorded here. The format follows
 
 ### Changed
 
+- While you scrub, Now Playing's elapsed and remaining times grow and go full strength.
+- Playback speed is a slider from 0.5× to 3× in 0.05× steps with a readout and 0.75×–2× presets; each step ticks.
+- Jimmy reopens on the tab you last used instead of always on Queue.
+- Suggestions shows placeholder rows while it ranks, instead of a lone spinner, and has a Done button.
+- Now Playing's More menu adds Go to Episode and Go to Show, and the Chapters button only appears when the episode has chapters.
 - One name per action: Follow and Unfollow everywhere (Library, Search, Settings' Unfollow All Shows), Send Feedback in both places, and in-progress text ends with a real ellipsis.
 - Now Playing's skip buttons bounce and tick when tapped, a speed change ticks, and setting a sleep timer gives a success tap.
 - Marking an episode played is called Mark Played (and Mark Unplayed) in every swipe and menu, and Add to Queue uses one icon everywhere.
@@ -50,6 +62,8 @@ All notable changes to Jimmy are recorded here. The format follows
 
 ### Added
 
+- Removing an episode from the queue shows Undo for five seconds, which puts it back in its place; Clear All asks first.
+- VoiceOver announces when a download finishes or fails and when the sleep timer ends.
 - Single CI workflow for build validation.
 - Community files: LICENSE, CONTRIBUTING.md, CODE_OF_CONDUCT.md, SECURITY.md, SUPPORT.md, THIRD_PARTY_NOTICES.md, documentation.
 - A real Apple Watch app (Now Playing, Queue, Recent) that controls the phone's player over

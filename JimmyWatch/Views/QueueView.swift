@@ -11,18 +11,19 @@ struct QueueView: View {
         } else {
             List {
                 ForEach(queue) { episode in
-                    EpisodeRow(episode: episode)
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            client.send(.playEpisode(episode.id))
+                    // A button, not a tap gesture, so VoiceOver announces each row as one.
+                    Button {
+                        client.send(.playEpisode(episode.id))
+                    } label: {
+                        EpisodeRow(episode: episode)
+                    }
+                    .swipeActions {
+                        Button(role: .destructive) {
+                            client.send(.removeFromQueue(episode.id))
+                        } label: {
+                            Label("Remove", systemImage: "trash")
                         }
-                        .swipeActions {
-                            Button(role: .destructive) {
-                                client.send(.removeFromQueue(episode.id))
-                            } label: {
-                                Label("Remove", systemImage: "trash")
-                            }
-                        }
+                    }
                 }
             }
         }

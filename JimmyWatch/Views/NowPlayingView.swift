@@ -27,6 +27,7 @@ struct NowPlayingView: View {
                     } label: {
                         Image(systemName: "gobackward.15")
                     }
+                    .accessibilityLabel("Skip Back")
 
                     Button {
                         client.send(nowPlaying.isPlaying ? .pause : .play)
@@ -40,12 +41,13 @@ struct NowPlayingView: View {
                     } label: {
                         Image(systemName: "goforward.15")
                     }
+                    .accessibilityLabel("Skip Forward")
                 }
                 .buttonStyle(.plain)
             }
             .padding()
         } else {
-            ContentUnavailableView("Nothing Playing", systemImage: "play.slash")
+            ContentUnavailableView("Nothing Is Playing", systemImage: "play.slash")
         }
     }
 }

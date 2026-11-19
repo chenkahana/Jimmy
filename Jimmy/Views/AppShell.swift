@@ -6,6 +6,8 @@ struct AppShell: View {
     @Bindable private var shell = ShellStore.shared
     @ObservedObject private var audioImporter = LocalAudioImporter.shared
     @Bindable private var onboarding = Onboarding.shared
+    /// The last tab open, so a relaunch comes back to it even after the app was quit.
+    @AppStorage("selectedTab") private var savedTab = ShellTab.queue.rawValue
 
     var body: some View {
         TabView(selection: Binding(get: { shell.selectedTab }, set: { shell.handleUserSelectedTab($0) })) {
@@ -27,6 +29,13 @@ struct AppShell: View {
                 shell.present(.nowPlaying)
             }
         }
+        .modifier(OutcomeAnnouncements())
+        .onAppear {
+            // Demo screenshots always start on Queue.
+            guard !DemoLibrary.isRequested(), let tab = ShellTab(rawValue: savedTab), tab != shell.selectedTab else { return }
+            shell.handleUserSelectedTab(tab)
+        }
+        .onChange(of: shell.selectedTab) { _, tab in savedTab = tab.rawValue }
         .fullScreenCover(isPresented: $onboarding.isPresented) {
             OnboardingView()
         }

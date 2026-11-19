@@ -24,6 +24,8 @@ struct ExpandedNowPlayingView: View {
     /// The artwork's color when it is legible; `nil` falls back to the system background.
     @State private var backdrop: ArtworkContrast?
     @State private var panel: Panel?
+    /// Whether the episode has chapters; the Chapters button only shows when it does.
+    @State private var hasChapters = false
     /// The scrubber's position while it is being dragged.
     @State private var scrubPosition: TimeInterval?
     @State private var scrubsEnded = 0
@@ -34,6 +36,7 @@ struct ExpandedNowPlayingView: View {
 
     private enum Panel { case speed, sleep, chapters }
     private static let speeds: [Double] = [0.75, 1.0, 1.25, 1.5, 2.0]
+    private static let speedRange: ClosedRange<Double> = 0.5...3.0
 
     init(onClose: (() -> Void)? = nil) {
         self.onClose = onClose
@@ -55,6 +58,9 @@ struct ExpandedNowPlayingView: View {
                             return
                         }
                         backdrop = ArtworkContrast(color.resolve(in: EnvironmentValues())).usable
+                    }
+                    .task(id: episode.id) {
+                        hasChapters = !(await appModel.chapters(for: episode.id)).isEmpty
                     }
             } else {
                 ContentUnavailableView {
@@ -118,6 +124,16 @@ struct ExpandedNowPlayingView: View {
             Spacer()
 
             Menu {
+                Section {
+                    Button("Go to Episode", systemImage: "info.circle") {
+                        go(to: .episode(episode.id))
+                    }
+                    if let podcastID = episode.podcastID {
+                        Button("Go to Show", systemImage: "square.stack") {
+                            go(to: .podcast(podcastID))
+                        }
+                    }
+                }
                 downloadButton(for: episode)
             } label: {
                 Image(systemName: "ellipsis")
@@ -206,14 +222,16 @@ struct ExpandedNowPlayingView: View {
                 }
             }
 
+            // While scrubbing, the times grow and go full strength so the target reads under the finger.
             HStack {
                 Text(formatTime(position))
                 Spacer()
                 Text("\u{2212}\(formatTime(duration - position))")
             }
-            .font(.caption)
+            .font(scrubPosition == nil ? .caption : .subheadline.weight(.semibold))
             .monospacedDigit()
-            .foregroundStyle(secondaryText)
+            .foregroundStyle(scrubPosition == nil ? AnyShapeStyle(secondaryText) : AnyShapeStyle(.primary))
+            .animation(.snappy(duration: 0.2), value: scrubPosition == nil)
             .accessibilityHidden(true)
         }
     }
@@ -275,10 +293,12 @@ struct ExpandedNowPlayingView: View {
             .monospacedDigit()
             .accessibilityLabel(isSleepTimerActive ? "Sleep timer, \(sleepLabel)" : "Sleep timer")
             Spacer()
-            Button { show(.chapters) } label: {
-                Text("Chapters").hitTarget()
+            if hasChapters {
+                Button { show(.chapters) } label: {
+                    Text("Chapters").hitTarget()
+                }
+                Spacer()
             }
-            Spacer()
             RoutePickerViewRepresentable()
                 .frame(width: 44, height: 44)
                 .accessibilityLabel("AirPlay")
@@ -295,17 +315,49 @@ struct ExpandedNowPlayingView: View {
         switch panel {
         case .speed:
             VStack(alignment: .leading, spacing: JimmyDesign.Spacing.lg) {
-                Text("Playback Speed")
-                    .font(.headline)
-                    .accessibilityAddTraits(.isHeader)
-                Picker("Playback Speed", selection: $settings.playbackSpeed) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text("Playback Speed")
+                        .font(.headline)
+                        .accessibilityAddTraits(.isHeader)
+                    Spacer()
+                    Text(speedText(settings.playbackSpeed))
+                        .font(.title2.weight(.semibold))
+                        .monospacedDigit()
+                        .accessibilityHidden(true)
+                }
+                // Steps of 0.05× from 0.5× to 3×, rounded in the binding (no tick marks) so presets and
+                // Settings match exactly.
+                Slider(value: Binding(
+                    get: { settings.playbackSpeed },
+                    set: { settings.playbackSpeed = ($0 * 20).rounded() / 20 }
+                ), in: Self.speedRange) {
+                    Text("Playback Speed")
+                } minimumValueLabel: {
+                    Text(speedText(Self.speedRange.lowerBound))
+                } maximumValueLabel: {
+                    Text(speedText(Self.speedRange.upperBound))
+                }
+                .font(.footnote)
+                .accessibilityValue(speedText(settings.playbackSpeed))
+                HStack(spacing: JimmyDesign.Spacing.sm) {
                     ForEach(Self.speeds, id: \.self) { speed in
-                        Text(speedText(speed)).tag(speed)
+                        Button {
+                            settings.playbackSpeed = speed
+                        } label: {
+                            Text(speedText(speed))
+                                .monospacedDigit()
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.8)
+                                .frame(maxWidth: .infinity)
+                        }
+                        .accessibilityLabel("Set speed to \(speedText(speed))")
                     }
                 }
-                .pickerStyle(.segmented)
-                .sensoryFeedback(.selection, trigger: settings.playbackSpeed)
+                .buttonStyle(.bordered)
+                .controlSize(.small)
             }
+            .tint(.primary)
+            .sensoryFeedback(.selection, trigger: settings.playbackSpeed)
             .padding(JimmyDesign.Spacing.xl)
         case .sleep:
             SleepTimerView()
@@ -346,6 +398,12 @@ struct ExpandedNowPlayingView: View {
                     }
                 }
             }
+    }
+
+    /// Closes the player and opens `destination` in Library.
+    private func go(to destination: ShellDestination) {
+        closePlayer()
+        ShellStore.shared.navigate(to: destination)
     }
 
     private func closePlayer() {

@@ -55,12 +55,9 @@ struct FeedbackFormView: View {
         FeedbackService.shared.submit(name: name, notes: notes) { success, message in
             isSubmitting = false
             if success {
-                statusMessage = "Thanks. Your feedback was sent."
-                name = ""
-                notes = ""
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                    dismiss()
-                }
+                // Close as soon as the send completes; VoiceOver hears the outcome the screen no longer shows.
+                AccessibilityService.shared.announce("Feedback sent")
+                dismiss()
             } else {
                 if let message = message, !message.isEmpty {
                     statusMessage = "Error: \(message)"
