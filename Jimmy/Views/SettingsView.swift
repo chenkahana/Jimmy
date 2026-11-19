@@ -131,7 +131,9 @@ struct SettingsView: View {
     private var playbackSection: some View {
         Section {
             Picker("Playback Speed", selection: $viewModel.playbackSpeed) {
-                ForEach(Self.playbackSpeeds, id: \.self) { speed in
+                // A speed set in Now Playing between the presets shows here too.
+                let speeds = Set(Self.playbackSpeeds + [viewModel.playbackSpeed]).sorted()
+                ForEach(speeds, id: \.self) { speed in
                     Text(speed.formatted(.number) + "×").tag(speed)
                 }
             }

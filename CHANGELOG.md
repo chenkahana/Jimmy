@@ -32,6 +32,7 @@ All notable changes to Jimmy are recorded here. The format follows
 
 ### Changed
 
+- Playback speed is a slider from 0.5× to 3× in 0.05× steps with a readout and 0.75×–2× presets; each step ticks.
 - Jimmy reopens on the tab you last used instead of always on Queue.
 - Suggestions shows placeholder rows while it ranks, instead of a lone spinner, and has a Done button.
 - Now Playing's More menu adds Go to Episode and Go to Show, and the Chapters button only appears when the episode has chapters.
