@@ -8,6 +8,7 @@ All notable changes to Jimmy are recorded here. The format follows
 
 ### Fixed
 
+- The mini player tip's title is in title case, like other titles.
 - Onboarding's import button sits on a bar, so the source list no longer shows through behind it.
 - The running sleep timer's Cancel button fits on one line.
 - At the largest text sizes the mini player drops Skip Forward and stops its text at the first accessibility size, so the episode title is readable instead of "K…".

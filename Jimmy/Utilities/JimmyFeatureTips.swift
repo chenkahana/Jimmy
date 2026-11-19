@@ -61,7 +61,7 @@ struct MiniPlayerTip: Tip {
     static let openedNowPlaying = Event(id: "mini-player-opened")
 
     var title: Text {
-        Text("Jump back into now playing")
+        Text("Jump Back into Now Playing")
     }
 
     var message: Text? {
