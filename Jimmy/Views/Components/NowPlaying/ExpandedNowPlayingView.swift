@@ -222,14 +222,16 @@ struct ExpandedNowPlayingView: View {
                 }
             }
 
+            // While scrubbing, the times grow and go full strength so the target reads under the finger.
             HStack {
                 Text(formatTime(position))
                 Spacer()
                 Text("\u{2212}\(formatTime(duration - position))")
             }
-            .font(.caption)
+            .font(scrubPosition == nil ? .caption : .subheadline.weight(.semibold))
             .monospacedDigit()
-            .foregroundStyle(secondaryText)
+            .foregroundStyle(scrubPosition == nil ? AnyShapeStyle(secondaryText) : AnyShapeStyle(.primary))
+            .animation(.snappy(duration: 0.2), value: scrubPosition == nil)
             .accessibilityHidden(true)
         }
     }
