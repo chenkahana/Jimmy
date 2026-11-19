@@ -7,6 +7,7 @@ import JimmyKit
 /// signal-based reason and `unavailableNote` explains why.
 struct SuggestionsView: View {
     @Environment(AppModel.self) private var appModel
+    @Environment(\.dismiss) private var dismiss
     @State private var viewModel: SuggestionsViewModel?
     @State private var subscribedFeedURLs: Set<URL> = []
 
@@ -14,6 +15,11 @@ struct SuggestionsView: View {
         content
             .navigationTitle("Suggestions")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
             .task {
                 if viewModel == nil {
                     let vm = Self.makeViewModel(appModel: appModel)
@@ -25,19 +31,38 @@ struct SuggestionsView: View {
 
     @ViewBuilder
     private var content: some View {
-        if let viewModel {
-            if viewModel.isLoading {
-                ProgressView()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if viewModel.upNext.isEmpty && viewModel.newShows.isEmpty {
+        if let viewModel, !viewModel.isLoading {
+            if viewModel.upNext.isEmpty && viewModel.newShows.isEmpty {
                 emptyState(viewModel)
             } else {
                 list(viewModel)
             }
         } else {
-            ProgressView()
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            placeholderList
         }
+    }
+
+    /// The list's own rows, redacted, while suggestions are ranked.
+    private var placeholderList: some View {
+        List {
+            Section("Up Next for You") {
+                ForEach(0..<5, id: \.self) { index in
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("An episode title that fills a line")
+                            .font(.body.weight(.medium))
+                        Text("Show name")
+                            .font(.caption)
+                        Text("Why it's suggested")
+                            .font(.caption)
+                    }
+                    .redacted(reason: .placeholder)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("Loading Suggestions")
+                    .accessibilityHidden(index != 0)
+                }
+            }
+        }
+        .allowsHitTesting(false)
     }
 
     private func emptyState(_ viewModel: SuggestionsViewModel) -> some View {
