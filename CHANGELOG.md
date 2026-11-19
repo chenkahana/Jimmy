@@ -8,6 +8,7 @@ All notable changes to Jimmy are recorded here. The format follows
 
 ### Fixed
 
+- The running sleep timer's Cancel button fits on one line.
 - At the largest text sizes the mini player drops Skip Forward and stops its text at the first accessibility size, so the episode title is readable instead of "K…".
 - An episode shows the same length and date everywhere: Library, podcast pages and episode detail use the queue's "42 min" and "Today", "3d" or "Oct 2".
 - Search keeps the last Top Shows it loaded, on this device, and shows them with a Try Again row when a fetch fails, instead of an error page.
