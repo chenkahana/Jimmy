@@ -28,7 +28,7 @@ enum ShellContentRoute: Equatable {
     }
 }
 
-enum ShellTab: Hashable {
+enum ShellTab: String, Hashable {
     case queue
     case library
     case search
