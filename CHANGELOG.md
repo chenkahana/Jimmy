@@ -63,6 +63,7 @@ All notable changes to Jimmy are recorded here. The format follows
 
 ### Added
 
+- Library has a Downloads segment: episodes downloading (with progress), ones that couldn't download (Try Again), the ones on this iPhone, and the space they take. Swipe or touch and hold to remove a download.
 - Removing an episode from the queue shows Undo for five seconds, which puts it back in its place; Clear All asks first.
 - VoiceOver announces when a download finishes or fails and when the sleep timer ends.
 - Single CI workflow for build validation.
