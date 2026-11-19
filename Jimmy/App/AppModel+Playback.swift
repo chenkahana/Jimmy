@@ -77,6 +77,11 @@ extension AppModel {
         // a next one to advance to — instead of leaving it pointing at an already-finished episode
         // until something else happens to overwrite it (which is what let a finished last-in-queue
         // episode get re-enqueued by `restoreLastEpisodeIfEnabled` on the next launch).
+        ready.remoteCommands.nextTrack = { [weak self] in await self?.skipToNextInQueue() }
+        ready.remoteCommands.changeRate = { rate in
+            // Through Settings, so Now Playing, the saved speed and playback all agree.
+            SettingsViewModel.shared.playbackSpeed = Double(rate)
+        }
         ready.playback.onEpisodeFinished = { [weak self] episodeID in
             guard let self else { return }
             if self.lastObservedEpisodeID == episodeID {
@@ -100,6 +105,8 @@ extension AppModel {
             // position (seek/skip/chapter-skip) — see `syncNowPlaying`, which reads `position` only
             // once `handlePlaybackSideEffects` has already decided to run.
             _ = self?.playback?.seekCount
+            _ = self?.playback?.currentChapter
+            _ = self?.playback?.chapters
         } onChange: { [weak self] in
             Task { @MainActor [weak self] in
                 guard let self else { return }
@@ -126,6 +133,12 @@ extension AppModel {
             lastObservedEpisodeID = episode.id
             UserDefaults.standard.set(episode.id.uuidString, forKey: "lastPlayingEpisodeID")
             recordRecentlyPlayed(episode)
+            Task { [weak self] in
+                guard let self else { return }
+                let chapters = await self.chapters(for: episode.id)
+                guard !chapters.isEmpty, playback.currentEpisode?.id == episode.id else { return }
+                playback.setChapters(chapters)
+            }
         }
 
         syncNowPlaying(ready)
@@ -143,12 +156,17 @@ extension AppModel {
         }
 
         let podcast = podcasts.first { $0.id == episode.podcastID }
+        let chapter = playback.currentChapter.flatMap { current in
+            playback.chapters.firstIndex(of: current).map { (title: current.title, index: $0, count: playback.chapters.count) }
+        }
         ready.nowPlaying.update(
             title: episode.title,
             podcastTitle: podcast?.title,
             duration: playback.duration,
             elapsed: playback.position,
             rate: playback.isPlaying ? playback.rate : 0,
+            defaultRate: playback.rate,
+            chapter: chapter,
             artwork: nowPlayingArtworkCache[episode.id]
         )
 
@@ -169,5 +187,20 @@ extension AppModel {
         let request = URLRequest(url: url, timeoutInterval: 5.0)
         guard let (data, _) = try? await URLSession.shared.data(for: request) else { return nil }
         return UIImage(data: data)
+    }
+}
+
+// MARK: - Next track
+
+extension AppModel {
+    /// "Next track" in a queue: plays the episode after the current one, and sends the current one to the end of the
+    /// queue with its position saved, so pressing Next again moves on through the queue instead of bouncing back.
+    func skipToNextInQueue() async {
+        guard let playback, let readyStore, let current = playback.currentEpisode else { return }
+        let queue = (try? await readyStore.queue()) ?? []
+        guard let index = queue.firstIndex(where: { $0.id == current.id }), index + 1 < queue.count else { return }
+        // `play` loads `next` (saving the current position first) and moves it to the front.
+        await play(queue[index + 1], startPlaying: playback.isPlaying)
+        await moveToBottom(current.id)
     }
 }
