@@ -139,7 +139,7 @@ struct SuggestionsView: View {
             } label: {
                 Label("Queue", systemImage: "text.badge.plus")
             }
-            .tint(.accentColor)
+            .tint(JimmyDesign.SwipeTint.queue)
         }
     }
 

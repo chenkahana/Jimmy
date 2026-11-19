@@ -33,6 +33,7 @@ All notable changes to Jimmy are recorded here. The format follows
 
 ### Changed
 
+- Swipe actions use system colors (indigo Play Next, blue Add to Queue, green Mark Played, orange Download) so a revealed action no longer reads as disabled; docs/design.md lists them as the exception to the one-accent rule.
 - While you scrub, Now Playing's elapsed and remaining times grow and go full strength.
 - Playback speed is a slider from 0.5× to 3× in 0.05× steps with a readout and 0.75×–2× presets; each step ticks.
 - Jimmy reopens on the tab you last used instead of always on Queue.

@@ -54,6 +54,7 @@ struct EpisodeCard: View, Equatable {
                 .swipeActions(edge: .leading) {
                     if let onAddToQueue {
                         Button("Add to Queue", systemImage: "text.badge.plus", action: onAddToQueue)
+                            .tint(JimmyDesign.SwipeTint.queue)
                     }
                 }
                 .swipeActions(edge: .trailing) {
@@ -63,6 +64,7 @@ struct EpisodeCard: View, Equatable {
                     if let onToggleFinished {
                         Button(isPlayed ? "Mark Unplayed" : "Mark Played", systemImage: isPlayed ? "circle" : "checkmark.circle",
                                action: onToggleFinished)
+                            .tint(JimmyDesign.SwipeTint.played)
                     }
                 }
         } else {

@@ -10,7 +10,8 @@ Calm, artwork-first, native. Jimmy is a sibling of Boaz: a neutral app where the
    artwork: the Now Playing backdrop, the podcast hero, glass tinted at 0.35–0.45. Text on artwork color must
    pass WCAG 4.5:1.
 3. **One accent, three jobs.** Signal marks the primary action, the unplayed dot and the progress fill. Nothing else
-   is tinted.
+   is tinted, except swipe actions: they use system colors (`JimmyDesign.SwipeTint`) so a revealed action never
+   reads as disabled.
 4. **Native first.** `TabView`, `List`, `Form`, `.searchable`, `.swipeActions`, `contextMenu`,
    `ContentUnavailableView`, sheets with detents, `.glass` / `.glassProminent`, zoom transitions, SF Symbols. Custom
    code only for the Now Playing hero and the artwork-color pipeline.
