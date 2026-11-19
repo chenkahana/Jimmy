@@ -14,6 +14,9 @@ struct QueueView: View {
     @Namespace private var queueNamespace
     @State private var selectedEpisodeDestination: QueueNavigationDestination?
     @State private var showingSuggestions = false
+    /// The last removal, kept for a few seconds so it can be undone: the episode and its place (1 = first).
+    @State private var lastRemoval: (episode: Episode, position: Int)?
+    @State private var isConfirmingClearAll = false
 
     var body: some View {
         queueContent
@@ -111,6 +114,8 @@ struct QueueView: View {
             .listSectionSeparator(.hidden)
         }
         .listStyle(.plain)
+        .safeAreaInset(edge: .bottom) { undoBar }
+        .animation(.snappy, value: lastRemoval?.episode.id)
     }
 
     private var moreMenu: some View {
@@ -126,12 +131,45 @@ struct QueueView: View {
                 Label("Shuffle", systemImage: "shuffle")
             }
             Button(role: .destructive) {
-                Task { await appModel.clearQueue() }
+                isConfirmingClearAll = true
             } label: {
                 Label("Clear All", systemImage: "trash")
             }
         } label: {
             Label("More", systemImage: "ellipsis.circle")
+        }
+        .confirmationDialog("Clear the Queue?", isPresented: $isConfirmingClearAll, titleVisibility: .visible) {
+            Button("Clear All", role: .destructive) {
+                Task { await appModel.clearQueue() }
+            }
+        } message: {
+            Text("Every episode leaves the queue. Your shows and progress stay.")
+        }
+    }
+
+    /// "Removed “Title”  Undo" over the bottom of the list for five seconds after a removal.
+    @ViewBuilder
+    private var undoBar: some View {
+        if let removal = lastRemoval {
+            HStack {
+                Text("Removed “\(removal.episode.title)”")
+                    .lineLimit(1)
+                Spacer(minLength: JimmyDesign.Spacing.sm)
+                Button("Undo", action: undoRemoval)
+                    .fontWeight(.semibold)
+            }
+            .font(.subheadline)
+            .padding(.horizontal, JimmyDesign.Spacing.lg)
+            .padding(.vertical, JimmyDesign.Spacing.md)
+            .glassEffect(.regular, in: .capsule)
+            .padding(.horizontal, JimmyDesign.Spacing.lg)
+            .padding(.bottom, JimmyDesign.Spacing.sm)
+            .transition(.move(edge: .bottom).combined(with: .opacity))
+            .task(id: removal.episode.id) {
+                try? await Task.sleep(for: .seconds(5))
+                guard !Task.isCancelled else { return }
+                withAnimation(.snappy) { lastRemoval = nil }
+            }
         }
     }
 
@@ -277,8 +315,18 @@ struct QueueView: View {
 
     private func remove(_ episodeID: UUID) {
         Motion.lightHaptic()
+        if let index = episodes.firstIndex(where: { $0.id == episodeID }) {
+            lastRemoval = (episodes[index], index + 1)
+        }
         episodes.removeAll { $0.id == episodeID }
         Task { await appModel.dequeue(episodeID) }
+    }
+
+    /// Puts the last removed episode back where it was.
+    private func undoRemoval() {
+        guard let removal = lastRemoval else { return }
+        lastRemoval = nil
+        Task { await appModel.enqueue(removal.episode.id, at: removal.position) }
     }
 
     /// Applies a drop locally right away, then persists it with the same `moveInQueue` call the old
