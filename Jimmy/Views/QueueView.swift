@@ -234,6 +234,7 @@ struct QueueView: View {
         } label: {
             Label("Play Next", systemImage: "text.line.first.and.arrowtriangle.forward")
         }
+        .tint(JimmyDesign.SwipeTint.playNext)
     }
 
     private func playedButton(_ episode: Episode) -> some View {
@@ -249,6 +250,7 @@ struct QueueView: View {
         } label: {
             Label(isPlayed ? "Mark Unplayed" : "Mark Played", systemImage: isPlayed ? "circle" : "checkmark.circle")
         }
+        .tint(JimmyDesign.SwipeTint.played)
     }
 
     private func removeButton(_ episode: Episode) -> some View {
@@ -270,12 +272,14 @@ struct QueueView: View {
             } label: {
                 Label("Download", systemImage: "arrow.down.circle")
             }
+            .tint(JimmyDesign.SwipeTint.download)
         case .queued, .downloading:
             Button {
                 appModel.cancelDownload(episode.id)
             } label: {
                 Label("Cancel Download", systemImage: "xmark.circle")
             }
+            .tint(JimmyDesign.SwipeTint.download)
         case .done:
             Button {
                 appModel.deleteDownload(episode.id)

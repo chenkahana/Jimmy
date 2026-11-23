@@ -69,6 +69,7 @@ struct PodcastEpisodeListView: View {
             Button(isFinished ? "Mark Unplayed" : "Mark Played", systemImage: isFinished ? "circle" : "checkmark.circle") {
                 toggleFinished()
             }
+            .tint(JimmyDesign.SwipeTint.played)
             downloadButton(item.episode, state: downloadState)
         }
         .contextMenu {
@@ -92,9 +93,11 @@ struct PodcastEpisodeListView: View {
         Button("Play Next", systemImage: "text.line.first.and.arrowtriangle.forward") {
             Task { await appModel.playNext(episode.id) }
         }
+        .tint(JimmyDesign.SwipeTint.playNext)
         Button("Add to Queue", systemImage: "text.badge.plus") {
             Task { await appModel.enqueue(episode.id) }
         }
+        .tint(JimmyDesign.SwipeTint.queue)
     }
 
     @ViewBuilder
@@ -102,8 +105,10 @@ struct PodcastEpisodeListView: View {
         switch state {
         case nil, .failed:
             Button("Download", systemImage: "arrow.down.circle") { appModel.download(episode) }
+                .tint(JimmyDesign.SwipeTint.download)
         case .queued, .downloading:
             Button("Cancel Download", systemImage: "xmark.circle") { appModel.cancelDownload(episode.id) }
+                .tint(JimmyDesign.SwipeTint.download)
         case .done:
             Button("Remove Download", systemImage: "trash", role: .destructive) { appModel.deleteDownload(episode.id) }
         }

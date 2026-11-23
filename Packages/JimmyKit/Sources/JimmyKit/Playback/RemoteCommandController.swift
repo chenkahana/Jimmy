@@ -7,6 +7,19 @@ import MediaPlayer
 public final class RemoteCommandController {
     private weak var playback: Playback?
 
+    /// "Next track" from AirPods, the Lock Screen or CarPlay. The command is off until this is set.
+    public var nextTrack: (@MainActor () async -> Void)? {
+        didSet { MPRemoteCommandCenter.shared().nextTrackCommand.isEnabled = nextTrack != nil }
+    }
+
+    /// A speed picked on the Lock Screen. The command is off until this is set.
+    public var changeRate: (@MainActor (Float) -> Void)? {
+        didSet { MPRemoteCommandCenter.shared().changePlaybackRateCommand.isEnabled = changeRate != nil }
+    }
+
+    /// The speeds the Lock Screen offers, matching Now Playing's presets.
+    public static let lockScreenRates: [Float] = [0.75, 1, 1.25, 1.5, 2]
+
     public init(playback: Playback) {
         self.playback = playback
         configure()
@@ -21,6 +34,7 @@ public final class RemoteCommandController {
         commandCenter.skipBackwardCommand.removeTarget(nil)
         commandCenter.changePlaybackPositionCommand.removeTarget(nil)
         commandCenter.nextTrackCommand.removeTarget(nil)
+        commandCenter.changePlaybackRateCommand.removeTarget(nil)
     }
 
     /// Call when the user-configured skip intervals change.
@@ -39,10 +53,22 @@ public final class RemoteCommandController {
         commandCenter.skipForwardCommand.isEnabled = true
         commandCenter.skipBackwardCommand.isEnabled = true
         commandCenter.changePlaybackPositionCommand.isEnabled = true
-        // Left disabled, as the old service left it: `advanceToNextEpisode` doesn't move the
-        // skipped episode out of queue position 1, so once *that* episode also finished,
-        // `episode(after:)` would fall back to it again instead of the actual next one.
+        // Both off until the app supplies `nextTrack` / `changeRate`.
         commandCenter.nextTrackCommand.isEnabled = false
+        commandCenter.changePlaybackRateCommand.isEnabled = false
+        commandCenter.changePlaybackRateCommand.supportedPlaybackRates = Self.lockScreenRates.map { NSNumber(value: $0) }
+
+        commandCenter.nextTrackCommand.addTarget { [weak self] _ in
+            Task { @MainActor [weak self] in await self?.nextTrack?() }
+            return .success
+        }
+
+        commandCenter.changePlaybackRateCommand.addTarget { [weak self] event in
+            guard let event = event as? MPChangePlaybackRateCommandEvent else { return .commandFailed }
+            let rate = event.playbackRate
+            Task { @MainActor [weak self] in self?.changeRate?(rate) }
+            return .success
+        }
 
         commandCenter.playCommand.addTarget { [weak self] _ in
             Task { @MainActor [weak self] in self?.playback?.play() }

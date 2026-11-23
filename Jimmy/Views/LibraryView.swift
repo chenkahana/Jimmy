@@ -27,6 +27,7 @@ struct LibraryView: View {
     enum LibraryViewMode: String, CaseIterable {
         case shows = "Shows"
         case episodes = "Episodes"
+        case downloads = "Downloads"
     }
 
     var body: some View {
@@ -36,7 +37,7 @@ struct LibraryView: View {
             .searchable(
                 text: $searchText,
                 placement: .navigationBarDrawer(displayMode: .always),
-                prompt: viewMode == .shows ? "Search Shows" : "Search Episodes"
+                prompt: searchPrompt
             )
             .toolbar {
                 if isLoadingEpisodes {
@@ -113,6 +114,38 @@ struct LibraryView: View {
     /// `EpisodeWithStatus`.
     private var allEpisodes: [Jimmy.Episode] {
         allEpisodeItems.map { $0.asLegacyEpisode() }
+    }
+
+    private var searchPrompt: String {
+        switch viewMode {
+        case .shows: "Search Shows"
+        case .episodes: "Search Episodes"
+        case .downloads: "Search Downloads"
+        }
+    }
+
+    /// Every episode matching the search text (episode or show title), for Downloads.
+    private var searchedEpisodeItems: [JimmyKit.EpisodeListItem] {
+        guard !searchText.isEmpty else { return allEpisodeItems }
+        let showTitles = Dictionary(jimmyKitPodcasts.map { ($0.id, $0.title) }, uniquingKeysWith: { first, _ in first })
+        return allEpisodeItems.filter { item in
+            item.episode.title.localizedCaseInsensitiveContains(searchText)
+                || (item.episode.podcastID.flatMap { showTitles[$0] }?.localizedCaseInsensitiveContains(searchText) ?? false)
+        }
+    }
+
+    private func openEpisode(_ item: JimmyKit.EpisodeListItem) {
+        let episode = item.asLegacyEpisode()
+        let episodeWithState = EpisodeWithPlaybackState(
+            episode: episode,
+            playbackState: PlaybackState(
+                episodeID: episode.id,
+                position: item.progress?.position ?? 0,
+                finished: item.progress?.isFinished ?? false,
+                updatedAt: Date()
+            )
+        )
+        selectedDestination = .episode(id: episode.id, cachedEpisode: episodeWithState, sourceID: "library-download-\(episode.id.uuidString)")
     }
 
     private var filteredPodcasts: [JimmyKit.Podcast] {
@@ -239,6 +272,8 @@ struct LibraryView: View {
                     switch viewMode {
                     case .shows: showsGrid
                     case .episodes: episodesList
+                    case .downloads:
+                        LibraryDownloadsList(items: searchedEpisodeItems, podcasts: jimmyKitPodcasts, onOpen: openEpisode)
                     }
                 }
                 .padding(.horizontal, JimmyDesign.Spacing.lg)
@@ -256,6 +291,18 @@ struct LibraryView: View {
         case .shows:
             if filteredPodcasts.isEmpty {
                 ContentUnavailableView.search(text: searchText)
+            }
+        case .downloads:
+            if !isLoadingEpisodes && !searchedEpisodeItems.contains(where: { appModel.downloadState(for: $0.id) != nil }) {
+                if searchText.isEmpty {
+                    ContentUnavailableView(
+                        "No Downloads",
+                        systemImage: "arrow.down.circle",
+                        description: Text("Episodes you download play without a connection and stay on this iPhone.")
+                    )
+                } else {
+                    ContentUnavailableView.search(text: searchText)
+                }
             }
         case .episodes:
             if !isLoadingEpisodes && !hasRecentEpisodes {

@@ -31,6 +31,8 @@ public final class Playback {
     public private(set) var duration: TimeInterval?
     public private(set) var rate: Float = 1.0
     public private(set) var currentChapter: Chapter?
+    /// The loaded episode's chapters, in order; empty when it has none.
+    public private(set) var chapters: [Chapter] = []
     public private(set) var sleepTimerMode: SleepTimerMode?
     public private(set) var sleepTimerRemaining: TimeInterval?
     /// Bumped on every `seek(to:)` (including skip/chapter-skip, which call it). `Playback`'s
@@ -72,7 +74,6 @@ public final class Playback {
 
     // MARK: - Private state
 
-    private var chapters: [Chapter] = []
     private var lastSaveAt: Date?
     private var sleepTimerEndDate: Date?
 
@@ -209,7 +210,7 @@ public final class Playback {
     }
 
     /// Move to the next queued episode without marking the current one finished.
-    /// Used for the remote "next track" command; the current episode keeps its position and queue place.
+    /// Leaves the queue order alone; the app's "next track" uses `AppModel.skipToNextInQueue`, which also reorders it.
     public func advanceToNextEpisode() async {
         guard let episode = currentEpisode, let next = await queueSource.episode(after: episode.id) else { return }
         await load(episode: next, startPlaying: isPlaying)
@@ -254,6 +255,12 @@ public final class Playback {
     }
 
     // MARK: - Chapters
+
+    /// Chapters that arrive after `load` (read from the store or the feed) for the episode already loaded.
+    public func setChapters(_ chapters: [Chapter]) {
+        self.chapters = chapters.sorted { $0.start < $1.start }
+        updateCurrentChapter()
+    }
 
     public func nextChapter() -> Chapter? {
         guard !chapters.isEmpty else { return nil }

@@ -29,6 +29,15 @@ enum JimmyDesign {
     /// The smallest tap target for a control, in points.
     static let minHit: CGFloat = 44
 
+    /// Swipe actions are the one place system colors stand in for the accent, so a revealed action never reads as
+    /// disabled. Remove keeps the system destructive red.
+    enum SwipeTint {
+        static let playNext = Color.indigo
+        static let queue = Color.blue
+        static let played = Color.green
+        static let download = Color.orange
+    }
+
     /// The only shadow: under artwork that floats, such as the Now Playing art.
     enum Shadow {
         static let artworkColor = Color.black.opacity(0.18)

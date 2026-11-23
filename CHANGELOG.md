@@ -33,6 +33,7 @@ All notable changes to Jimmy are recorded here. The format follows
 
 ### Changed
 
+- Swipe actions use system colors (indigo Play Next, blue Add to Queue, green Mark Played, orange Download) so a revealed action no longer reads as disabled; docs/design.md lists them as the exception to the one-accent rule.
 - While you scrub, Now Playing's elapsed and remaining times grow and go full strength.
 - Playback speed is a slider from 0.5× to 3× in 0.05× steps with a readout and 0.75×–2× presets; each step ticks.
 - Jimmy reopens on the tab you last used instead of always on Queue.
@@ -62,6 +63,10 @@ All notable changes to Jimmy are recorded here. The format follows
 
 ### Added
 
+- Siri and Shortcuts: "Play my queue", "Play the next episode", "Skip forward" and "Skip back" in Jimmy. They play in the background, through the same queue as the app.
+- Home Screen and Lock Screen widgets show what's playing and what's next in the queue; a Control Center control plays or pauses the queue.
+- Next Track on the Lock Screen, AirPods and CarPlay plays the next queued episode; the one you skipped keeps its place in the episode and moves to the end of the queue. The Lock Screen also offers playback speeds and shows the current chapter when an episode has chapters.
+- Library has a Downloads segment: episodes downloading (with progress), ones that couldn't download (Try Again), the ones on this iPhone, and the space they take. Swipe or touch and hold to remove a download.
 - Removing an episode from the queue shows Undo for five seconds, which puts it back in its place; Clear All asks first.
 - VoiceOver announces when a download finishes or fails and when the sleep timer ends.
 - Single CI workflow for build validation.
