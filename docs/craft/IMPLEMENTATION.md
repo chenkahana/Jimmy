@@ -1,4 +1,4 @@
-RESUME HERE (2026-11-23): PR #54 (J-07, J-12, J-37, J-35) and PR #55 (J-24/J-03 zoom morph) both open on chenkahana/Jimmy. Next: merge both when CI is green, then J-30/J-11 retry, remaining non-device backlog batch.
+RESUME HERE (2026-11-23): PR #54 (J-07, J-12, J-37, J-35), PR #55 (J-24/J-03 zoom morph), PR #56 (J-30/J-11 VoiceOver) all open on chenkahana/Jimmy. Next: merge all three when CI is green, then the remaining non-device backlog batch.
 
 # Implementation tracker
 
@@ -11,9 +11,9 @@ is green. Simulator checks on a dedicated iPhone Duo (iOS 27.1) "Jimmy Impl", dr
 
 - [x] J-01 Mini player Play/Skip 44 pt targets — PR https://github.com/chenkahana/Jimmy/pull/41
 - [x] J-22 Now Playing chevron, •••, Speed/Sleep/Chapters targets — PR https://github.com/chenkahana/Jimmy/pull/42
-- [ ] J-30 No nameless "More" duplicate — skipped after 2 attempts (icon-only `Label`, `.accessibilityElement(children: .combine)`): the element is SwiftUI `Menu`'s own button and the simulator tree can't show VoiceOver focus. Needs a VoiceOver check on a device.
+- [x] J-30 No nameless "More" duplicate — PR #56: a throwaway XCUITest dumped the real tree (`Accessibility Inspector` isn't scriptable headlessly here) and found the actual bug — the `Menu`'s bridged `UIButton` stayed in the tree unlabeled alongside the labeled one. Fixed with `.accessibilityRepresentation`, which replaces the whole reported subtree instead of trying to suppress pieces of it; the same test confirms the real menu still opens on tap.
 - [x] J-06 Queue row Play 44 pt — PR https://github.com/chenkahana/Jimmy/pull/43
-- [ ] J-11 One VoiceOver stop per queue row — skipped after 2 attempts (`.accessibilityHidden(true)` on the Play button, `.accessibilityElement(children: .ignore)` on the row): neither changed the simulator's tree. Needs a VoiceOver check on a device.
+- [x] J-11 One VoiceOver stop per queue row — PR #56, same technique and same test rig: `QueueEpisodeRow`'s nested Play button was a real second stop (confirmed: 5 "Play"/"Pause" buttons tree-wide before the fix, across 4 rows + the mini player; 0 after). `.accessibilityRepresentation` collapses the row to one stop with Play/Pause as a custom action; the row still opens episode detail on tap.
 - [x] J-23 Player drag follows the finger; flick dismisses with velocity — PR https://github.com/chenkahana/Jimmy/pull/44
 - [x] J-26 Haptics and symbol bounce on skip, speed, sleep — PR https://github.com/chenkahana/Jimmy/pull/45
 - [x] J-02 No "Queue Is Empty" flash at launch — PR https://github.com/chenkahana/Jimmy/pull/46 (blank pre-first-frame window not changed: needs a Release App Launch trace on an iPhone)
@@ -55,7 +55,7 @@ All product decisions for this section were delegated to the implementer; defaul
 
 ## Device checks owed
 
-- J-30, J-11: needs device VoiceOver (Now Playing "More"; a queue row).
+- J-30, J-11: fixed in PR #56, verified by an XCUITest tree dump; still wants a real VoiceOver pass on a device (announcement timing, rotor behavior) as a lower-priority confirmation, not a reopen risk.
 - J-26: haptics on an iPhone.
 - J-02: Release App Launch trace on an iPhone (blank window before the first frame).
 - J-23: drag and flick feel on a ProMotion iPhone.
