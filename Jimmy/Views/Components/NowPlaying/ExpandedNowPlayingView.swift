@@ -137,7 +137,11 @@ struct ExpandedNowPlayingView: View {
                     .font(.title3.weight(.semibold))
                     .hitTarget()
             }
-            .accessibilityLabel("More")
+            // `Menu` leaves its own unlabeled button in the accessibility tree alongside the
+            // label's; replacing the whole representation collapses it to one named stop.
+            .accessibilityRepresentation {
+                Button("More") {}
+            }
         }
         .buttonStyle(.plain)
         .tint(.primary)
