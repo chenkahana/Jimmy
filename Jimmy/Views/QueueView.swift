@@ -194,10 +194,17 @@ struct QueueView: View {
             row
         }
         .matchedTransitionSource(id: sourceID, in: queueNamespace)
-        .accessibilityLabel(row.accessibilityText)
-        .accessibilityHint("Shows episode details")
-        .accessibilityAction(named: isPlaying ? "Pause" : "Play") {
-            play(episode, isCurrent: isCurrent)
+        // The row's own Play button stays a real, separately tappable control for touch, but it
+        // would also be its own VoiceOver stop nested inside this row's Button; replacing the
+        // whole representation collapses the row to one stop, with Play/Pause as a custom action.
+        .accessibilityRepresentation {
+            Button(row.accessibilityText) {
+                showDetail(for: episode, sourceID: sourceID)
+            }
+            .accessibilityHint("Shows episode details")
+            .accessibilityAction(named: isPlaying ? "Pause" : "Play") {
+                play(episode, isCurrent: isCurrent)
+            }
         }
         .swipeActions(edge: .leading) {
             playNextButton(episode)

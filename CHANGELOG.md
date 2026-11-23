@@ -8,6 +8,7 @@ All notable changes to Jimmy are recorded here. The format follows
 
 ### Fixed
 
+- A queue row is one VoiceOver stop, with Play/Pause as a custom action, instead of two (the row, then its own Play button again); Now Playing's More button is one stop instead of two (one named, one silent).
 - Watch: queue rows are buttons VoiceOver can activate, skip buttons have names, and "Nothing Is Playing" matches the phone.
 - Library's first load no longer replaces the page with a spinner.
 - The feedback form closes when sending completes instead of on a 1.5-second timer.
