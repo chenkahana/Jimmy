@@ -20,7 +20,6 @@ struct ExpandedNowPlayingView: View {
     @ScaledMetric(relativeTo: .title) private var skipGlyph: CGFloat = 28
     @ScaledMetric(relativeTo: .title) private var playGlyph: CGFloat = 30
 
-    @State private var dragOffset: CGFloat = 0
     /// The artwork's color when it is legible; `nil` falls back to the system background.
     @State private var backdrop: ArtworkContrast?
     @State private var panel: Panel?
@@ -49,8 +48,6 @@ struct ExpandedNowPlayingView: View {
             if let episode = viewModel.currentPlayingEpisode {
                 player(for: episode)
                     .accessibilityHidden(panel != nil)
-                    .offset(y: dragOffset)
-                    .gesture(dismissGesture)
                     .task(id: artworkURL(for: episode)) {
                         guard let url = artworkURL(for: episode),
                               let color = await ArtworkColorExtractor.dominantColor(of: url) else {
@@ -382,23 +379,6 @@ struct ExpandedNowPlayingView: View {
     }
 
     // MARK: - Gestures & Actions
-
-    /// Follows the finger one to one, and closes on a long drag or a flick down.
-    private var dismissGesture: some Gesture {
-        DragGesture()
-            .onChanged { value in
-                dragOffset = max(value.translation.height, 0)
-            }
-            .onEnded { value in
-                if value.translation.height > 100 || value.predictedEndTranslation.height > 220 {
-                    closePlayer()
-                } else {
-                    withAnimation(.motionGentle) {
-                        dragOffset = 0
-                    }
-                }
-            }
-    }
 
     /// Closes the player and opens `destination` in Library.
     private func go(to destination: ShellDestination) {

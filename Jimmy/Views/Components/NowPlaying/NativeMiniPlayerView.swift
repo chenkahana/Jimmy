@@ -9,6 +9,7 @@ struct NativeMiniPlayerView: View {
     @Environment(\.tabViewBottomAccessoryPlacement) private var placement
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
+    let namespace: Namespace.ID
     let onTap: () -> Void
 
     var body: some View {
@@ -34,6 +35,7 @@ struct NativeMiniPlayerView: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .matchedTransitionSource(id: NowPlayingGeometryID.artwork, in: namespace)
                 .accessibilityHint("Opens Now Playing")
 
                 // No spacing: the 44 pt targets already keep the glyphs apart.

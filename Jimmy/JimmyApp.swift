@@ -144,23 +144,6 @@ struct JimmyApp: App {
         }
         .environment(ShellStore.shared)
         .environment(InteractionLatencyTracker.shared)
-        .fullScreenCover(
-            isPresented: Binding(
-                get: { ShellStore.shared.presentation == .nowPlaying },
-                set: { isPresented in
-                    if !isPresented {
-                        ShellStore.shared.clearPresentation()
-                    }
-                }
-            )
-        ) {
-            ExpandedNowPlayingView {
-                ShellStore.shared.clearPresentation()
-            }
-            .environment(ShellStore.shared)
-            .environment(InteractionLatencyTracker.shared)
-            .environment(appModel)
-        }
         .onAppear {
             if !isRunningUnitTests {
                 initializeServices()
