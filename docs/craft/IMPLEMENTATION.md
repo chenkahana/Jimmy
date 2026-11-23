@@ -1,4 +1,4 @@
-RESUME HERE (2026-11-23): PR #54 (J-07, J-12, J-37, J-35), PR #55 (J-24/J-03 zoom morph), PR #56 (J-30/J-11 VoiceOver) all open on chenkahana/Jimmy. Next: merge all three when CI is green, then the remaining non-device backlog batch.
+RESUME HERE (2026-11-23): PR #54, #55, #56 all green and merged to main (squash). Verified the merged main builds and tests clean. Next: the remaining non-device backlog batch (~10 items per PR, one commit per item).
 
 # Implementation tracker
 
