@@ -8,6 +8,8 @@ struct AppShell: View {
     @Bindable private var onboarding = Onboarding.shared
     /// The last tab open, so a relaunch comes back to it even after the app was quit.
     @AppStorage("selectedTab") private var savedTab = ShellTab.queue.rawValue
+    /// Morphs the mini player's artwork into Now Playing's on open, and back on an interactive dismiss.
+    @Namespace private var nowPlayingNamespace
 
     var body: some View {
         TabView(selection: Binding(get: { shell.selectedTab }, set: { shell.handleUserSelectedTab($0) })) {
@@ -24,12 +26,24 @@ struct AppShell: View {
         .tabViewStyle(.sidebarAdaptable)
         .tabBarMinimizeBehavior(.onScrollDown)
         .tabViewBottomAccessory(isEnabled: appModel.playback?.currentEpisode != nil) {
-            NativeMiniPlayerView {
+            NativeMiniPlayerView(namespace: nowPlayingNamespace) {
                 Task { await MiniPlayerTip.openedNowPlaying.donate() }
                 shell.present(.nowPlaying)
             }
         }
         .modifier(OutcomeAnnouncements())
+        .sheet(isPresented: Binding(
+            get: { shell.presentation == .nowPlaying },
+            set: { isPresented in if !isPresented { shell.clearPresentation() } }
+        )) {
+            ExpandedNowPlayingView {
+                shell.clearPresentation()
+            }
+            .navigationTransition(.zoom(sourceID: NowPlayingGeometryID.artwork, in: nowPlayingNamespace))
+            .environment(ShellStore.shared)
+            .environment(InteractionLatencyTracker.shared)
+            .environment(appModel)
+        }
         .onAppear {
             // Demo screenshots always start on Queue.
             guard !DemoLibrary.isRequested(), let tab = ShellTab(rawValue: savedTab), tab != shell.selectedTab else { return }
