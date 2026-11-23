@@ -1,4 +1,4 @@
-RESUME HERE (2026-11-23): branch craft/batch-2 (pushed to chenkahana/Jimmy, 0178e1e) holds J-07 swipe tints, J-12 Downloads, J-37 Lock Screen next/speed/chapters, J-35 App Intents, plus an unfinished WIP commit for the widget extension (Control Center control). Next: finish widgets, J-24/J-03 morph (keep flick), J-30/J-11 retry, then PR + merge.
+RESUME HERE (2026-11-23): craft/batch-2 finished and open as PR #54 (chenkahana/Jimmy) — J-07 swipe tints, J-12 Downloads, J-37 Lock Screen next/speed/chapters, J-35 App Intents + Home Screen/Lock Screen widgets + Control Center control; also fixed the widget extension's CFBundleVersion (was defaulting to 1/1.0, now tracks the app's MARKETING_VERSION/CURRENT_PROJECT_VERSION). Next: merge #54 when CI is green, then J-24/J-03 morph, J-30/J-11 retry, remaining backlog batch.
 
 # Implementation tracker
 
@@ -45,10 +45,13 @@ is green. Simulator checks on a dedicated iPhone Duo (iOS 27.1) "Jimmy Impl", dr
 
 ## Waiting: Chen
 
-- [ ] J-07 Swipe action tints (waiting: Chen, `design.md` one-accent rule)
-- [ ] J-12 Downloads view (waiting: Chen, scope)
-- [ ] J-37 Lock Screen chapters, rate, "next track" (waiting: Chen, what "next" means)
-- [ ] J-35 App Intents, widgets, controls (waiting: Chen, which system feature first)
+All product decisions for this section were delegated to the implementer; defaults from `R5-backlog.md`
+("Questions only Chen can answer") were applied and are shipped in PR #54:
+
+- [x] J-07 Swipe action tints — system colors for swipe actions only; `design.md`'s one-accent rule now lists swipe actions as its exception — PR #54
+- [x] J-12 Downloads view — built (`docs/design.md`'s promised Downloads segment: in progress, failed, done, space used) — PR #54
+- [x] J-37 Lock Screen chapters, rate, "next track" — "next" = start the next queued episode, current one keeps its position; also speed and chapter info — PR #54
+- [x] J-35 App Intents, widgets, controls — App Intents (Siri/Shortcuts) first, then Home Screen/Lock Screen widgets and a Control Center control; no Live Activity, no Handoff — PR #54
 
 ## Device checks owed
 
