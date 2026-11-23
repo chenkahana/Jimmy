@@ -1,4 +1,4 @@
-RESUME HERE (2026-11-23): PR #54, #55, #56 all green and merged to main (squash). Verified the merged main builds and tests clean. Next: the remaining non-device backlog batch (~10 items per PR, one commit per item).
+RESUME HERE (2026-11-23): PR #54, #55, #56 all green and merged to main (squash). Verified the merged main builds and tests clean. All 42 backlog items (J-01–J-42) are now checked or explicitly resolved as not-applicable, except the device-only checks listed below. Nothing non-device remains to batch.
 
 # Implementation tracker
 
