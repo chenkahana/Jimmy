@@ -1,4 +1,4 @@
-RESUME HERE: Done. #41–#53 merged (#53 = batch of 14 items, CI green, main 6aebe89). Remaining: device checks (see items), J-24 morph decision, gated items J-07/J-12/J-37/J-35.
+RESUME HERE (2026-11-23): branch craft/batch-2 (pushed to chenkahana/Jimmy, 0178e1e) holds J-07 swipe tints, J-12 Downloads, J-37 Lock Screen next/speed/chapters, J-35 App Intents, plus an unfinished WIP commit for the widget extension (Control Center control). Next: finish widgets, J-24/J-03 morph (keep flick), J-30/J-11 retry, then PR + merge.
 
 # Implementation tracker
 
