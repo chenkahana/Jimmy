@@ -56,6 +56,23 @@ struct PlayNextEpisodeIntent: AudioPlaybackIntent {
     }
 }
 
+/// The Control Center control's action: on plays the queue, off pauses.
+struct SetQueuePlayingIntent: SetValueIntent, AudioPlaybackIntent {
+    static let title: LocalizedStringResource = "Play or Pause Queue"
+
+    @Parameter(title: "Playing")
+    var value: Bool
+
+    func perform() async throws -> some IntentResult {
+        if value {
+            try await PlaybackIntentActions.playQueue()
+        } else {
+            await PlaybackIntentActions.pause()
+        }
+        return .result()
+    }
+}
+
 /// Why an intent couldn't play, in words Siri can say.
 enum PlaybackIntentError: Error, CustomLocalizedStringResourceConvertible {
     case queueEmpty

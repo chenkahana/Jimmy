@@ -1,12 +1,15 @@
 import Foundation
+import WidgetKit
 
 /// Writes WidgetData to App Group UserDefaults for cross-target sharing.
 /// Used by the main app to push data to widget extensions.
 final class SharedDataStore {
     static let shared = SharedDataStore()
 
-    private let appGroupID = "group.com.chenkahana.jimmy"
-    private let widgetDataKey = "jimmy.widgetData"
+    private let appGroupID = WidgetShared.appGroupID
+    private let widgetDataKey = WidgetShared.widgetDataKey
+    /// What the widgets and the control last showed, so they reload only when it changes.
+    private var lastShown: [String] = []
 
     private lazy var sharedDefaults: UserDefaults? = {
         UserDefaults(suiteName: appGroupID)
@@ -67,6 +70,13 @@ final class SharedDataStore {
         }
 
         save(data)
+
+        let shown = [data.nowPlayingTitle ?? "", "\(data.isPlaying)"] + data.upNext.map(\.id.uuidString)
+        if shown != lastShown {
+            lastShown = shown
+            WidgetCenter.shared.reloadTimelines(ofKind: WidgetShared.nowPlayingKind)
+            ControlCenter.shared.reloadControls(ofKind: WidgetShared.playPauseControlKind)
+        }
     }
 
     // MARK: - Persistence

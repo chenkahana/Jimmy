@@ -40,6 +40,8 @@ targets:
       - package: JimmyKit
       - target: JimmyWatch
         embed: true
+      - target: JimmyWidgets
+        embed: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.chenkahana.Jimmy
@@ -66,6 +68,33 @@ targets:
         LD_RUNPATH_SEARCH_PATHS:
           - "$(inherited)"
           - "@executable_path/Frameworks"
+  JimmyWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: JimmyWidgets
+      # Shared with the app: the intents controls and widgets run, and the data the app writes for them.
+      - path: Jimmy/Intents/PlaybackIntents.swift
+      - path: Jimmy/Models/WidgetData.swift
+    info:
+      path: JimmyWidgets/Info.plist
+      properties:
+        CFBundleDisplayName: Jimmy
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    entitlements:
+      path: JimmyWidgets/JimmyWidgets.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.chenkahana.jimmy
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.chenkahana.Jimmy.Widgets
+        TARGETED_DEVICE_FAMILY: "1"
+        LD_RUNPATH_SEARCH_PATHS:
+          - "$(inherited)"
+          - "@executable_path/Frameworks"
+          - "@executable_path/../../Frameworks"
   JimmyTests:
     type: bundle.unit-test
     platform: iOS

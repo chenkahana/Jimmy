@@ -29,3 +29,18 @@ struct WidgetEpisode: Codable, Identifiable {
     var progress: Double?  // 0.0 - 1.0
     var remainingTime: TimeInterval?
 }
+
+/// Shared by the app (which writes `WidgetData` and reloads) and the widget extension (which reads it).
+enum WidgetShared {
+    static let appGroupID = "group.com.chenkahana.jimmy"
+    static let widgetDataKey = "jimmy.widgetData"
+    static let nowPlayingKind = "com.chenkahana.Jimmy.NowPlaying"
+    static let playPauseControlKind = "com.chenkahana.Jimmy.PlayPauseControl"
+
+    static func load() -> WidgetData? {
+        guard let data = UserDefaults(suiteName: appGroupID)?.data(forKey: widgetDataKey) else { return nil }
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return try? decoder.decode(WidgetData.self, from: data)
+    }
+}
