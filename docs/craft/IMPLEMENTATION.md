@@ -1,4 +1,4 @@
-RESUME HERE (2026-11-23): craft/batch-2 finished and open as PR #54 (chenkahana/Jimmy) — J-07 swipe tints, J-12 Downloads, J-37 Lock Screen next/speed/chapters, J-35 App Intents + Home Screen/Lock Screen widgets + Control Center control; also fixed the widget extension's CFBundleVersion (was defaulting to 1/1.0, now tracks the app's MARKETING_VERSION/CURRENT_PROJECT_VERSION). Next: merge #54 when CI is green, then J-24/J-03 morph, J-30/J-11 retry, remaining backlog batch.
+RESUME HERE (2026-11-23): PR #54 (J-07, J-12, J-37, J-35) and PR #55 (J-24/J-03 zoom morph) both open on chenkahana/Jimmy. Next: merge both when CI is green, then J-30/J-11 retry, remaining non-device backlog batch.
 
 # Implementation tracker
 
@@ -35,7 +35,7 @@ is green. Simulator checks on a dedicated iPhone Duo (iOS 27.1) "Jimmy Impl", dr
 - [x] J-10 Suggestions placeholder rows and Done — batch PR https://github.com/chenkahana/Jimmy/pull/53
 - [x] J-31 + J-34 + J-04 Sleep panel, onboarding button, tip copy — batch PR https://github.com/chenkahana/Jimmy/pull/53 (J-04 partial: copy only, placement unchanged)
 - [x] J-27 (part) Scrub times emphasized while scrubbing — batch PR https://github.com/chenkahana/Jimmy/pull/53; chapter ticks not done (nothing fills chapters)
-- [ ] J-24 + J-03 Mini player ↔ Now Playing morph — skipped after 2 attempts: `.navigationTransition(.zoom)` morphs on open but breaks J-23 flick-to-close; needs a decision
+- [x] J-24 + J-03 Mini player ↔ Now Playing morph — PR #55: `.navigationTransition(.zoom)` + `matchedTransitionSource`, with J-23's custom drag gesture removed (it fought the zoom transition's own interactive dismiss — the actual cause of the earlier "breaks flick-to-close" failure). The system sheet's built-in interactive dismiss now provides the flick; exact feel still wants a device pass.
 - [x] J-36 (part) Restore tab after relaunch — batch PR https://github.com/chenkahana/Jimmy/pull/53; in-tab navigation path not restored
 - [x] J-33 + J-15 Feedback form closes on completion; no Library first-load spinner — batch PR https://github.com/chenkahana/Jimmy/pull/53
 - [ ] J-19 Pinned header stacking (needs an iPhone check)
