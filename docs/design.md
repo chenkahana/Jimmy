@@ -2,6 +2,21 @@
 
 Calm, artwork-first, native. Jimmy is a sibling of Boaz: a neutral app where the shows supply the color.
 
+## The optical bar (standing standard, Chen 2026-11-28)
+
+Chen's bar for every product he ships (Boaz, Jimmy, Edison, the site): "This is the level of details we need to
+achieve." All UI work and UI reviews in this repo check against it:
+
+- **Optical spacing over equal-number padding.** Equal pixel values rarely look equal; adjust per side until the
+  visual weight is balanced.
+- **Concentric border radii.** Nested rounded elements share a center: outer radius = inner radius + the gap
+  between them.
+- **Icons sized relative to text.** Size icons in line-height units (lh/em), aligned optically to cap height and
+  baseline, never in absolute pixels that ignore the text they sit next to.
+- **Balanced visual gaps.** Judge whitespace by eye: gaps between groups read larger than gaps within them.
+
+Reviews are screenshot reviews, not code-value reviews: numerically equal but optically off is a reject.
+
 ## Principles
 
 1. **Content or control.** Every element on screen is artwork, text the listener reads, or something they tap.
