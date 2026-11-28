@@ -41,6 +41,10 @@ All notable changes to Jimmy are recorded here. The format follows
 - Firebase analytics and crash reporting SDK.
 - Four legacy CI workflows and their supporting scripts; replaced with one minimal workflow.
 
+### Added
+
+- Settings has a Volume Boost control (Off, Normal, High) that levels quiet and loud episodes toward -16 LUFS (High: -14, with light compression), with a limiter so it can't clip. It starts Off. It does not apply to HLS streams or on Apple Watch.
+
 ### Changed
 
 - Swipe actions use system colors (indigo Play Next, blue Add to Queue, green Mark Played, orange Download) so a revealed action no longer reads as disabled; docs/design.md lists them as the exception to the one-accent rule.
