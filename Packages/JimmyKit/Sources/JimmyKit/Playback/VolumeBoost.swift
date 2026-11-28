@@ -16,6 +16,21 @@ public nonisolated enum VolumeBoost: String, Sendable, CaseIterable, Codable {
         }
     }
 
+    /// Whether the light compressor runs. Only High does: it lifts quiet voices for noisy places.
+    public var usesCompressor: Bool { self == .high }
+
+    /// The level new installs start at. Off until the on-device listening check against Apple
+    /// Podcasts is done; the plan's goal is Normal, so flipping this one line turns it on.
+    public static let defaultLevel: VolumeBoost = .off
+
+    /// UserDefaults key the setting is stored under (a raw value string).
+    public static let defaultsKey = "volumeBoost"
+
+    /// The stored level, or `defaultLevel` when nothing valid is stored.
+    public static func stored(in defaults: UserDefaults = .standard) -> VolumeBoost {
+        defaults.string(forKey: defaultsKey).flatMap(VolumeBoost.init(rawValue:)) ?? defaultLevel
+    }
+
     /// Largest gain the leveler applies in either direction, in dB. It keeps a mis-measured
     /// episode from being boosted into noise or cut into silence.
     public static let maxGainDB: Double = 12

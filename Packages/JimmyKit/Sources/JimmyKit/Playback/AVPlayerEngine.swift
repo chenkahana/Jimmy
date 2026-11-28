@@ -23,6 +23,13 @@ public final class AVPlayerEngine: PlayerEngine {
         didSet { player?.volume = volume }
     }
 
+    public var volumeBoost: VolumeBoost = VolumeBoost.defaultLevel {
+        didSet {
+            guard volumeBoost != oldValue else { return }
+            applyVolumeBoost()
+        }
+    }
+
     public var currentTime: TimeInterval {
         player?.currentTime().seconds ?? 0
     }
@@ -39,6 +46,11 @@ public final class AVPlayerEngine: PlayerEngine {
     private var endOfItemObserver: NSObjectProtocol?
     private var statusObserver: NSKeyValueObservation?
     private var isPlayingFlag = false
+    #if canImport(MediaToolbox)
+    /// The processing attached to `currentItem`, kept so a setting change can retune it live.
+    private var loudnessState: LoudnessTapState?
+    private var loudnessTask: Task<Void, Never>?
+    #endif
     private var durationLoadTask: Task<Void, Never>?
     /// Where to seek once the current item becomes ready; set by `load`, consumed and cleared once
     /// applied.
@@ -60,6 +72,9 @@ public final class AVPlayerEngine: PlayerEngine {
         }
         statusObserver?.invalidate()
         durationLoadTask?.cancel()
+        #if canImport(MediaToolbox)
+        loudnessTask?.cancel()
+        #endif
     }
 
     public func load(url: URL, startPosition: TimeInterval) {
@@ -79,6 +94,8 @@ public final class AVPlayerEngine: PlayerEngine {
         newPlayer.defaultRate = rate
         player = newPlayer
         currentItem = item
+
+        applyVolumeBoost()
 
         durationLoadTask = Task { @MainActor [weak self] in
             guard let loadedDuration = try? await item.asset.load(.duration) else { return }
@@ -148,6 +165,37 @@ public final class AVPlayerEngine: PlayerEngine {
         player?.seek(to: CMTime(seconds: time, preferredTimescale: 1))
     }
 
+    /// Attaches, retunes or removes the loudness processing on the current item to match
+    /// `volumeBoost`. Off removes it, so there is no processing cost. Streams that expose no
+    /// progressive audio track (HLS) get no tap and play as they did before.
+    private func applyVolumeBoost() {
+        #if canImport(MediaToolbox)
+        guard let item = currentItem else { return }
+        guard volumeBoost != .off else {
+            loudnessTask?.cancel()
+            loudnessTask = nil
+            loudnessState = nil
+            item.audioMix = nil
+            return
+        }
+        if let loudnessState {
+            loudnessState.update(boost: volumeBoost)
+            return
+        }
+        guard loudnessTask == nil else { return }
+        loudnessTask = Task { @MainActor [weak self] in
+            guard let tracks = try? await item.asset.loadTracks(withMediaType: .audio),
+                  let track = tracks.first else { return }
+            // The item, or the setting, may have changed while the track list loaded.
+            guard let self, !Task.isCancelled, self.currentItem === item, self.volumeBoost != .off else { return }
+            let state = LoudnessTapState(boost: self.volumeBoost)
+            guard let mix = LoudnessTap.audioMix(for: track, state: state) else { return }
+            item.audioMix = mix
+            self.loudnessState = state
+        }
+        #endif
+    }
+
     /// Keeps the pitch algorithm in step with the speed: a speed change re-picks it for the item
     /// that is already loaded.
     private func applyPitchAlgorithm() {
@@ -160,6 +208,11 @@ public final class AVPlayerEngine: PlayerEngine {
     private func tearDownCurrentItem() {
         durationLoadTask?.cancel()
         durationLoadTask = nil
+        #if canImport(MediaToolbox)
+        loudnessTask?.cancel()
+        loudnessTask = nil
+        loudnessState = nil
+        #endif
         if let timeObserver, let player {
             player.removeTimeObserver(timeObserver)
         }

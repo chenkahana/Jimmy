@@ -5,9 +5,9 @@ import Foundation
 ///
 /// Built to run inside an audio callback: everything it needs is allocated in `init`, and
 /// `process` allocates nothing, takes no locks and calls no Swift runtime features that do.
-/// It is not thread safe by itself. One thread (the audio thread) calls `process`; the owner
-/// changes `targetGainDB` from elsewhere only through a mechanism it provides (the tap wiring
-/// passes it across with an atomic), so this type stays free of locks.
+/// It is not thread safe by itself. One thread (the audio thread) calls `process` and sets
+/// `targetGainDB`; the tap passes changes from other threads to it with atomics, so this type
+/// stays free of locks.
 ///
 /// Signal chain, per frame:
 /// 1. Gain eases toward `targetGainDB` (about 200 ms), so a changing estimate never jumps.
@@ -57,7 +57,12 @@ public nonisolated final class LoudnessProcessor: @unchecked Sendable {
     private let held: UnsafeMutablePointer<Float>
     private var heldSum = 0.0
 
-    public init(sampleRate: Double, gainDB: Double = 0, compressorEnabled: Bool = false) {
+    public init(
+        sampleRate: Double,
+        gainDB: Double = 0,
+        compressorEnabled: Bool = false,
+        gainTimeConstant: Double = 0.2
+    ) {
         precondition(sampleRate > 0)
         let clamped = min(VolumeBoost.maxGainDB, max(-VolumeBoost.maxGainDB, gainDB))
         self.target = clamped
@@ -65,7 +70,7 @@ public nonisolated final class LoudnessProcessor: @unchecked Sendable {
         self.gain = targetLinear
         self.compressorEnabled = compressorEnabled
         self.ceiling = Float(pow(10, Self.ceilingDBFS / 20))
-        self.gainSmoothing = Self.smoothingCoefficient(timeConstant: 0.2, sampleRate: sampleRate)
+        self.gainSmoothing = Self.smoothingCoefficient(timeConstant: gainTimeConstant, sampleRate: sampleRate)
         self.detectorSmoothing = Self.smoothingCoefficient(timeConstant: 0.03, sampleRate: sampleRate)
         self.attackSmoothing = Self.smoothingCoefficient(timeConstant: 0.02, sampleRate: sampleRate)
         self.releaseSmoothing = Self.smoothingCoefficient(timeConstant: 0.4, sampleRate: sampleRate)

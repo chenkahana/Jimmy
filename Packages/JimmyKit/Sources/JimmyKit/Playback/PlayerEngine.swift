@@ -9,6 +9,10 @@ public protocol PlayerEngine: AnyObject {
     /// Output volume, 0...1. Used for the sleep timer's fade-out; 1.0 is full volume.
     var volume: Float { get set }
 
+    /// How episodes are leveled in loudness (the "Volume boost" setting). Takes effect on the
+    /// loaded item at once and on every item loaded after.
+    var volumeBoost: VolumeBoost { get set }
+
     /// Current playback position, in seconds.
     var currentTime: TimeInterval { get }
 

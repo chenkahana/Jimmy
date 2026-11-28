@@ -209,6 +209,11 @@ public final class Playback {
         engine.rate = rate
     }
 
+    /// Set how episodes are leveled in loudness (the "Volume boost" setting).
+    public func setVolumeBoost(_ boost: VolumeBoost) {
+        engine.volumeBoost = boost
+    }
+
     /// Move to the next queued episode without marking the current one finished.
     /// Leaves the queue order alone; the app's "next track" uses `AppModel.skipToNextInQueue`, which also reorders it.
     public func advanceToNextEpisode() async {
