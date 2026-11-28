@@ -10,6 +10,10 @@ All notable changes to Jimmy are recorded here. The format follows
 
 - Settings has a Volume Boost control (Off, Normal, High) that levels quiet and loud episodes toward -16 LUFS (High: -14, with light compression), with a limiter so it can't clip. It starts Off. It does not apply to HLS streams or on Apple Watch.
 
+### Changed
+
+- Sped-up speech sounds cleaner: above 1x, playback uses Apple's higher-quality pitch correction. The Watch and Low Power Mode keep the lighter one to save battery.
+
 ### Fixed
 
 - A queue row is one VoiceOver stop, with Play/Pause as a custom action, instead of two (the row, then its own Play button again); Now Playing's More button is one stop instead of two (one named, one silent).
