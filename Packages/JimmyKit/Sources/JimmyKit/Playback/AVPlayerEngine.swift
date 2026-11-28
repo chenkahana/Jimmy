@@ -14,6 +14,7 @@ public final class AVPlayerEngine: PlayerEngine {
             // `AVPlayer.play()` resets `rate` to `defaultRate` on iOS 16+, so a custom speed only
             // sticks if `defaultRate` is kept in sync too — not just `rate` itself.
             player?.defaultRate = rate
+            applyPitchAlgorithm()
             if isPlayingFlag { player?.rate = rate }
         }
     }
@@ -69,6 +70,10 @@ public final class AVPlayerEngine: PlayerEngine {
         isItemReady = false
 
         let item = AVPlayerItem(url: url)
+        item.audioTimePitchAlgorithm = PlaybackQuality.pitchAlgorithm(
+            rate: rate,
+            cheapProcessing: PlaybackQuality.prefersCheapProcessing
+        )
         let newPlayer = AVPlayer(playerItem: item)
         newPlayer.volume = volume
         newPlayer.defaultRate = rate
@@ -141,6 +146,15 @@ public final class AVPlayerEngine: PlayerEngine {
 
     public func seek(to time: TimeInterval) {
         player?.seek(to: CMTime(seconds: time, preferredTimescale: 1))
+    }
+
+    /// Keeps the pitch algorithm in step with the speed: a speed change re-picks it for the item
+    /// that is already loaded.
+    private func applyPitchAlgorithm() {
+        currentItem?.audioTimePitchAlgorithm = PlaybackQuality.pitchAlgorithm(
+            rate: rate,
+            cheapProcessing: PlaybackQuality.prefersCheapProcessing
+        )
     }
 
     private func tearDownCurrentItem() {
