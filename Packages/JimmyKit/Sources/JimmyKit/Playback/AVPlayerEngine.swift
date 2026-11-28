@@ -22,6 +22,13 @@ public final class AVPlayerEngine: PlayerEngine {
         didSet { player?.volume = volume }
     }
 
+    public var volumeBoost: VolumeBoost = VolumeBoost.defaultLevel {
+        didSet {
+            guard volumeBoost != oldValue else { return }
+            applyVolumeBoost()
+        }
+    }
+
     public var currentTime: TimeInterval {
         player?.currentTime().seconds ?? 0
     }
@@ -38,6 +45,11 @@ public final class AVPlayerEngine: PlayerEngine {
     private var endOfItemObserver: NSObjectProtocol?
     private var statusObserver: NSKeyValueObservation?
     private var isPlayingFlag = false
+    #if canImport(MediaToolbox)
+    /// The processing attached to `currentItem`, kept so a setting change can retune it live.
+    private var loudnessState: LoudnessTapState?
+    private var loudnessTask: Task<Void, Never>?
+    #endif
     private var durationLoadTask: Task<Void, Never>?
     /// Where to seek once the current item becomes ready; set by `load`, consumed and cleared once
     /// applied.
@@ -59,6 +71,9 @@ public final class AVPlayerEngine: PlayerEngine {
         }
         statusObserver?.invalidate()
         durationLoadTask?.cancel()
+        #if canImport(MediaToolbox)
+        loudnessTask?.cancel()
+        #endif
     }
 
     public func load(url: URL, startPosition: TimeInterval) {
@@ -74,6 +89,8 @@ public final class AVPlayerEngine: PlayerEngine {
         newPlayer.defaultRate = rate
         player = newPlayer
         currentItem = item
+
+        applyVolumeBoost()
 
         durationLoadTask = Task { @MainActor [weak self] in
             guard let loadedDuration = try? await item.asset.load(.duration) else { return }
@@ -146,6 +163,11 @@ public final class AVPlayerEngine: PlayerEngine {
     private func tearDownCurrentItem() {
         durationLoadTask?.cancel()
         durationLoadTask = nil
+        #if canImport(MediaToolbox)
+        loudnessTask?.cancel()
+        loudnessTask = nil
+        loudnessState = nil
+        #endif
         if let timeObserver, let player {
             player.removeTimeObserver(timeObserver)
         }

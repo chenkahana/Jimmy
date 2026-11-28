@@ -165,8 +165,10 @@ final class AppModel: Sendable {
         do {
             let store = try Store(path: databasePath, legacy: legacyInput)
             let downloads = makeDownloads(store: store, databasePath: databasePath)
+            let engine = AVPlayerEngine()
+            engine.volumeBoost = VolumeBoost.stored()
             let playback = Playback(
-                engine: AVPlayerEngine(),
+                engine: engine,
                 progressStore: StorePlaybackSource(store: store),
                 // Posts `.episodeRemovedFromQueue` on auto-advance too, not just a user-initiated
                 // `AppModel.dequeue` — see `NotifyingQueueSource`.

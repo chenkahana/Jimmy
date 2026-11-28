@@ -35,6 +35,7 @@ class SettingsViewModel: ObservableObject {
     // MARK: - App Settings (KEEP @Published - bound to UI toggles/pickers)
     @Published var playbackSpeed: Double = 1.0
     @Published var appearanceMode: AppearanceMode = .system
+    @Published var volumeBoost: VolumeBoost = VolumeBoost.stored()
 
     @Published var episodeSwipeAction: String = "addToQueue"
     @Published var queueSwipeAction: String = "markAsPlayed"
@@ -168,6 +169,17 @@ class SettingsViewModel: ObservableObject {
                     AppModel.current?.playback?.setRate(Float(speed))
                 }
                 UserDefaults.standard.set(speed, forKey: "playbackSpeed")
+            }
+            .store(in: &cancellables)
+
+        // Volume boost: store it and retune the engine, which applies it to the playing episode.
+        $volumeBoost
+            .sink { [weak self] boost in
+                guard let self = self, !self.isInitializing else { return }
+                UserDefaults.standard.set(boost.rawValue, forKey: VolumeBoost.defaultsKey)
+                Task { @MainActor in
+                    AppModel.current?.playback?.setVolumeBoost(boost)
+                }
             }
             .store(in: &cancellables)
 
