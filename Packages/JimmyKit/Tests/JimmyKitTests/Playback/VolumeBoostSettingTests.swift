@@ -11,6 +11,13 @@ struct VolumeBoostSettingTests {
         #expect(engine.volumeBoost == .high)
     }
 
+    @Test func playbackPassesVoiceClarityToTheEngine() {
+        let engine = FakePlayerEngine()
+        let playback = Playback(engine: engine, progressStore: FakeProgressStore(), queueSource: FakeQueueSource(), clock: FakeClock())
+        playback.setVoiceClarity(true)
+        #expect(engine.voiceClarity == true)
+    }
+
     @Test func onlyHighUsesTheCompressor() {
         #expect(VolumeBoost.high.usesCompressor)
         #expect(!VolumeBoost.normal.usesCompressor)

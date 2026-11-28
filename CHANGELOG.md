@@ -9,6 +9,7 @@ All notable changes to Jimmy are recorded here. The format follows
 ### Added
 
 - Settings has a Volume Boost control (Off, Normal, High) that levels quiet and loud episodes toward -16 LUFS (High: -14, with light compression), with a limiter so it can't clip. It starts Off. It does not apply to HLS streams or on Apple Watch.
+- Settings has a Voice Clarity switch: a light EQ that trims rumble below 80 Hz and lifts the speech band around 3 kHz by 2.5 dB. It starts off, and does not apply to HLS streams or on Apple Watch.
 
 ### Changed
 

@@ -167,6 +167,7 @@ final class AppModel: Sendable {
             let downloads = makeDownloads(store: store, databasePath: databasePath)
             let engine = AVPlayerEngine()
             engine.volumeBoost = VolumeBoost.stored()
+            engine.voiceClarity = UserDefaults.standard.bool(forKey: Playback.voiceClarityDefaultsKey)
             let playback = Playback(
                 engine: engine,
                 progressStore: StorePlaybackSource(store: store),

@@ -19,19 +19,26 @@ nonisolated final class LoudnessTapState: @unchecked Sendable {
 
     private let targetLUFSBits: Atomic<UInt64>
     private let compressor: Atomic<Bool>
+    private let leveling: Atomic<Bool>
+    private let voiceClarity: Atomic<Bool>
+    private var voiceEQ: VoiceEQ?
     private var processor: LoudnessProcessor?
     private var follower: LoudnessFollower?
     private var layout: Layout?
 
-    init(boost: VolumeBoost) {
+    init(boost: VolumeBoost, voiceClarity: Bool) {
         targetLUFSBits = Atomic((boost.targetLUFS ?? -16).bitPattern)
         compressor = Atomic(boost.usesCompressor)
+        leveling = Atomic(boost != .off)
+        self.voiceClarity = Atomic(voiceClarity)
     }
 
     /// Safe to call from any thread while audio is playing.
-    func update(boost: VolumeBoost) {
+    func update(boost: VolumeBoost, voiceClarity: Bool) {
         targetLUFSBits.store((boost.targetLUFS ?? -16).bitPattern, ordering: .relaxed)
         compressor.store(boost.usesCompressor, ordering: .relaxed)
+        leveling.store(boost != .off, ordering: .relaxed)
+        self.voiceClarity.store(voiceClarity, ordering: .relaxed)
     }
 
     func prepare(sampleRate: Double, format: AudioStreamBasicDescription) {
@@ -44,6 +51,7 @@ nonisolated final class LoudnessTapState: @unchecked Sendable {
         }
         let planar = format.mFormatFlags & kAudioFormatFlagIsNonInterleaved != 0
         layout = planar ? .planar(channels: channels) : .interleaved(channels: channels)
+        voiceEQ = VoiceEQ(sampleRate: sampleRate)
         processor = LoudnessProcessor(sampleRate: sampleRate, gainTimeConstant: 1.0)
         follower = LoudnessFollower(sampleRate: sampleRate, channelCount: channels)
     }
@@ -52,10 +60,11 @@ nonisolated final class LoudnessTapState: @unchecked Sendable {
         layout = nil
         processor = nil
         follower = nil
+        voiceEQ = nil
     }
 
     func process(_ bufferList: UnsafeMutablePointer<AudioBufferList>, frameCount: Int) {
-        guard let processor, let follower, let layout, frameCount > 0 else { return }
+        guard let processor, let follower, let voiceEQ, let layout, frameCount > 0 else { return }
         let target = Double(bitPattern: targetLUFSBits.load(ordering: .relaxed))
         processor.compressorEnabled = compressor.load(ordering: .relaxed)
 
@@ -87,9 +96,15 @@ nonisolated final class LoudnessTapState: @unchecked Sendable {
             leftStride: stride,
             rightStride: stride
         )
-        if let estimate = follower.estimatedLUFS {
+        if !leveling.load(ordering: .relaxed) {
+            processor.targetGainDB = 0
+        } else if let estimate = follower.estimatedLUFS {
             let gain = min(VolumeBoost.maxGainDB, max(-VolumeBoost.maxGainDB, target - estimate))
             processor.targetGainDB = gain
+        }
+        // The EQ runs before the limiter, which catches the few dB of peak the presence lift adds.
+        if voiceClarity.load(ordering: .relaxed) {
+            voiceEQ.process(left: left, right: right, frameCount: frameCount, leftStride: stride, rightStride: stride)
         }
         processor.process(left: left, right: right, frameCount: frameCount, leftStride: stride, rightStride: stride)
     }
