@@ -40,6 +40,13 @@ public final class Playback {
     /// from directly; observing this instead lets a caller learn exactly when the user jumped to
     /// a new position, distinct from the engine's own ongoing playback ticks.
     public private(set) var seekCount = 0
+    /// Whether playback jumps over the quiet stretches found by `AudioAnalyzer` ("Skip silence").
+    /// Off by default.
+    public private(set) var skipSilenceEnabled = false
+    /// The loaded episode's quiet stretches; empty until it has been analyzed.
+    public private(set) var silenceRanges: [SilenceRange] = []
+    /// Seconds of silence skipped since this `Playback` was created.
+    public private(set) var timeSaved: TimeInterval = 0
 
     // MARK: - Configuration
 
@@ -58,6 +65,17 @@ public final class Playback {
     /// finish, the way the old service did, instead of leaving it pointing at an episode that's
     /// already done until something else happens to overwrite it.
     public var onEpisodeFinished: (UUID) -> Void = { _ in }
+
+    /// Looks up the stored quiet stretches for an episode. Applied on every `load()`. The default
+    /// finds none, so skip silence does nothing until the app wires this to the store.
+    public var silenceRangesProvider: (UUID) async -> [SilenceRange] = { _ in [] }
+
+    /// UserDefaults key for the Skip silence setting (a Bool, off by default).
+    public static let skipSilenceDefaultsKey = "skipSilence"
+
+    /// A skip only fires this far before a range ends, so a tick that lands on the very end of a
+    /// range does not seek for nothing.
+    static let minimumSkipRemaining: TimeInterval = 0.05
 
     /// Minimum spacing between throttled position saves while playing.
     public static let saveInterval: TimeInterval = 5
@@ -121,6 +139,10 @@ public final class Playback {
         duration = progress?.duration ?? episode.duration
         lastSaveAt = nil
         updateCurrentChapter()
+        silenceRanges = []
+        let ranges = await silenceRangesProvider(episode.id)
+        // A newer load may have started while the lookup ran; keep only this episode's ranges.
+        if currentEpisode?.id == episode.id { silenceRanges = ranges }
 
         guard let url = resolveAudioURL(episode) else {
             isPlaying = false
@@ -219,6 +241,18 @@ public final class Playback {
         engine.voiceClarity = enabled
     }
 
+    /// Turn skip silence on or off.
+    public func setSkipSilence(_ enabled: Bool) {
+        skipSilenceEnabled = enabled
+    }
+
+    /// Hand `Playback` the quiet stretches of the loaded episode, e.g. when analysis finishes
+    /// while it plays. Ignored if another episode is loaded by now.
+    public func setSilenceRanges(_ ranges: [SilenceRange], for episodeID: UUID) {
+        guard currentEpisode?.id == episodeID else { return }
+        silenceRanges = ranges
+    }
+
     /// UserDefaults key for the Voice clarity setting (a Bool, off by default).
     public static let voiceClarityDefaultsKey = "voiceClarity"
 
@@ -304,6 +338,7 @@ public final class Playback {
 
     private func handleTimeUpdate(_ time: TimeInterval) async {
         position = time
+        skipSilenceIfNeeded()
         updateCurrentChapter()
         await checkSleepTimer()
         await throttledSave()
@@ -363,6 +398,19 @@ public final class Playback {
             clamped = min(clamped, duration)
         }
         return clamped
+    }
+
+    /// If the playhead sits inside a quiet stretch, jump to its end and count the saved time. Goes
+    /// straight to the engine: it is not a user seek, so it does not bump `seekCount` or flush.
+    private func skipSilenceIfNeeded() {
+        guard skipSilenceEnabled, isPlaying else { return }
+        guard let range = silenceRanges.first(where: {
+            $0.start <= position && position < $0.end - Self.minimumSkipRemaining
+        }) else { return }
+        let target = clampedPosition(range.end)
+        timeSaved += max(0, target - position)
+        engine.seek(to: target)
+        position = target
     }
 
     private func updateCurrentChapter() {

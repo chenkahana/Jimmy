@@ -37,6 +37,7 @@ class SettingsViewModel: ObservableObject {
     @Published var appearanceMode: AppearanceMode = .system
     @Published var volumeBoost: VolumeBoost = VolumeBoost.stored()
     @Published var voiceClarity: Bool = UserDefaults.standard.bool(forKey: Playback.voiceClarityDefaultsKey)
+    @Published var skipSilence: Bool = UserDefaults.standard.bool(forKey: Playback.skipSilenceDefaultsKey)
 
     @Published var episodeSwipeAction: String = "addToQueue"
     @Published var queueSwipeAction: String = "markAsPlayed"
@@ -180,6 +181,16 @@ class SettingsViewModel: ObservableObject {
                 UserDefaults.standard.set(boost.rawValue, forKey: VolumeBoost.defaultsKey)
                 Task { @MainActor in
                     AppModel.current?.playback?.setVolumeBoost(boost)
+                }
+            }
+            .store(in: &cancellables)
+
+        $skipSilence
+            .sink { [weak self] enabled in
+                guard let self = self, !self.isInitializing else { return }
+                UserDefaults.standard.set(enabled, forKey: Playback.skipSilenceDefaultsKey)
+                Task { @MainActor in
+                    AppModel.current?.playback?.setSkipSilence(enabled)
                 }
             }
             .store(in: &cancellables)
