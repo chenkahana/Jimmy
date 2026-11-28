@@ -32,7 +32,7 @@ actor BackupService {
         // Collect relevant UserDefaults settings
         let settingsKeys = ["playbackSpeed", "skipForwardDuration", "skipBackwardDuration",
                            "appearanceMode", "episodeSwipeAction", "queueSwipeAction",
-                           "autoRestoreLastEpisode", "highContrastMode", "volumeBoost", "voiceClarity"]
+                           "autoRestoreLastEpisode", "highContrastMode", "volumeBoost", "voiceClarity", "skipSilence"]
         var settings: [String: String] = [:]
         for key in settingsKeys {
             if let value = UserDefaults.standard.object(forKey: key) {

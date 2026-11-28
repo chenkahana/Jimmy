@@ -19,6 +19,27 @@ extension AppModel {
         await ensureEpisodeIsSaved(episode)
         await playback.load(episode: episode, startPlaying: startPlaying)
         await enqueue(episode.id, at: 1)
+        analyzeInBackgroundIfNeeded(episode)
+    }
+
+    /// Measures a downloaded episode the first time it is played, and keeps the result. Skip
+    /// silence and exact volume leveling both read it. Runs off the main actor; a failure just
+    /// leaves the episode unanalyzed, so it plays as before.
+    private func analyzeInBackgroundIfNeeded(_ episode: JimmyKit.Episode) {
+        guard let readyStore, let fileURL = downloads?.fileURL(for: episode.id) else { return }
+        let episodeID = episode.id
+        Task.detached(priority: .utility) { [weak self] in
+            if (try? await readyStore.audioAnalysis(for: episodeID)) != nil { return }
+            guard let result = try? await AudioAnalyzer.analyze(fileURL: fileURL) else { return }
+            let analysis = AudioAnalysis(
+                episodeID: episodeID,
+                integratedLUFS: result.integratedLUFS,
+                samplePeak: result.samplePeak,
+                silenceRanges: result.silenceRanges
+            )
+            try? await readyStore.saveAudioAnalysis(analysis)
+            await MainActor.run { self?.playback?.setSilenceRanges(analysis.silenceRanges, for: episodeID) }
+        }
     }
 
     /// Upserts `episode` first when it isn't in the database yet — e.g. a Discover preview episode

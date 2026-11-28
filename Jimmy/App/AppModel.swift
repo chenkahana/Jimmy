@@ -175,6 +175,10 @@ final class AppModel: Sendable {
                 // `AppModel.dequeue` — see `NotifyingQueueSource`.
                 queueSource: NotifyingQueueSource(store: store)
             )
+            playback.setSkipSilence(UserDefaults.standard.bool(forKey: Playback.skipSilenceDefaultsKey))
+            playback.silenceRangesProvider = { episodeID in
+                (try? await store.audioAnalysis(for: episodeID))?.silenceRanges ?? []
+            }
             // A downloaded episode plays from disk no matter how playback reaches it — a direct
             // `AppModel.play`, auto-advance, or the remote "next track" command.
             playback.resolveAudioURL = { episode in
