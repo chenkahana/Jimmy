@@ -214,6 +214,14 @@ public final class Playback {
         engine.volumeBoost = boost
     }
 
+    /// Turn the light voice EQ ("Voice clarity") on or off.
+    public func setVoiceClarity(_ enabled: Bool) {
+        engine.voiceClarity = enabled
+    }
+
+    /// UserDefaults key for the Voice clarity setting (a Bool, off by default).
+    public static let voiceClarityDefaultsKey = "voiceClarity"
+
     /// Move to the next queued episode without marking the current one finished.
     /// Leaves the queue order alone; the app's "next track" uses `AppModel.skipToNextInQueue`, which also reorders it.
     public func advanceToNextEpisode() async {

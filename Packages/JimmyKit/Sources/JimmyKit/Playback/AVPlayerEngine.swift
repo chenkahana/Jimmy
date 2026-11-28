@@ -29,6 +29,13 @@ public final class AVPlayerEngine: PlayerEngine {
         }
     }
 
+    public var voiceClarity: Bool = false {
+        didSet {
+            guard voiceClarity != oldValue else { return }
+            applyVolumeBoost()
+        }
+    }
+
     public var currentTime: TimeInterval {
         player?.currentTime().seconds ?? 0
     }
@@ -161,12 +168,12 @@ public final class AVPlayerEngine: PlayerEngine {
     }
 
     /// Attaches, retunes or removes the loudness processing on the current item to match
-    /// `volumeBoost`. Off removes it, so there is no processing cost. Streams that expose no
+    /// `volumeBoost` and `voiceClarity`. Both off removes it, so there is no processing cost. Streams that expose no
     /// progressive audio track (HLS) get no tap and play as they did before.
     private func applyVolumeBoost() {
         #if canImport(MediaToolbox)
         guard let item = currentItem else { return }
-        guard volumeBoost != .off else {
+        guard volumeBoost != .off || voiceClarity else {
             loudnessTask?.cancel()
             loudnessTask = nil
             loudnessState = nil
@@ -174,7 +181,7 @@ public final class AVPlayerEngine: PlayerEngine {
             return
         }
         if let loudnessState {
-            loudnessState.update(boost: volumeBoost)
+            loudnessState.update(boost: volumeBoost, voiceClarity: voiceClarity)
             return
         }
         guard loudnessTask == nil else { return }
@@ -182,8 +189,8 @@ public final class AVPlayerEngine: PlayerEngine {
             guard let tracks = try? await item.asset.loadTracks(withMediaType: .audio),
                   let track = tracks.first else { return }
             // The item, or the setting, may have changed while the track list loaded.
-            guard let self, !Task.isCancelled, self.currentItem === item, self.volumeBoost != .off else { return }
-            let state = LoudnessTapState(boost: self.volumeBoost)
+            guard let self, !Task.isCancelled, self.currentItem === item, (self.volumeBoost != .off || self.voiceClarity) else { return }
+            let state = LoudnessTapState(boost: self.volumeBoost, voiceClarity: self.voiceClarity)
             guard let mix = LoudnessTap.audioMix(for: track, state: state) else { return }
             item.audioMix = mix
             self.loudnessState = state

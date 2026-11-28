@@ -153,11 +153,12 @@ struct SettingsView: View {
                 Text("Normal").tag(VolumeBoost.normal)
                 Text("High").tag(VolumeBoost.high)
             }
+            Toggle("Voice Clarity", isOn: $viewModel.voiceClarity)
             Toggle("Auto-Load Last Episode", isOn: $viewModel.autoRestoreLastEpisode)
         } header: {
             Text("Playback")
         } footer: {
-            Text("Volume Boost evens out quiet and loud shows. High is louder still, for noisy places. Auto-Load Last Episode opens your last episode when Jimmy starts.")
+            Text("Volume Boost evens out quiet and loud shows. High is louder still, for noisy places. Voice Clarity trims rumble and lifts speech slightly. Auto-Load Last Episode opens your last episode when Jimmy starts.")
         }
         .pickerStyle(.menu)
     }

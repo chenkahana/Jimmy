@@ -13,6 +13,9 @@ public protocol PlayerEngine: AnyObject {
     /// loaded item at once and on every item loaded after.
     var volumeBoost: VolumeBoost { get set }
 
+    /// Whether the light voice EQ ("Voice clarity") is applied. Takes effect like `volumeBoost`.
+    var voiceClarity: Bool { get set }
+
     /// Current playback position, in seconds.
     var currentTime: TimeInterval { get }
 
