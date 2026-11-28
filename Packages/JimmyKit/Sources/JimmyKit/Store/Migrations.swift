@@ -75,6 +75,16 @@ nonisolated enum Migrations {
         migrator.registerMigration("v25_seed_smart_playlists") { db in
             try Self.seedSmartPlaylists(db)
         }
+        migrator.registerMigration("v26_audio_analysis") { db in
+            try db.create(table: "audio_analysis", ifNotExists: true) { t in
+                t.column("episodeID", .text).primaryKey().notNull()
+                t.column("integratedLUFS", .double)
+                t.column("samplePeak", .double).notNull()
+                // JSON array of {start, end} seconds.
+                t.column("silenceRanges", .text).notNull()
+                t.column("analyzedAt", .datetime).notNull()
+            }
+        }
     }
 
     // MARK: - v25_seed_smart_playlists
