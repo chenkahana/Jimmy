@@ -229,3 +229,30 @@ extension Playlist: FetchableRecord, PersistableRecord {
         container["rule"] = rule
     }
 }
+
+// MARK: - AudioAnalysis (table: audio_analysis)
+
+extension AudioAnalysis: FetchableRecord, PersistableRecord {
+    public nonisolated static let databaseTableName = "audio_analysis"
+
+    public nonisolated init(row: Row) throws {
+        let json: String = row["silenceRanges"] ?? "[]"
+        let ranges = (try? JSONDecoder().decode([SilenceRange].self, from: Data(json.utf8))) ?? []
+        self.init(
+            episodeID: try StoredUUID.decode(row["episodeID"], column: "episodeID"),
+            integratedLUFS: row["integratedLUFS"],
+            samplePeak: row["samplePeak"] ?? 0,
+            silenceRanges: ranges,
+            analyzedAt: row["analyzedAt"] ?? Date()
+        )
+    }
+
+    public nonisolated func encode(to container: inout PersistenceContainer) throws {
+        let data = try JSONEncoder().encode(silenceRanges)
+        container["episodeID"] = episodeID.uuidString
+        container["integratedLUFS"] = integratedLUFS
+        container["samplePeak"] = samplePeak
+        container["silenceRanges"] = String(decoding: data, as: UTF8.self)
+        container["analyzedAt"] = analyzedAt
+    }
+}
