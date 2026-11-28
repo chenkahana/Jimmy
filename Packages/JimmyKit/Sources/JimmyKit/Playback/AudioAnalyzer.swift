@@ -14,6 +14,7 @@ public nonisolated enum AudioAnalyzerError: Error, Sendable {
     case unsupportedFormat
 }
 
+#if !os(watchOS)
 /// Decodes a local audio file once and runs the loudness meter and the silence detector over it.
 /// Slow on long episodes (it decodes the whole file), so call it from a background task, never
 /// the main actor. Cancelling the calling task stops it between buffers.
@@ -86,3 +87,4 @@ public nonisolated enum AudioAnalyzer {
         return (planar, loudest)
     }
 }
+#endif
